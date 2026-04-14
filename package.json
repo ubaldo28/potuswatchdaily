@@ -2,7 +2,8 @@
   "name": "potuswatch",
   "version": "1.0.0",
   "scripts": {
-    "start": "node localserver.js"
+    "start": "node localserver.js",
+    "build": "npm install"
   },
   "dependencies": {
     "axios": "^1.6.0",
