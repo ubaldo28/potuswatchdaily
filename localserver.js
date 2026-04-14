@@ -106,7 +106,7 @@ app.get('/get-articles', async (req, res) => {
   }
 });
 
-setInterval(generateArticles, 60 * 60 * 1000);
+setInterval(generateArticles, 30 * 60 * 1000);
 
 app.listen(3000, async () => {
   console.log('POTUS Watch running at http://localhost:3000');
