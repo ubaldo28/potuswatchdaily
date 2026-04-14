@@ -1,1 +1,7 @@
-{"scripts":{"start":"node localserver.js"}}
+{
+  "name": "potuswatch",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node localserver.js"
+  }
+}
