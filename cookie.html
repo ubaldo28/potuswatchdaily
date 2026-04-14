@@ -1,0 +1,15 @@
+<div id="cookie-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#111;border-top:1px solid #333;padding:16px 24px;z-index:9999;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+<p style="font-size:12px;color:#888;margin:0;flex:1">We use cookies to improve your experience and show relevant ads. By continuing to use this site you agree to our <a href="/privacy.html" style="color:#cc0000">Privacy Policy</a>.</p>
+<button onclick="acceptCookies()" style="background:#cc0000;color:#fff;border:none;padding:8px 20px;border-radius:3px;font-size:12px;cursor:pointer;flex-shrink:0">Accept</button>
+</div>
+<script>
+function acceptCookies(){
+  localStorage.setItem('cookies-accepted','true');
+  document.getElementById('cookie-banner').style.display='none';
+}
+window.onload=function(){
+  if(!localStorage.getItem('cookies-accepted')){
+    document.getElementById('cookie-banner').style.display='flex';
+  }
+}
+</script>
