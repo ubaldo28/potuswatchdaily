@@ -23,7 +23,8 @@ async function getImage(region) {
   try {
     const r = await axios.get('https://api.unsplash.com/photos/random', {
       params: { query: imageQueries[region] || 'politics', orientation: 'landscape' },
-      headers: { Authorization: 'Client-ID ' + process.env.UNSPLASH_ACCESS_KEY }
+      headers: { Authorization: 'Client-ID ' + process.env.UNSPLASH_ACCESS_KEY },
+      timeout: 10000
     });
     return r.data.urls.regular;
   } catch(e) {
@@ -31,42 +32,56 @@ async function getImage(region) {
   }
 }
 
+async function fetchNews() {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const r = await axios.get('https://newsapi.org/v2/everything', {
+        params: { q: 'Trump foreign policy', language: 'en', sortBy: 'publishedAt', pageSize: 10, apiKey: process.env.NEWS_API_KEY },
+        timeout: 15000
+      });
+      return r.data.articles.filter(a => a.title && a.description);
+    } catch(e) {
+      console.log('News fetch attempt ' + (attempt+1) + ' failed. Retrying...');
+      await new Promise(r => setTimeout(r, 5000));
+    }
+  }
+  return null;
+}
+
 async function generateArticles() {
   try {
-    const newsRes = await axios.get('https://newsapi.org/v2/everything', {
-      params: {
-        q: 'Trump foreign policy',
-        language: 'en',
-        sortBy: 'publishedAt',
-        pageSize: 10,
-        apiKey: process.env.NEWS_API_KEY
-      }
-    });
-    const newsItems = newsRes.data.articles.filter(a => a.title && a.description);
-    const newsContext = newsItems.map((a, i) => 'Article ' + (i+1) + ': ' + a.title + '\n' + a.description).join('\n\n');
+    const newsItems = await fetchNews();
+    if (!newsItems) { console.log('Could not fetch news. Skipping.'); return; }
 
+    const newsContext = newsItems.slice(0,5).map((a, i) => (i+1) + '. ' + a.title).join('\n');
     const region = regions[Math.floor(Math.random() * regions.length)];
-    const prompt = 'You are an elite AI foreign policy correspondent for POTUS Watch. Today is April 2026. Latest Trump news:\n\n' + newsContext + '\n\nWrite a sharp analytical dispatch focused on ' + region + '. Return ONLY valid JSON no markdown no backticks: {"title":"provocative specific headline","region":"' + region + '","excerpt":"2-3 punchy sentences","body":"6 paragraphs of serious analysis. What is Trump next move and why."}';
+    const prompt = 'You are a foreign policy journalist for POTUS Watch. Write a news analysis about ' + region + ' based on these headlines:\n\n' + newsContext + '\n\nRespond with ONLY a JSON object. No other text. No markdown. Just JSON:\n{"title":"headline here","region":"' + region + '","excerpt":"two sentences here","body":"write six paragraphs here"}';
 
-    const res = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
-      model: 'llama3-8b-8192',
-      messages: [{ role: 'user', content: prompt }],
-      max_tokens: 1500
+    const res = await axios.post('https://api.anthropic.com/v1/messages', {
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1200,
+      messages: [{ role: 'user', content: prompt }]
     }, {
       headers: {
-        'Authorization': 'Bearer ' + process.env.GROQ_API_KEY,
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
         'Content-Type': 'application/json'
-      }
+      },
+      timeout: 30000
     });
 
-    const raw = res.data.choices[0].message.content.replace(/```json|```/g, '').trim();
+    let raw = res.data.content[0].text;
+    raw = raw.replace(/[\x00-\x1F\x7F]/g, ' ').replace(/```json|```/g, '').trim();
+    const jsonStart = raw.indexOf('{');
+    const jsonEnd = raw.lastIndexOf('}') + 1;
+    raw = raw.slice(jsonStart, jsonEnd);
     const parsed = JSON.parse(raw);
     const image = await getImage(region);
     const now = new Date();
 
     await supabase.from('articles').insert({
       title: parsed.title,
-      region: parsed.region,
+      region: parsed.region || region,
       excerpt: parsed.excerpt,
       body: parsed.body + '\n\n' + affiliate,
       image: image,
