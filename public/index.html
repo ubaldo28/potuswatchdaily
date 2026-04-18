@@ -46,6 +46,7 @@ body{font-family:'Inter',sans-serif;background:#0a0a0a;color:#fff;min-height:100
 .nav{display:flex;align-items:center;gap:0}
 .nav a{color:#666;font-size:12px;font-weight:500;text-decoration:none;padding:4px 12px;letter-spacing:0.5px;text-transform:uppercase;transition:color 0.15s;white-space:nowrap}
 .nav a:hover{color:#fff}
+.nav a.nav-active{color:#fff;border-bottom:2px solid #cc0000;padding-bottom:2px}
 .masthead-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
 .live-badge{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:600;letter-spacing:1px;color:#cc0000;text-transform:uppercase}
 .dot{width:5px;height:5px;background:#cc0000;border-radius:50%;animation:blink 1.2s ease-in-out infinite}
@@ -188,12 +189,15 @@ body{font-family:'Inter',sans-serif;background:#0a0a0a;color:#fff;min-height:100
 <header class="masthead">
   <div class="masthead-inner">
     <a class="logo" href="/">POTUS <em>Watch</em></a>
-    <nav class="nav">
-      <a href="#">Americas</a>
-      <a href="#">Asia-Pacific</a>
-      <a href="#">Europe</a>
-      <a href="#">Middle East</a>
-      <a href="#">Analysis</a>
+    <nav class="nav" id="nav">
+      <a href="#" onclick="filterFeed('all');return false;" class="nav-active">All</a>
+      <a href="#" onclick="filterFeed('Americas');return false;">Americas</a>
+      <a href="#" onclick="filterFeed('China');return false;">China</a>
+      <a href="#" onclick="filterFeed('NATO');return false;">NATO</a>
+      <a href="#" onclick="filterFeed('Iran');return false;">Iran</a>
+      <a href="#" onclick="filterFeed('Mideast');return false;">Mideast</a>
+      <a href="#" onclick="filterFeed('Russia');return false;">Russia</a>
+      <a href="#" onclick="filterFeed('Trade');return false;">Trade</a>
     </nav>
     <div class="masthead-right">
       <div class="live-badge"><div class="dot"></div>Live</div>
@@ -338,16 +342,28 @@ function loadArticles(){
   xhr.send();
 }
 
+var currentFilter='all';
+function filterFeed(r){
+  currentFilter=r;
+  document.querySelectorAll('#nav a').forEach(function(a){
+    a.classList.remove('nav-active');
+    if((r==='all'&&a.textContent==='All')||a.textContent.toUpperCase()===r.toUpperCase()) a.classList.add('nav-active');
+  });
+  document.querySelector('.section-title').textContent=r==='all'?'Latest Dispatches':r+' Dispatches';
+  renderFeed();
+}
 function renderFeed(){
   if(!articles.length) return;
-  var hero = document.getElementById('hero');
-  var grid = document.getElementById('grid');
-  var main = articles[0];
-  var side1 = articles[1] || null;
-  var side2 = articles[2] || null;
+  var filtered=currentFilter==='all'?articles:articles.filter(function(a){return a.region===currentFilter;});
+  if(!filtered.length){document.getElementById('hero').innerHTML='';document.getElementById('grid').innerHTML='<div style="color:#555;font-size:14px;padding:40px 0">No dispatches yet for this region.</div>';return;}
+  var hero=document.getElementById('hero');
+  var grid=document.getElementById('grid');
+  var main=filtered[0];
+  var side1=filtered[1]||null;
+  var side2=filtered[2]||null;
 
   // Hero main — eager load, high priority (above the fold)
-  var heroHTML = '<div class="hero-main" onclick="openArticle(0)">';
+  var heroHTML = '<div class="hero-main" onclick="openArticle('+articles.indexOf(main)+')">';
   if(main.hero_image || main.image){
     heroHTML += '<img class="hero-main-img" src="' + (main.hero_image || main.image) + '" alt="' + esc(main.title) + '" fetchpriority="high">';
   } else {
@@ -361,7 +377,7 @@ function renderFeed(){
   heroHTML += '<div class="hero-side">';
   [side1, side2].forEach(function(a, i){
     if(!a) return;
-    heroHTML += '<div class="hero-small" onclick="openArticle(' + (i+1) + ')">';
+    var sidx=articles.indexOf(a);heroHTML+='<div class="hero-small" onclick="openArticle('+sidx+')">';
     if(a.image){
       heroHTML += '<img class="hero-small-img" src="' + a.image + '" alt="' + esc(a.title) + '" loading="lazy">';
     } else {
@@ -374,10 +390,10 @@ function renderFeed(){
   hero.innerHTML = heroHTML;
 
   // Grid — all lazy loaded (below fold)
-  var gridHTML = '';
-  for(var i = 3; i < Math.min(articles.length, 21); i++){
-    var a = articles[i];
-    gridHTML += '<div class="card" onclick="openArticle(' + i + ')">';
+  var gridHTML='';
+  for(var i=3;i<Math.min(filtered.length,21);i++){
+    var a=filtered[i];var cidx=articles.indexOf(a);
+    gridHTML+='<div class="card" onclick="openArticle('+cidx+')">';
     if(a.image){
       gridHTML += '<img class="card-img" src="' + a.image + '" alt="' + esc(a.title) + '" loading="lazy">';
     } else {
