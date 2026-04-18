@@ -1,4 +1,4 @@
-
+require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
 const { createClient } = require('@supabase/supabase-js');
@@ -23,8 +23,7 @@ async function getImage(region) {
   try {
     const r = await axios.get('https://api.unsplash.com/photos/random', {
       params: { query: imageQueries[region] || 'politics', orientation: 'landscape' },
-      headers: { Authorization: 'Client-ID ' + process.env.UNSPLASH_ACCESS_KEY },
-      timeout: 10000
+      headers: { Authorization: 'Client-ID ' + process.env.UNSPLASH_ACCESS_KEY }
     });
     return r.data.urls.regular;
   } catch(e) {
@@ -32,64 +31,47 @@ async function getImage(region) {
   }
 }
 
-async function fetchNews() {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const r = await axios.get('https://newsapi.org/v2/everything', {
-        params: { q: 'Trump foreign policy', language: 'en', sortBy: 'publishedAt', pageSize: 10, apiKey: process.env.NEWS_API_KEY },
-        timeout: 15000
-      });
-      return r.data.articles.filter(a => a.title && a.description);
-    } catch(e) {
-      console.log('News fetch attempt ' + (attempt+1) + ' failed. Retrying...');
-      await new Promise(r => setTimeout(r, 5000));
-    }
-  }
-  return null;
-}
-
 async function generateArticles() {
   try {
-    const newsItems = await fetchNews();
-    if (!newsItems) { console.log('Could not fetch news. Skipping.'); return; }
-
-    const newsContext = newsItems.slice(0,5).map((a, i) => (i+1) + '. ' + a.title).join('\n');
-    const region = regions[Math.floor(Math.random() * regions.length)];
-    const prompt = 'You are a foreign policy journalist for POTUS Watch. Write a news analysis about ' + region + ' based on these headlines:\n\n' + newsContext + '\n\nRespond with ONLY a JSON object. No other text. No markdown. Just JSON:\n{"title":"headline here","region":"' + region + '","excerpt":"two sentences here","body":"write six paragraphs here"}';
-
-    const res = await axios.post('https://api.anthropic.com/v1/messages', {
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1200,
-      messages: [{ role: 'user', content: prompt }]
-    }, {
-      headers: {
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'Content-Type': 'application/json'
-      },
-      timeout: 30000
+    const newsRes = await axios.get('https://newsapi.org/v2/everything', {
+      params: {
+        q: 'Trump foreign policy',
+        language: 'en',
+        sortBy: 'publishedAt',
+        pageSize: 10,
+        apiKey: process.env.NEWS_API_KEY
+      }
     });
+    const newsItems = newsRes.data.articles.filter(a => a.title && a.description);
+    const newsContext = newsItems.map((a, i) => 'Article ' + (i+1) + ': ' + a.title + '\n' + a.description).join('\n\n');
 
-    let raw = res.data.content[0].text;
-    raw = raw.replace(/[\x00-\x1F\x7F]/g, ' ').replace(/```json|```/g, '').trim();
-    const jsonStart = raw.indexOf('{');
-    const jsonEnd = raw.lastIndexOf('}') + 1;
-    raw = raw.slice(jsonStart, jsonEnd);
-    const parsed = JSON.parse(raw);
-    const image = await getImage(region);
-    const now = new Date();
+    for (let i = 0; i < 2; i++) {
+      const region = regions[Math.floor(Math.random() * regions.length)];
+      const prompt = 'You are an elite AI foreign policy correspondent for POTUS Watch. Today is April 2026. Latest Trump news:\n\n' + newsContext + '\n\nWrite a sharp analytical dispatch focused on ' + region + '. Return ONLY valid JSON no markdown no backticks: {"title":"provocative specific headline","region":"' + region + '","excerpt":"2-3 punchy sentences","body":"6 paragraphs of serious analysis. What is Trump next move and why."}';
 
-    await supabase.from('articles').insert({
-      title: parsed.title,
-      region: parsed.region || region,
-      excerpt: parsed.excerpt,
-      body: parsed.body + '\n\n' + affiliate,
-      image: image,
-      date: now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
-      time: now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0'),
-      sources: JSON.stringify(newsItems.slice(0, 3).map(a => ({ title: a.title, url: a.url })))
-    });
-    console.log('Saved: ' + parsed.title);
+      const res = await axios.post(
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + process.env.GEMINI_API_KEY,
+        { contents: [{ parts: [{ text: prompt }] }] },
+        { headers: { 'Content-Type': 'application/json' } }
+      );
+
+      const raw = res.data.candidates[0].content.parts[0].text.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(raw);
+      const image = await getImage(region);
+      const now = new Date();
+
+      await supabase.from('articles').insert({
+        title: parsed.title,
+        region: parsed.region,
+        excerpt: parsed.excerpt,
+        body: parsed.body + '\n\n' + affiliate,
+        image: image,
+        date: now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+        time: now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0'),
+        sources: JSON.stringify(newsItems.slice(0, 3).map(a => ({ title: a.title, url: a.url })))
+      });
+      console.log('Saved: ' + parsed.title);
+    }
     console.log('Done.');
   } catch(e) {
     console.error('Error:', e.message);
@@ -106,7 +88,7 @@ app.get('/get-articles', async (req, res) => {
   }
 });
 
-setInterval(generateArticles, 30 * 60 * 1000);
+setInterval(generateArticles, 3 * 60 * 60 * 1000);
 
 app.listen(3000, async () => {
   console.log('POTUS Watch running at http://localhost:3000');
