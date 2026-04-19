@@ -62,6 +62,7 @@ module.exports = async (req, res) => {
 <meta property="og:url" content="${url}">
 <meta name="twitter:card" content="summary_large_image">
 <script type="application/ld+json">${jsonLd}</script>
+<script type="application/ld+json">${JSON.stringify({"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://potuswatchdaily.com"},{"@type":"ListItem","position":2,"name":a.region,"item":"https://potuswatchdaily.com"},{"@type":"ListItem","position":3,"name":a.title,"item":url}]})}</script>
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-FRVP4L2Z2T"></script>
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-FRVP4L2Z2T');</script>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7380718671497895" crossorigin="anonymous"></script>
