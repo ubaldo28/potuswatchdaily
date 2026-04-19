@@ -5,7 +5,7 @@
 
 set -e
 
-REPO_DIR="$(dirname "$0")"
+REPO_DIR="$HOME/Desktop/potuswatch"
 DOWNLOADS=~/Downloads
 MSG=${1:-"update: $(date '+%Y-%m-%d %H:%M')"}
 
