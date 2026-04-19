@@ -438,9 +438,12 @@ function esc(str){ return String(str||'').replace(/"/g,'&quot;').replace(/</g,'&
 
 function openArticle(i){
   var a = articles[i];
-  // New articles have a slug — navigate to their SSR page for SEO
+  // Navigate to article page
   if(a.slug){ window.location.href = '/article/' + a.slug; return; }
-  // Older articles without slugs fall back to inline overlay
+  // Old articles without slugs — just go to homepage
+  window.location.href = '/';
+  return;
+  // (legacy overlay code below kept for reference but never reached)
   var heroWrap = document.getElementById('ahero-wrap');
   var heroImg = document.getElementById('ahero');
   var heroSrc = a.hero_image || a.image;
