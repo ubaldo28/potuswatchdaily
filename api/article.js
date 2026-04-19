@@ -21,7 +21,8 @@ module.exports = async (req, res) => {
     res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="UTF-8">
+<meta name="google-adsense-account" content="ca-pub-7380718671497895"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(a.title)} — POTUS Watch Daily</title>
 <meta name="description" content="${esc(desc)}">
 <link rel="canonical" href="${url}">
