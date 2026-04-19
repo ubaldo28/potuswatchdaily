@@ -30,12 +30,11 @@ async function getImage(region,size){
   }catch(e){return '';}
 }
 
-const JUNK_DOMAINS = ['smartbitchestrashybooks','podbean','rollingstone','billboard','hiphopwired','insidethemagic','commondreams','thenation','rt.com','slowboring','theintercept','salon.com','newrepublic'];
-const GOOD_DOMAINS = ['reuters','apnews','bbc','wsj','ft.com','politico','axios','foreignaffairs','economist','bloomberg','cnbc','nytimes','wapo','washingtonpost','fortune','aljazeera','thehill','defensenews','foreignpolicy'];
+const JUNK_DOMAINS=['smartbitchestrashybooks','podbean','rollingstone','billboard','hiphopwired','insidethemagic','commondreams','thenation','rt.com','slowboring','theintercept','salon.com','newrepublic'];
 
 function isRelevantSource(url){
   if(!url) return false;
-  const u = url.toLowerCase();
+  const u=url.toLowerCase();
   if(JUNK_DOMAINS.some(d=>u.includes(d))) return false;
   return true;
 }
@@ -47,10 +46,8 @@ async function fetchNews(){
         params:{q:'Trump foreign policy OR diplomacy OR tariffs OR NATO OR China OR Iran OR geopolitics',language:'en',sortBy:'publishedAt',pageSize:20,apiKey:process.env.NEWS_API_KEY},
         timeout:15000
       });
-      const filtered = r.data.articles.filter(a=>
-        a.title && a.description && a.title!=='[Removed]' && isRelevantSource(a.url)
-      );
-      return filtered.length >= 3 ? filtered : r.data.articles.filter(a=>a.title&&a.description&&a.title!=='[Removed]');
+      const filtered=r.data.articles.filter(a=>a.title&&a.description&&a.title!=='[Removed]'&&isRelevantSource(a.url));
+      return filtered.length>=3?filtered:r.data.articles.filter(a=>a.title&&a.description&&a.title!=='[Removed]');
     }catch(e){console.log('News attempt '+(i+1)+' failed:',e.message);await new Promise(r=>setTimeout(r,5000));}
   }
   return null;
@@ -70,8 +67,7 @@ async function generateArticles(){
     const types=['breaking news analysis','strategic intelligence briefing','diplomatic developments report','policy implications analysis','geopolitical situation report'];
     const articleType=types[Math.floor(Math.random()*types.length)];
 
-    const prompt='You are a senior foreign policy correspondent at POTUS Watch Daily, a Washington-based intelligence briefing. Your writing is authoritative, precise, and analytical.\n\nToday assignment: Write a '+articleType+' focused on the '+region+' portfolio.\n\nUse these recent headlines:\n'+newsContext+'\n\nArticle structure:\n- Paragraph 1 (Lede): One powerful sentence.\n- Paragraph 2 (Context): Brief background.\n- Paragraph 3 (Analysis): Strategic meaning.\n- Paragraph 4 (Wider implications): Effects on allies and markets.\n- Paragraph 5 (Washington angle): How Trump administration responded.\n- Paragraph 6 (Outlook): What to watch in 48-72 hours.\n\nIMPORTANT: Title must be under 8 words. No colons. No filler phrases.
-Respond ONLY with valid JSON, no markdown:\n{"title":"headline under 8 words","region":"'+region+'","excerpt":"one sentence max 25 words","meta_description":"max 155 chars","slug":"url-friendly-slug","body":"para1\\n\\npara2\\n\\npara3\\n\\npara4\\n\\npara5\\n\\npara6"}';
+    const prompt='You are a senior foreign policy correspondent at POTUS Watch Daily. Write a '+articleType+' on the '+region+' portfolio.\n\nHeadlines:\n'+newsContext+'\n\nStructure:\n- Para 1: Powerful lede sentence\n- Para 2: Context and background\n- Para 3: Strategic analysis\n- Para 4: Wider implications\n- Para 5: Washington angle\n- Para 6: 48-72 hour outlook\n\nRules: Title maximum 8 words. No colons in title. Active voice. No rhetorical questions.\n\nRespond ONLY with valid JSON no markdown:\n{"title":"max 8 word title","region":"'+region+'","excerpt":"one sentence max 25 words","meta_description":"max 155 chars","slug":"url-slug","body":"para1\\n\\npara2\\n\\npara3\\n\\npara4\\n\\npara5\\n\\npara6"}';
 
     const res=await axios.post('https://api.anthropic.com/v1/messages',{
       model:'claude-haiku-4-5-20251001',
@@ -106,7 +102,8 @@ Respond ONLY with valid JSON, no markdown:\n{"title":"headline under 8 words","r
 
 app.get('/get-articles',async(req,res)=>{
   try{
-    const{data,error}=await supabase.from('articles').select('*').order('id',{ascending:false}).limit(24);
+    const offset=parseInt(req.query.offset)||0;
+    const{data,error}=await supabase.from('articles').select('*').order('id',{ascending:false}).range(offset,offset+23);
     if(error)throw error;
     res.setHeader('Cache-Control','public, s-maxage=180, stale-while-revalidate=600');
     res.json(data);
