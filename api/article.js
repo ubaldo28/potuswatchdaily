@@ -15,6 +15,32 @@ module.exports = async (req, res) => {
       return '<p>'+p+'</p>';
     }).join('');
     const sources = (() => { try { return JSON.parse(a.sources||'[]'); } catch(e) { return []; } })();
+
+  // Related articles
+  const { data: related } = await supabase
+    .from('articles')
+    .select('title, slug, excerpt, region, date, image')
+    .eq('region', a.region)
+    .neq('slug', a.slug)
+    .not('slug', 'is', null)
+    .order('id', { ascending: false })
+    .limit(3);
+
+  const relatedHTML = (related && related.length) ? `
+  <div style="margin-top:48px;padding-top:32px;border-top:1px solid #1e1e1e">
+    <p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#444;margin-bottom:20px">More from ${esc(a.region)}</p>
+    <div style="display:grid;gap:20px">
+      ${related.map(r => `
+      <a href="/article/${r.slug}" style="display:grid;grid-template-columns:${r.image ? '80px 1fr' : '1fr'};gap:14px;text-decoration:none;padding:16px;background:#111;border:1px solid #1e1e1e;border-radius:3px;transition:border-color 0.15s" onmouseover="this.style.borderColor='#333'" onmouseout="this.style.borderColor='#1e1e1e'">
+        ${r.image ? `<img src="${r.image}&w=160&q=70&fit=crop" style="width:80px;height:60px;object-fit:cover;border-radius:2px" loading="lazy" alt="">` : ''}
+        <div>
+          <p style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#cc0000;margin-bottom:5px">${esc(r.region)}</p>
+          <p style="font-family:'Playfair Display',Georgia,serif;font-size:15px;font-weight:700;color:#e0e0e0;line-height:1.3;margin-bottom:4px">${esc(r.title)}</p>
+          <p style="font-size:11px;color:#555">${esc(r.date || '')}</p>
+        </div>
+      </a>`).join('')}
+    </div>
+  </div>` : '';
     const jsonLd = JSON.stringify({'@context':'https://schema.org','@type':'NewsArticle',headline:a.title,description:desc,datePublished:a.date,author:{'@type':'Organization',name:'POTUS Watch Daily'},publisher:{'@type':'Organization',name:'POTUS Watch Daily',url:'https://potuswatchdaily.com'},image:img,url:url,articleSection:a.region});
     res.setHeader('Content-Type','text/html; charset=utf-8');
     res.setHeader('Cache-Control','public, s-maxage=1800, stale-while-revalidate=3600');
@@ -86,6 +112,7 @@ ${img ? '<img class="hero-img" src="'+img+'" alt="'+esc(a.title)+'" fetchpriorit
     <a href="https://www.buymeacoffee.com/POTUSwatch" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:#cc0000;color:#fff;text-decoration:none;padding:10px 20px;border-radius:3px;font-size:12px;font-weight:600;letter-spacing:0.5px;font-family:Inter,sans-serif;transition:background 0.15s">☕ Buy me a coffee</a>
   </div>
   ${sources.length ? '<div class="sources"><p class="sources-label">Sources</p>'+sources.map(s=>'<a href="'+esc(s.url)+'" target="_blank" rel="noopener">'+esc(s.title)+'</a>').join('')+'</div>' : ''}
+  ${relatedHTML}
 </div>
 <footer class="footer"><div class="footer-inner"><div class="footer-logo">POTUS <em>Watch</em></div><span class="footer-copy">&copy; 2026 POTUS Watch Daily.</span></div></footer>
 </body></html>`);
