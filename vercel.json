@@ -2,6 +2,17 @@
   "framework": null,
   "outputDirectory": ".",
   "rewrites": [
-    { "source": "/get-articles", "destination": "/api/articles" }
+    {
+      "source": "/get-articles",
+      "destination": "/api/articles"
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap"
+    },
+    {
+      "source": "/article/:slug",
+      "destination": "/api/article?slug=:slug"
+    }
   ]
 }
