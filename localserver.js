@@ -30,14 +30,27 @@ async function getImage(region,size){
   }catch(e){return '';}
 }
 
+const JUNK_DOMAINS = ['smartbitchestrashybooks','podbean','rollingstone','billboard','hiphopwired','insidethemagic','commondreams','thenation','rt.com','slowboring','theintercept','salon.com','newrepublic'];
+const GOOD_DOMAINS = ['reuters','apnews','bbc','wsj','ft.com','politico','axios','foreignaffairs','economist','bloomberg','cnbc','nytimes','wapo','washingtonpost','fortune','aljazeera','thehill','defensenews','foreignpolicy'];
+
+function isRelevantSource(url){
+  if(!url) return false;
+  const u = url.toLowerCase();
+  if(JUNK_DOMAINS.some(d=>u.includes(d))) return false;
+  return true;
+}
+
 async function fetchNews(){
   for(let i=0;i<3;i++){
     try{
       const r=await axios.get('https://newsapi.org/v2/everything',{
-        params:{q:'Trump foreign policy OR diplomacy OR tariffs OR NATO OR China OR Iran',language:'en',sortBy:'publishedAt',pageSize:10,apiKey:process.env.NEWS_API_KEY},
+        params:{q:'Trump foreign policy OR diplomacy OR tariffs OR NATO OR China OR Iran OR geopolitics',language:'en',sortBy:'publishedAt',pageSize:20,apiKey:process.env.NEWS_API_KEY},
         timeout:15000
       });
-      return r.data.articles.filter(a=>a.title&&a.description&&a.title!=='[Removed]');
+      const filtered = r.data.articles.filter(a=>
+        a.title && a.description && a.title!=='[Removed]' && isRelevantSource(a.url)
+      );
+      return filtered.length >= 3 ? filtered : r.data.articles.filter(a=>a.title&&a.description&&a.title!=='[Removed]');
     }catch(e){console.log('News attempt '+(i+1)+' failed:',e.message);await new Promise(r=>setTimeout(r,5000));}
   }
   return null;
