@@ -18,6 +18,15 @@ module.exports = async (req, res) => {
   const wordCount = (a.body || '').split(/s+/).length;
   const readTime = Math.max(1, Math.round(wordCount / 200)) + ' min read';
 
+  // Newsletter signup
+  const newsletterHTML = `
+  <div style="background:#111;border:1px solid #1e1e1e;border-top:3px solid #cc0000;padding:32px;margin-top:48px;border-radius:3px;text-align:center">
+    <p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#cc0000;margin-bottom:10px">Free Newsletter</p>
+    <p style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:900;color:#fff;margin-bottom:8px">Never miss a dispatch</p>
+    <p style="font-size:13px;color:#666;margin-bottom:20px;line-height:1.6">Weekly foreign policy intelligence delivered free to your inbox.</p>
+    <script async src="https://subscribe-forms.beehiiv.com/embed.js"></script><iframe src="https://subscribe-forms.beehiiv.com/c20ea9d7-ce8d-4f0f-b41f-8b12b3768483" class="beehiiv-embed" data-test-id="beehiiv-embed" frameborder="0" scrolling="no" style="width:100%;max-width:560px;height:399px;margin:0;border-radius:0!important;background:transparent;box-shadow:none"></iframe>
+  </div>`;
+
   // Related articles
   const { data: related } = await supabase
     .from('articles')
@@ -116,7 +125,7 @@ ${img ? '<img class="hero-img" src="'+img+'" alt="'+esc(a.title)+'" fetchpriorit
     <a href="https://www.buymeacoffee.com/POTUSwatch" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:#cc0000;color:#fff;text-decoration:none;padding:10px 20px;border-radius:3px;font-size:12px;font-weight:600;letter-spacing:0.5px;font-family:Inter,sans-serif;transition:background 0.15s">☕ Buy me a coffee</a>
   </div>
   ${sources.length ? '<div class="sources"><p class="sources-label">Sources</p>'+sources.map(s=>'<a href="'+esc(s.url)+'" target="_blank" rel="noopener">'+esc(s.title)+'</a>').join('')+'</div>' : ''}
-  ${relatedHTML}
+  ${newsletterHTML}${relatedHTML}
 </div>
 <footer class="footer"><div class="footer-inner"><div class="footer-logo">POTUS <em>Watch</em></div><span class="footer-copy">&copy; 2026 POTUS Watch Daily.</span></div></footer>
 </body></html>`);
