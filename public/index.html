@@ -219,10 +219,9 @@ body{font-family:'Inter',sans-serif;background:#0a0a0a;color:#fff;min-height:100
 
 <div class="search-wrap">
   <div class="search-bar">
-    <input type="text" id="search-input" placeholder="Search dispatches..." oninput="searchArticles(this.value)" onkeydown="if(event.key==='Escape'){this.value='';searchArticles('')}">
-    <button onclick="document.getElementById('search-input').value='';searchArticles('')" title="Clear">
-      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    </button>
+    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" id="search-input" placeholder="Search dispatches…" oninput="searchArticles(this.value)" onkeydown="if(event.key==='Escape'){this.value='';searchArticles('')}">
+    <button class="search-clear" id="search-clear" onclick="document.getElementById('search-input').value='';document.getElementById('search-clear').classList.remove('visible');searchArticles('')">✕</button>
   </div>
 </div>
 <div class="hero-wrap">
@@ -359,6 +358,8 @@ function loadArticles(){
 var searchQuery='';
 
 function searchArticles(q){
+  var clearBtn=document.getElementById('search-clear');
+  if(clearBtn) clearBtn.classList.toggle('visible', q.length>0);
   searchQuery=q.trim().toLowerCase();
   currentFilter='all';
   document.querySelectorAll('#nav a').forEach(function(a){a.classList.remove('nav-active');});
