@@ -360,11 +360,13 @@ function loadArticles(){
 
 var searchQuery='';
 function searchArticles(q){
+  displayLimit=21;
   searchQuery=q.trim().toLowerCase();
   document.querySelector('.section-title').textContent=searchQuery?'Search results':'Latest Dispatches';
   renderFeed();
 }
 var currentFilter='all';
+var displayLimit=21;
 function filterFeed(r){
   currentFilter=r;
   document.querySelectorAll('#nav a').forEach(function(a){
@@ -414,7 +416,7 @@ function renderFeed(){
 
   // Grid — all lazy loaded (below fold)
   var gridHTML='';
-  for(var i=3;i<Math.min(filtered.length,21);i++){
+  for(var i=3;i<Math.min(filtered.length,displayLimit);i++){
     var a=filtered[i];var cidx=articles.indexOf(a);
     gridHTML+='<div class="card" onclick="openArticle('+cidx+')">';
     if(a.image){
@@ -483,24 +485,29 @@ function closePage(){
   document.getElementById('apage').classList.remove('open');
 }
 
-var articleOffset = 0;
-
 function loadMore(){
   var btn = document.getElementById('load-more-btn');
-  btn.textContent = 'Loading...';
-  var xhr = new XMLHttpRequest();
-  xhr.open('GET', '/get-articles?offset=' + (articleOffset + 24), true);
-  xhr.onload = function(){
-    if(xhr.status === 200){
-      var more = JSON.parse(xhr.responseText);
-      if(!more.length){ btn.textContent = 'No more dispatches'; btn.disabled = true; return; }
-      articles = articles.concat(more);
-      articleOffset += 24;
+  var filtered = currentFilter==='all' ? articles : articles.filter(function(a){return a.region===currentFilter;});
+  if(searchQuery) filtered = filtered.filter(function(a){return (a.title+' '+(a.excerpt||'')+' '+(a.region||'')).toLowerCase().indexOf(searchQuery)!==-1;});
+  if(displayLimit >= filtered.length){
+    btn.textContent = 'Loading...';
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/get-articles?offset=' + articles.length, true);
+    xhr.onload = function(){
+      if(xhr.status === 200){
+        var more = JSON.parse(xhr.responseText);
+        if(!more.length){ btn.textContent = 'No more dispatches'; btn.disabled = true; return; }
+        articles = articles.concat(more);
+      }
+      displayLimit += 18;
       renderFeed();
       btn.textContent = 'Load more dispatches';
-    }
-  };
-  xhr.send();
+    };
+    xhr.send();
+  } else {
+    displayLimit += 18;
+    renderFeed();
+  }
 }
 
 loadArticles();
