@@ -217,6 +217,14 @@ body{font-family:'Inter',sans-serif;background:#0a0a0a;color:#fff;min-height:100
   </div>
 </div>
 
+<div class="search-wrap">
+  <div class="search-bar">
+    <input type="text" id="search-input" placeholder="Search dispatches..." oninput="searchArticles(this.value)" onkeydown="if(event.key==='Escape'){this.value='';searchArticles('')}">
+    <button onclick="document.getElementById('search-input').value='';searchArticles('')" title="Clear">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </button>
+  </div>
+</div>
 <div class="hero-wrap">
   <div id="hero" class="hero"></div>
 </div>
@@ -348,8 +356,21 @@ function loadArticles(){
   xhr.send();
 }
 
+var searchQuery='';
+
+function searchArticles(q){
+  searchQuery=q.trim().toLowerCase();
+  currentFilter='all';
+  document.querySelectorAll('#nav a').forEach(function(a){a.classList.remove('nav-active');});
+  document.querySelector('#nav a').classList.add('nav-active');
+  document.querySelector('.section-title').textContent=searchQuery?'Search results':'Latest Dispatches';
+  renderFeed();
+}
+
 var currentFilter='all';
 function filterFeed(r){
+  searchQuery='';
+  document.getElementById('search-input').value='';
   currentFilter=r;
   document.querySelectorAll('#nav a').forEach(function(a){
     a.classList.remove('nav-active');
@@ -361,7 +382,8 @@ function filterFeed(r){
 function renderFeed(){
   if(!articles.length) return;
   var filtered=currentFilter==='all'?articles:articles.filter(function(a){return a.region===currentFilter;});
-  if(!filtered.length){document.getElementById('hero').innerHTML='';document.getElementById('grid').innerHTML='<div style="color:#555;font-size:14px;padding:40px 0">No dispatches yet for this region.</div>';return;}
+  if(searchQuery){filtered=filtered.filter(function(a){var s=(a.title+' '+(a.excerpt||'')+'  '+(a.region||'')).toLowerCase();return s.indexOf(searchQuery)!==-1;});}
+  if(!filtered.length){document.getElementById('hero').innerHTML='';document.getElementById('grid').innerHTML='<div style="color:#555;font-size:14px;padding:40px 0">'+(searchQuery?'No results for "'+searchQuery+'"':'No dispatches yet for this region.')+'</div>';return;}
   var hero=document.getElementById('hero');
   var grid=document.getElementById('grid');
   var main=filtered[0];
