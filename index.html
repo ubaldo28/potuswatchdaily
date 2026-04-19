@@ -7,6 +7,8 @@
 <title>POTUS Watch Daily — AI Foreign Policy Intelligence</title>
 <meta name="description" content="AI-powered foreign policy intelligence. Live analysis of Trump administration diplomacy, geopolitics, and global affairs — updated every 30 minutes.">
 <link rel="canonical" href="https://potuswatchdaily.com/">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23cc0000'/><text x='50%25' y='50%25' font-family='Georgia,serif' font-size='14' font-weight='bold' fill='white' text-anchor='middle' dominant-baseline='central'>PW</text></svg>">
+<meta property="og:image" content="https://images.unsplash.com/photo-1607478900766-efe13248b125?w=1200&q=85&fit=crop">
 <link rel="sitemap" type="application/xml" href="/sitemap.xml">
 <meta property="og:type" content="website">
 <meta property="og:title" content="POTUS Watch Daily — AI Foreign Policy Intelligence">
@@ -225,6 +227,9 @@ body{font-family:'Inter',sans-serif;background:#0a0a0a;color:#fff;min-height:100
     <div class="section-line"></div>
   </div>
   <div id="grid" class="grid"></div>
+  <div style="text-align:center;padding:32px 0 48px">
+    <button id="load-more-btn" onclick="loadMore()" style="background:none;border:1px solid #2a2a2a;color:#555;padding:10px 32px;font-size:12px;font-family:'Inter',sans-serif;cursor:pointer;border-radius:3px;letter-spacing:0.5px;transition:all 0.15s" onmouseover="this.style.color='#fff';this.style.borderColor='#555'" onmouseout="this.style.color='#555';this.style.borderColor='#2a2a2a'">Load more dispatches</button>
+  </div>
 </div>
 
 <footer class="footer">
@@ -433,7 +438,7 @@ function openArticle(i){
     return '<p>' + p + '</p>';
   }).join('');
 
-  var shareUrl = encodeURIComponent('https://potuswatchdaily.com');
+  var shareUrl = encodeURIComponent(a.slug ? 'https://potuswatchdaily.com/article/' + a.slug : 'https://potuswatchdaily.com');
   var shareText = encodeURIComponent(a.title + ' — POTUS Watch Daily');
   document.getElementById('ashare').innerHTML = '<div class="share-section">'
     + '<p class="share-label">Share this dispatch</p>'
@@ -459,6 +464,26 @@ function openArticle(i){
 
 function closePage(){
   document.getElementById('apage').classList.remove('open');
+}
+
+var articleOffset = 0;
+
+function loadMore(){
+  var btn = document.getElementById('load-more-btn');
+  btn.textContent = 'Loading...';
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', '/get-articles?offset=' + (articleOffset + 24), true);
+  xhr.onload = function(){
+    if(xhr.status === 200){
+      var more = JSON.parse(xhr.responseText);
+      if(!more.length){ btn.textContent = 'No more dispatches'; btn.disabled = true; return; }
+      articles = articles.concat(more);
+      articleOffset += 24;
+      renderFeed();
+      btn.textContent = 'Load more dispatches';
+    }
+  };
+  xhr.send();
 }
 
 loadArticles();

@@ -15,6 +15,8 @@ module.exports = async (req, res) => {
       return '<p>'+p+'</p>';
     }).join('');
     const sources = (() => { try { return JSON.parse(a.sources||'[]'); } catch(e) { return []; } })();
+  const wordCount = (a.body || '').split(/s+/).length;
+  const readTime = Math.max(1, Math.round(wordCount / 200)) + ' min read';
 
   // Related articles
   const { data: related } = await supabase
@@ -52,6 +54,7 @@ module.exports = async (req, res) => {
 <title>${esc(a.title)} — POTUS Watch Daily</title>
 <meta name="description" content="${esc(desc)}">
 <link rel="canonical" href="${url}">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23cc0000'/><text x='50%25' y='50%25' font-family='Georgia,serif' font-size='14' font-weight='bold' fill='white' text-anchor='middle' dominant-baseline='central'>PW</text></svg>">
 <meta property="og:type" content="article">
 <meta property="og:title" content="${esc(a.title)}">
 <meta property="og:description" content="${esc(desc)}">
@@ -101,7 +104,7 @@ hr{border:none;border-top:1px solid #1e1e1e;margin-bottom:28px}
 ${img ? '<img class="hero-img" src="'+img+'" alt="'+esc(a.title)+'" fetchpriority="high">' : ''}
 <div class="article-content">
   <a class="back" href="/">&#8592; Back to feed</a>
-  <div class="eyebrow"><span class="tag">POTUS Watch · ${esc(a.region)}</span><span style="color:#2a2a2a">·</span><span class="byline">${esc(a.date||'')} ${a.time ? '· '+esc(a.time) : ''}</span></div>
+  <div class="eyebrow"><span class="tag">POTUS Watch · ${esc(a.region)}</span><span style="color:#2a2a2a">·</span><span class="byline">${esc(a.date||'')} ${a.time ? '· '+esc(a.time) : ''} · ${readTime}</span></div>
   <h1>${esc(a.title)}</h1>
   <hr>
   <div class="article-body">${paras}</div>
