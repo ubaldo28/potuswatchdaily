@@ -6,7 +6,7 @@ module.exports = async (req, res) => {
     const { data, error } = await supabase.from('articles').select('*').eq('slug', slug).limit(1).single();
     if (error || !data) { res.status(404).send('<html><body style="background:#0a0a0a;color:#fff;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px"><h1>Article not found</h1><a href="/" style="color:#cc0000">Back to feed</a></body></html>'); return; }
     const a = data;
-    const url = 'https://potuswatchdaily.com/article/' + a.slug;
+    const url = 'https://www.potuswatchdaily.com/article/' + a.slug;
     const desc = a.meta_description || a.excerpt || '';
     const img = a.hero_image || a.image || '';
     const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
