@@ -110,7 +110,45 @@ app.get('/get-articles',async(req,res)=>{
   }catch(e){res.status(500).json({error:e.message});}
 });
 
-setInterval(generateArticles,30*60*1000);
+// Generate evergreen deep-dive once per day
+async function generateEvergreen(){
+  try{
+    const topic = evergreenTopics[Math.floor(Math.random()*evergreenTopics.length)];
+    const prompt='You are a senior foreign policy editor at POTUS Watch Daily. Write a comprehensive evergreen explainer on this topic: '+topic+'\n\nThis is a deep-dive analysis piece, not breaking news. Write 8 substantial paragraphs covering:\n1. Why this topic matters right now\n2. Historical background and context\n3. Key players and their interests\n4. How the current Trump administration views this\n5. Economic implications\n6. Impact on US allies\n7. What critics and supporters say\n8. What to watch going forward\n\nTone: Authoritative, accessible, balanced. No war framing. Policy and economics focus.\n\nRespond ONLY with valid JSON:\n{"title":"clear explainer title max 8 words","region":"Trade","excerpt":"one sentence what this explains","meta_description":"max 155 chars","slug":"url-slug-for-this-topic","body":"para1\\n\\npara2\\n\\npara3\\n\\npara4\\n\\npara5\\n\\npara6\\n\\npara7\\n\\npara8"}';
+
+    const res=await axios.post('https://api.anthropic.com/v1/messages',{
+      model:'claude-haiku-4-5-20251001',
+      max_tokens:2000,
+      messages:[{role:'user',content:prompt}]
+    },{
+      headers:{'x-api-key':process.env.ANTHROPIC_API_KEY,'anthropic-version':'2023-06-01','Content-Type':'application/json'},
+      timeout:45000
+    });
+
+    let raw=res.data.content[0].text;
+    raw=raw.replace(/[\x00-\x1F\x7F]/g,' ').replace(/```json|```/g,'').trim();
+    const js=raw.indexOf('{'),je=raw.lastIndexOf('}')+1;
+    const parsed=JSON.parse(raw.slice(js,je));
+    const slug='explainer-'+slugify(parsed.title);
+    const heroImage=await getImage('Trade','hero');
+    const cardImage=await getImage('Trade','thumb');
+    const now=new Date();
+    await supabase.from('articles').insert({
+      title:parsed.title,region:'Analysis',excerpt:parsed.excerpt,
+      meta_description:parsed.meta_description||parsed.excerpt,slug:slug,
+      body:parsed.body,image:cardImage||heroImage,hero_image:heroImage||cardImage,
+      date:now.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}),
+      time:now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false}),
+      sources:'[]'
+    });
+    console.log('Evergreen saved:',parsed.title);
+  }catch(e){console.error('Evergreen error:',e.message);}
+}
+
+const evergreenTopics=["Trump's foreign policy doctrine and what it means for allies","Why the Strait of Hormuz matters to the global economy","NATO's future under Trump explained","China's long game in the Middle East","How US sanctions actually work and who they hurt","Russia's strategy in the post-Ukraine world","Latin America under Trump trade pressure","The global dollar system and why countries are moving away from it","Iran's nuclear program explained for non-experts","How tariffs became Trump's main foreign policy weapon"];
+
+setInterval(generateArticles,60*60*1000);
+setInterval(generateEvergreen,24*60*60*1000);
 app.listen(3000,async()=>{
   console.log('POTUS Watch running at http://localhost:3000');
   await generateArticles();
