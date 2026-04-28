@@ -404,6 +404,7 @@ function searchArticles(q){
   searchQuery=q.trim().toLowerCase();
   document.querySelector('.section-title').textContent=searchQuery?'Search results':'Latest Dispatches';
   renderFeed();
+  if(window.ezstandalone&&ezstandalone.cmd){ezstandalone.cmd.push(function(){ezstandalone.showAds();});}
 }
 var currentFilter='all';
 var displayLimit=21;
@@ -415,6 +416,7 @@ function filterFeed(r){
   });
   document.querySelector('.section-title').textContent=r==='all'?'Latest Dispatches':r+' Dispatches';
   renderFeed();
+  if(window.ezstandalone&&ezstandalone.cmd){ezstandalone.cmd.push(function(){ezstandalone.showAds();});}
 }
 function renderFeed(){
   if(!articles.length) return;
@@ -472,6 +474,7 @@ function renderFeed(){
     gridHTML += '</div></div>';
   }
   grid.innerHTML = gridHTML;
+  if(window.ezstandalone&&ezstandalone.cmd){ezstandalone.cmd.push(function(){ezstandalone.showAds();});}
 }
 
 function esc(str){ return String(str||'').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
