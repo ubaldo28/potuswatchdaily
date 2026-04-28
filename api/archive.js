@@ -1,27 +1,130 @@
 const { createClient } = require('@supabase/supabase-js');
+
 module.exports = async (req, res) => {
+  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
   try {
-    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
-    const page = parseInt(req.query.page) || 1;
-    const limit = 48;
-    const from = (page - 1) * limit;
-    const { data, count } = await supabase
+    const { data, error } = await supabase
       .from('articles')
-      .select('title,slug,excerpt,region,date,image', { count: 'exact' })
-      .not('slug', 'is', null)
+      .select('title, slug, excerpt, region, date, time')
       .order('id', { ascending: false })
-      .range(from, from + limit - 1);
-    const totalPages = Math.ceil((count || 0) / limit);
-    const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    const articlesHTML = (data||[]).map(a => '<a href="/article/'+esc(a.slug)+'" style="display:grid;grid-template-columns:'+(a.image?'72px 1fr':'1fr')+';gap:14px;padding:16px 0;border-bottom:1px solid #1a1a1a;text-decoration:none" onmouseover="this.style.opacity=.8" onmouseout="this.style.opacity=1">'+(a.image ? '<img src="'+esc(a.image)+'&w=144&q=70&fit=crop" style="width:72px;height:54px;object-fit:cover;border-radius:2px" loading="lazy" alt="">' : '')+'<div><p style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#cc0000;margin-bottom:4px">'+esc(a.region)+'</p><p style="font-family:Playfair Display,Georgia,serif;font-size:15px;font-weight:700;color:#ddd;line-height:1.3;margin-bottom:4px">'+esc(a.title)+'</p><p style="font-size:11px;color:#555">'+esc(a.date||'')+'</p></div></a>').join('');
-    const pagination = totalPages > 1 ? '<div style="display:flex;gap:8px;justify-content:center;padding:32px 0;flex-wrap:wrap">'+(page>1?'<a href="/archive?page='+(page-1)+'" style="color:#cc0000;text-decoration:none;font-size:12px;padding:6px 14px;border:1px solid #2a2a2a;border-radius:3px">← Previous</a>':'')+'<span style="font-size:12px;color:#555;padding:6px 14px">Page '+page+' of '+totalPages+'</span>'+(page<totalPages?'<a href="/archive?page='+(page+1)+'" style="color:#cc0000;text-decoration:none;font-size:12px;padding:6px 14px;border:1px solid #2a2a2a;border-radius:3px">Next →</a>':'')+'</div>' : '';
-    res.setHeader('Content-Type','text/html; charset=utf-8');
-    res.setHeader('Cache-Control','public, s-maxage=300');
-    res.send('<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
-<script data-cfasync="false" src="https://cmp.gatekeeperconsent.com/min.js"></script>
-<script data-cfasync="false" src="https://the.gatekeeperconsent.com/cmp.min.js"></script>
-<script async src="//www.ezojs.com/ezoic/sa.min.js"></script>
-<script>window.ezstandalone=window.ezstandalone||{};ezstandalone.cmd=ezstandalone.cmd||[];</script>
-<script src="//ezoicanalytics.com/analytics.js"></script><meta name="viewport" content="width=device-width,initial-scale=1"><title>All Dispatches — POTUS Watch Daily</title><meta name="description" content="Browse all POTUS Watch Daily foreign policy dispatches."><link rel="canonical" href="https://potuswatchdaily.com/archive"><link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23cc0000'/><text x='50%25' y='50%25' font-family='Georgia,serif' font-size='14' font-weight='bold' fill='white' text-anchor='middle' dominant-baseline='central'>PW</text></svg>"><script async src="https://www.googletagmanager.com/gtag/js?id=G-FRVP4L2Z2T"></scr'+'ipt><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag("js",new Date());gtag("config","G-FRVP4L2Z2T");</scr'+'ipt><script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7380718671497895" crossorigin="anonymous"></scr'+'ipt><meta name="google-adsense-account" content="ca-pub-7380718671497895"><style>@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@300;400;500&display=swap');*{box-sizing:border-box;margin:0;padding:0}body{font-family:Inter,sans-serif;background:#0a0a0a;color:#fff;min-height:100vh;-webkit-font-smoothing:antialiased}.top-bar{height:3px;background:#cc0000}.masthead{background:#0a0a0a;border-bottom:1px solid #1e1e1e;padding:0 24px}.masthead-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;height:64px}.logo{font-family:Playfair Display,serif;font-size:26px;font-weight:900;color:#fff;text-decoration:none}.logo em{color:#cc0000;font-style:normal}.page{max-width:700px;margin:0 auto;padding:48px 24px 80px}.footer{background:#0d0d0d;border-top:1px solid #1a1a1a;padding:32px 24px;margin-top:40px}.footer-inner{max-width:700px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}.footer-logo{font-family:Playfair Display,serif;font-size:18px;font-weight:900;color:#fff}.footer-logo em{color:#cc0000;font-style:normal}.footer-copy{font-size:11px;color:#333}</style></head><body><div class="top-bar"></div><header class="masthead"><div class="masthead-inner"><a href="/" style="text-decoration:none;display:flex;align-items:center;gap:10px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" style="width:44px;height:44px;flex-shrink:0"><circle cx="80" cy="80" r="62" fill="none" stroke="#cc0000" stroke-width="3"/><ellipse cx="80" cy="80" rx="62" ry="22" fill="none" stroke="#cc0000" stroke-width="1.5" opacity="0.5"/><ellipse cx="80" cy="80" rx="62" ry="42" fill="none" stroke="#cc0000" stroke-width="1" opacity="0.3"/><line x1="18" y1="80" x2="142" y2="80" stroke="#cc0000" stroke-width="1.5" opacity="0.5"/><ellipse cx="80" cy="80" rx="22" ry="62" fill="none" stroke="#cc0000" stroke-width="1.5" opacity="0.5"/><ellipse cx="80" cy="80" rx="42" ry="62" fill="none" stroke="#cc0000" stroke-width="1" opacity="0.3"/><line x1="80" y1="18" x2="80" y2="142" stroke="#cc0000" stroke-width="1.5" opacity="0.5"/><line x1="80" y1="0" x2="80" y2="18" stroke="#cc0000" stroke-width="3"/><line x1="80" y1="142" x2="80" y2="160" stroke="#cc0000" stroke-width="3"/><line x1="0" y1="80" x2="18" y2="80" stroke="#cc0000" stroke-width="3"/><line x1="142" y1="80" x2="160" y2="80" stroke="#cc0000" stroke-width="3"/><circle cx="80" cy="80" r="6" fill="#cc0000"/><line x1="76" y1="4" x2="84" y2="4" stroke="#cc0000" stroke-width="2.5"/><line x1="76" y1="156" x2="84" y2="156" stroke="#cc0000" stroke-width="2.5"/><line x1="4" y1="76" x2="4" y2="84" stroke="#cc0000" stroke-width="2.5"/><line x1="156" y1="76" x2="156" y2="84" stroke="#cc0000" stroke-width="2.5"/></svg><div><div style="font-family:'Playfair Display',Georgia,serif;font-size:24px;font-weight:900;color:#fff;line-height:1;letter-spacing:-0.5px">POTUS <span style="color:#cc0000">Watch</span></div><div style="font-family:sans-serif;font-size:8px;color:#666;letter-spacing:2px;text-transform:uppercase;margin-top:2px">Daily · Foreign Policy Intelligence</div></div></a></div></header><div class="page"><p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#cc0000;margin-bottom:12px">Archive</p><h1 style="font-family:Playfair Display,serif;font-size:36px;font-weight:900;color:#fff;margin-bottom:6px">All Dispatches</h1><p style="font-size:13px;color:#555;margin-bottom:32px">'+(count||0)+' total dispatches · Page '+page+' of '+totalPages+'</p><hr style="border:none;border-top:1px solid #1e1e1e;margin-bottom:0">'+articlesHTML+pagination+'</div><footer class="footer"><div class="footer-inner"><div class="footer-logo">POTUS <em>Watch</em></div><span class="footer-copy">&copy; 2026 POTUS Watch Daily.</span></div></footer></body></html>');
-  } catch(e) { res.status(500).send('Error: '+e.message); }
+      .limit(300);
+    if (error) throw error;
+
+    const byRegion = {};
+    data.forEach(a => {
+      const r = a.region || 'World';
+      if (!byRegion[r]) byRegion[r] = [];
+      byRegion[r].push(a);
+    });
+
+    const regionBlocks = Object.keys(byRegion).map(region => {
+      const items = byRegion[region].map(a => `
+        <div class="archive-item">
+          <a href="/article/${a.slug}" class="archive-link">
+            <span class="archive-title">${esc(a.title)}</span>
+            <span class="archive-meta">${a.date || ''}${a.time ? ' · ' + a.time : ''}</span>
+          </a>
+          ${a.excerpt ? `<p class="archive-excerpt">${esc(a.excerpt)}</p>` : ''}
+        </div>`).join('');
+      return `
+        <section class="region-section">
+          <h2 class="region-heading">${esc(region)}</h2>
+          ${items}
+        </section>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Archive — POTUS Watch Daily</title>
+<meta name="description" content="Full archive of foreign policy intelligence dispatches from POTUS Watch Daily. Browse all regions: Americas, China, NATO, Iran, Middle East, Russia, Trade, and Analysis.">
+<link rel="canonical" href="https://www.potuswatchdaily.com/archive">
+<meta name="google-adsense-account" content="ca-pub-7380718671497895">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 400'><rect width='400' height='400' fill='%230a0a0a'/><circle cx='200' cy='200' r='160' fill='none' stroke='%23cc0000' stroke-width='12'/><circle cx='200' cy='200' r='20' fill='%23cc0000'/></svg>">
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-FRVP4L2Z2T"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-FRVP4L2Z2T');</script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7380718671497895" crossorigin="anonymous"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@300;400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#0a0a0a;color:#fff;min-height:100vh;-webkit-font-smoothing:antialiased}
+.top-bar{height:3px;background:#cc0000}
+.masthead{background:#0a0a0a;border-bottom:1px solid #1e1e1e;padding:0 24px}
+.masthead-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:64px}
+.logo-wrap{text-decoration:none;display:flex;align-items:center;gap:10px}
+.logo-text{font-family:'Playfair Display',serif;font-size:24px;font-weight:900;color:#fff;letter-spacing:-0.5px}
+.logo-text em{color:#cc0000;font-style:normal}
+.logo-sub{font-size:8px;color:#666;letter-spacing:2px;text-transform:uppercase;margin-top:2px}
+.page{max-width:900px;margin:0 auto;padding:56px 24px 100px}
+.page-eyebrow{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#cc0000;margin-bottom:12px}
+h1{font-family:'Playfair Display',serif;font-size:36px;font-weight:900;color:#fff;margin-bottom:8px}
+.page-sub{font-size:14px;color:#555;margin-bottom:48px}
+.region-section{margin-bottom:48px}
+.region-heading{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#444;padding-bottom:12px;border-bottom:1px solid #1a1a1a;margin-bottom:0}
+.archive-item{border-bottom:1px solid #141414;padding:16px 0}
+.archive-link{display:flex;justify-content:space-between;align-items:baseline;gap:16px;text-decoration:none;margin-bottom:4px}
+.archive-link:hover .archive-title{color:#cc0000}
+.archive-title{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:#e0e0e0;line-height:1.35;transition:color 0.15s;flex:1}
+.archive-meta{font-size:11px;color:#333;white-space:nowrap;flex-shrink:0}
+.archive-excerpt{font-size:13px;color:#555;line-height:1.5;margin-top:2px}
+.footer{background:#0d0d0d;border-top:1px solid #1a1a1a;padding:32px 24px;margin-top:40px}
+.footer-inner{max-width:900px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+.footer-logo{font-family:'Playfair Display',serif;font-size:18px;font-weight:900;color:#fff}
+.footer-logo em{color:#cc0000;font-style:normal}
+.footer-links{display:flex;gap:20px;flex-wrap:wrap}
+.footer-links a{color:#555;font-size:12px;text-decoration:none}
+.footer-links a:hover{color:#fff}
+.footer-copy{font-size:11px;color:#444;width:100%;margin-top:8px}
+@media(max-width:640px){h1{font-size:26px}.archive-link{flex-direction:column;gap:4px}.archive-meta{font-size:10px}}
+</style>
+</head>
+<body>
+<div class="top-bar"></div>
+<header class="masthead">
+  <div class="masthead-inner">
+    <a href="/" class="logo-wrap">
+      <div>
+        <div class="logo-text">POTUS <em>Watch</em></div>
+        <div class="logo-sub">Daily · Foreign Policy Intelligence</div>
+      </div>
+    </a>
+    <a href="/" style="font-size:12px;color:#555;text-decoration:none">← Back to feed</a>
+  </div>
+</header>
+<div class="page">
+  <div class="page-eyebrow">Archive</div>
+  <h1>All Dispatches</h1>
+  <p class="page-sub">${data.length} dispatches across 8 regions</p>
+  ${regionBlocks}
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-logo">POTUS <em>Watch</em></div>
+    <div class="footer-links">
+      <a href="/">Home</a>
+      <a href="/about.html">About</a>
+      <a href="/contact.html">Contact</a>
+      <a href="/privacy.html">Privacy Policy</a>
+      <a href="/terms.html">Terms of Service</a>
+      <a href="/disclaimer.html">Disclaimer</a>
+    </div>
+    <div class="footer-copy">&copy; 2026 POTUS Watch Daily. All rights reserved.</div>
+  </div>
+</footer>
+</body>
+</html>`;
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=900');
+    res.send(html);
+  } catch (e) {
+    console.error('Archive error:', e.message);
+    res.status(500).send('Error loading archive. Please try again.');
+  }
 };
+
+function esc(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}

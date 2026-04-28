@@ -2,11 +2,6 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<script data-cfasync="false" src="https://cmp.gatekeeperconsent.com/min.js"></script>
-<script data-cfasync="false" src="https://the.gatekeeperconsent.com/cmp.min.js"></script>
-<script async src="//www.ezojs.com/ezoic/sa.min.js"></script>
-<script>window.ezstandalone=window.ezstandalone||{};ezstandalone.cmd=ezstandalone.cmd||[];</script>
-<script src="//ezoicanalytics.com/analytics.js"></script>
 <meta name="google-adsense-account" content="ca-pub-7380718671497895">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>POTUS Watch Daily — Foreign Policy Intelligence</title>
@@ -247,6 +242,9 @@ body{font-family:'Inter',sans-serif;background:#0a0a0a;color:#fff;min-height:100
   </div>
 </header>
 
+<!-- SEO -->
+<noscript><div style="padding:20px 24px"><a href="/archive" style="color:#cc0000">Browse all dispatches →</a></div></noscript>
+
 <div class="ticker-wrap">
   <div class="ticker-label">Breaking</div>
   <div class="ticker-track">
@@ -404,7 +402,7 @@ function searchArticles(q){
   searchQuery=q.trim().toLowerCase();
   document.querySelector('.section-title').textContent=searchQuery?'Search results':'Latest Dispatches';
   renderFeed();
-  if(window.ezstandalone&&ezstandalone.cmd){ezstandalone.cmd.push(function(){ezstandalone.showAds();});}
+
 }
 var currentFilter='all';
 var displayLimit=21;
@@ -416,7 +414,7 @@ function filterFeed(r){
   });
   document.querySelector('.section-title').textContent=r==='all'?'Latest Dispatches':r+' Dispatches';
   renderFeed();
-  if(window.ezstandalone&&ezstandalone.cmd){ezstandalone.cmd.push(function(){ezstandalone.showAds();});}
+
 }
 function renderFeed(){
   if(!articles.length) return;
@@ -474,7 +472,7 @@ function renderFeed(){
     gridHTML += '</div></div>';
   }
   grid.innerHTML = gridHTML;
-  if(window.ezstandalone&&ezstandalone.cmd){ezstandalone.cmd.push(function(){ezstandalone.showAds();});}
+
 }
 
 function esc(str){ return String(str||'').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
@@ -552,7 +550,7 @@ function loadMore(){
       displayLimit += 18;
       renderFeed();
       btn.textContent = 'Load more dispatches';
-      if(window.ezstandalone&&ezstandalone.cmd){ezstandalone.cmd.push(function(){ezstandalone.showAds();});}
+
     };
     xhr.send();
   } else {
