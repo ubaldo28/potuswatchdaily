@@ -549,6 +549,7 @@ function loadMore(){
       displayLimit += 18;
       renderFeed();
       btn.textContent = 'Load more dispatches';
+      if(window.ezstandalone&&ezstandalone.cmd){ezstandalone.cmd.push(function(){ezstandalone.showAds();});}
     };
     xhr.send();
   } else {
