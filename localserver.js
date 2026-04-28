@@ -6,10 +6,10 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
 app.use(express.static('.'));
 app.use(express.json());
 
-const regions = ['Iran','China','NATO','Americas','Americas','Mideast','Russia','Trade'];
+const regions = ['Iran','China','NATO','Americas','Mideast','Russia','Trade'];
 const imageQueries = {
   Iran:'iran diplomacy politics',China:'china beijing diplomacy',
-  NATO:'nato military alliance europe',Americas:'latin america trump policy mexico border',
+  NATO:'nato military alliance europe',Americas:'washington dc capitol',
   Mideast:'middle east diplomacy',Russia:'moscow kremlin russia',
   Trade:'global trade economy shipping'
 };
@@ -58,16 +58,16 @@ async function generateArticles(){
     const newsItems=await fetchNews();
     if(!newsItems||!newsItems.length){console.log('No news. Skipping.');return;}
     const region=regions[Math.floor(Math.random()*regions.length)];
-    const keywords={Iran:['iran','tehran','nuclear'],China:['china','beijing','xi','taiwan'],NATO:['nato','europe','ukraine'],Americas:['trump','white house','congress','mexico','latin america','venezuela','colombia','cuba','brazil','canada','cartel','border','deportation','panama','central america'],Mideast:['israel','gaza','saudi','yemen'],Russia:['russia','putin','moscow','ukraine'],Trade:['tariff','trade','economy','sanctions']};
+    const keywords={Iran:['iran','tehran','nuclear'],China:['china','beijing','xi','taiwan'],NATO:['nato','europe','ukraine'],Americas:['trump','white house','congress'],Mideast:['israel','gaza','saudi','yemen'],Russia:['russia','putin','moscow','ukraine'],Trade:['tariff','trade','economy','sanctions']};
     const kw=keywords[region]||[];
     const relevant=newsItems.filter(a=>kw.some(k=>(a.title+' '+(a.description||'')).toLowerCase().includes(k)));
     const pool=relevant.length>=3?relevant:newsItems;
     const top5=pool.slice(0,5);
     const newsContext=top5.map((a,i)=>(i+1)+'. '+a.title+(a.description?'\n   '+a.description:'')).join('\n\n');
-    const types=['diplomatic developments report','policy implications analysis','trade and sanctions briefing','alliance strategy assessment','economic leverage analysis','foreign policy situation report'];
+    const types=['breaking news analysis','strategic intelligence briefing','diplomatic developments report','policy implications analysis','geopolitical situation report'];
     const articleType=types[Math.floor(Math.random()*types.length)];
 
-    const prompt='You are a senior foreign policy correspondent at POTUS Watch Daily, a policy and diplomacy intelligence briefing. Write a '+articleType+' on the '+region+' portfolio.\n\nHeadlines:\n'+newsContext+'\n\nStructure:\n- Para 1: Powerful lede focused on policy or diplomacy — not conflict\n- Para 2: Context and background — economic, political, or diplomatic\n- Para 3: Strategic analysis — who gains diplomatically or economically\n- Para 4: Wider implications for trade, alliances, or markets\n- Para 5: Washington angle — policy decisions, negotiations, or strategy\n- Para 6: 48-72 hour outlook — diplomatic or economic developments to watch\n\nTone rules:\n- Focus on POLICY, DIPLOMACY, ECONOMICS and STRATEGY\n- Avoid war-focused framing, military escalation language, or conflict predictions\n- Use words like: negotiations, strategy, leverage, alliance, trade, sanctions, diplomacy, policy\n- Avoid words like: strike, attack, war, escalation, conflict, military action, bombing\n- Title maximum 8 words. No colons. Active voice.\n\nRespond ONLY with valid JSON no markdown:\n{"title":"max 8 word title","region":"'+region+'","excerpt":"one sentence max 25 words","meta_description":"max 155 chars","slug":"url-slug","body":"para1\\n\\npara2\\n\\npara3\\n\\npara4\\n\\npara5\\n\\npara6"}';
+    const prompt='You are a senior foreign policy correspondent at POTUS Watch Daily. Write a '+articleType+' on the '+region+' portfolio.\n\nHeadlines:\n'+newsContext+'\n\nStructure:\n- Para 1: Powerful lede sentence\n- Para 2: Context and background\n- Para 3: Strategic analysis\n- Para 4: Wider implications\n- Para 5: Washington angle\n- Para 6: 48-72 hour outlook\n\nRules: Title maximum 8 words. No colons in title. Active voice. No rhetorical questions.\n\nRespond ONLY with valid JSON no markdown:\n{"title":"max 8 word title","region":"'+region+'","excerpt":"one sentence max 25 words","meta_description":"max 155 chars","slug":"url-slug","body":"para1\\n\\npara2\\n\\npara3\\n\\npara4\\n\\npara5\\n\\npara6"}';
 
     const res=await axios.post('https://api.anthropic.com/v1/messages',{
       model:'claude-haiku-4-5-20251001',
@@ -110,45 +110,7 @@ app.get('/get-articles',async(req,res)=>{
   }catch(e){res.status(500).json({error:e.message});}
 });
 
-// Generate evergreen deep-dive once per day
-async function generateEvergreen(){
-  try{
-    const topic = evergreenTopics[Math.floor(Math.random()*evergreenTopics.length)];
-    const prompt='You are a senior foreign policy editor at POTUS Watch Daily. Write a comprehensive evergreen explainer on this topic: '+topic+'\n\nThis is a deep-dive analysis piece, not breaking news. Write 8 substantial paragraphs covering:\n1. Why this topic matters right now\n2. Historical background and context\n3. Key players and their interests\n4. How the current Trump administration views this\n5. Economic implications\n6. Impact on US allies\n7. What critics and supporters say\n8. What to watch going forward\n\nTone: Authoritative, accessible, balanced. No war framing. Policy and economics focus.\n\nRespond ONLY with valid JSON:\n{"title":"clear explainer title max 8 words","region":"Trade","excerpt":"one sentence what this explains","meta_description":"max 155 chars","slug":"url-slug-for-this-topic","body":"para1\\n\\npara2\\n\\npara3\\n\\npara4\\n\\npara5\\n\\npara6\\n\\npara7\\n\\npara8"}';
-
-    const res=await axios.post('https://api.anthropic.com/v1/messages',{
-      model:'claude-haiku-4-5-20251001',
-      max_tokens:2000,
-      messages:[{role:'user',content:prompt}]
-    },{
-      headers:{'x-api-key':process.env.ANTHROPIC_API_KEY,'anthropic-version':'2023-06-01','Content-Type':'application/json'},
-      timeout:45000
-    });
-
-    let raw=res.data.content[0].text;
-    raw=raw.replace(/[\x00-\x1F\x7F]/g,' ').replace(/```json|```/g,'').trim();
-    const js=raw.indexOf('{'),je=raw.lastIndexOf('}')+1;
-    const parsed=JSON.parse(raw.slice(js,je));
-    const slug='explainer-'+slugify(parsed.title);
-    const heroImage=await getImage('Trade','hero');
-    const cardImage=await getImage('Trade','thumb');
-    const now=new Date();
-    await supabase.from('articles').insert({
-      title:parsed.title,region:'Analysis',excerpt:parsed.excerpt,
-      meta_description:parsed.meta_description||parsed.excerpt,slug:slug,
-      body:parsed.body,image:cardImage||heroImage,hero_image:heroImage||cardImage,
-      date:now.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}),
-      time:now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false}),
-      sources:'[]'
-    });
-    console.log('Evergreen saved:',parsed.title);
-  }catch(e){console.error('Evergreen error:',e.message);}
-}
-
-const evergreenTopics=["Trump's foreign policy doctrine and what it means for allies","Why the Strait of Hormuz matters to the global economy","NATO's future under Trump explained","China's long game in the Middle East","How US sanctions actually work and who they hurt","Russia's strategy in the post-Ukraine world","Latin America under Trump trade pressure","The global dollar system and why countries are moving away from it","Iran's nuclear program explained for non-experts","How tariffs became Trump's main foreign policy weapon"];
-
-setInterval(generateArticles,60*60*1000);
-setInterval(generateEvergreen,24*60*60*1000);
+setInterval(generateArticles,30*60*1000);
 app.listen(3000,async()=>{
   console.log('POTUS Watch running at http://localhost:3000');
   await generateArticles();
