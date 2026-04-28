@@ -1,1 +1,0 @@
-module.exports = (req, res) => { res.redirect(301, "https://srv.adstxtmanager.com/19390/potuswatchdaily.com"); };
