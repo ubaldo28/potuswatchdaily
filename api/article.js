@@ -79,11 +79,6 @@ module.exports = async (req, res) => {
 <meta charset="UTF-8">
 <script data-cfasync="false" src="https://cmp.gatekeeperconsent.com/min.js"></script>
 <script data-cfasync="false" src="https://the.gatekeeperconsent.com/cmp.min.js"></script>
-<script async src="//www.ezojs.com/ezoic/sa.min.js"></script>
-<script>window.ezstandalone=window.ezstandalone||{};ezstandalone.cmd=ezstandalone.cmd||[];</script>
-<script src="//ezoicanalytics.com/analytics.js"></script>
-<meta name="google-adsense-account" content="ca-pub-7380718671497895"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(a.title)} — POTUS Watch Daily</title>
 <meta name="description" content="${esc(desc)}">
 <link rel="canonical" href="${url}">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23cc0000'/><text x='50%25' y='50%25' font-family='Georgia,serif' font-size='14' font-weight='bold' fill='white' text-anchor='middle' dominant-baseline='central'>PW</text></svg>">
