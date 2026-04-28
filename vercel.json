@@ -17,13 +17,11 @@
     {
       "source": "/archive",
       "destination": "/api/archive"
-    }
-  ],
-  "redirects": [
+    },
     {
       "source": "/ads.txt",
-      "destination": "https://srv.adstxtmanager.com/19390/potuswatchdaily.com",
-      "permanent": true
+      "destination": "/api/adstxt"
     }
-  ]
+  ],
+  "redirects": []
 }
