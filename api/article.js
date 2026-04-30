@@ -11,7 +11,6 @@ module.exports = async (req, res) => {
     const img = a.hero_image || a.image || '';
     const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     const paras = (a.body||'').split('\n').filter(p=>p.trim()).map(p=>{
-      if(p.includes('SPONSORED')) return '<div style="background:#111;border-left:2px solid #cc0000;padding:14px 18px;margin:28px 0;font-size:13px;color:#888;line-height:1.6">'+p.replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="nofollow" style="color:#cc0000">$1</a>')+'</div>';
       return '<p>'+p+'</p>';
     }).join('');
     const sources = (() => { try { return JSON.parse(a.sources||'[]'); } catch(e) { return []; } })();
