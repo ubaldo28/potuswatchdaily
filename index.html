@@ -524,9 +524,6 @@ function openArticle(i){
   document.getElementById('apage').classList.add('open');
   document.getElementById('apage').scrollTop = 0;
   // Refresh Ezoic ads for new pageview
-  if(window.ezstandalone && ezstandalone.cmd) {
-    ezstandalone.cmd.push(function(){ ezstandalone.showAds(); });
-  }
 }
 
 function closePage(){
@@ -562,9 +559,6 @@ function loadMore(){
 loadArticles();
 setInterval(loadArticles, 60000);
 // Initial Ezoic ad load
-if(window.ezstandalone && ezstandalone.cmd) {
-  ezstandalone.cmd.push(function(){ ezstandalone.showAds(); });
-}
 </script>
 </body>
 </html>
