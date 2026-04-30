@@ -495,9 +495,6 @@ function openArticle(i){
   document.getElementById('abyline').textContent = (a.date||'') + (a.time ? ' · ' + a.time : '');
   var paras = (a.body||'').split('\n').filter(function(p){ return p.trim(); });
   document.getElementById('abody').innerHTML = paras.map(function(p){
-    if(p.indexOf('SPONSORED') !== -1){
-      return '<div class="sponsored">' + makeLinksClickable(p) + '</div>';
-    }
     return '<p>' + p + '</p>';
   }).join('');
 
