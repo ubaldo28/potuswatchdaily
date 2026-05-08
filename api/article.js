@@ -1,26 +1,41 @@
+// Patched article.js — keeps all existing UI (share buttons, newsletter, related, BMC,
+// sources) and adds the missing SEO bits.
 const { createClient } = require('@supabase/supabase-js');
+
+const SITE_URL = 'https://www.potuswatchdaily.com';
+const SITE_NAME = 'POTUS Watch Daily';
+
 module.exports = async (req, res) => {
   const slug = req.query.slug || '';
   try {
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
     const { data, error } = await supabase.from('articles').select('*').eq('slug', slug).limit(1).single();
-    if (error || !data) { res.status(404).send('<html><body style="background:#0a0a0a;color:#fff;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px"><h1>Article not found</h1><a href="/" style="color:#cc0000">Back to feed</a></body></html>'); return; }
+    if (error || !data) {
+      res.status(404).send('<html><body style="background:#0a0a0a;color:#fff;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px"><h1>Article not found</h1><a href="/" style="color:#cc0000">Back to feed</a></body></html>');
+      return;
+    }
+
     const a = data;
-    const url = 'https://www.potuswatchdaily.com/article/' + a.slug;
+    const url = SITE_URL + '/article/' + a.slug;
     const desc = a.meta_description || a.excerpt || '';
-    const img = a.hero_image || a.image || '';
-    const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    const paras = (a.body||'').split('\n').filter(p=>p.trim()).map(p=>{
-      return '<p>'+p+'</p>';
-    }).join('');
-    const sources = (() => { try { return JSON.parse(a.sources||'[]'); } catch(e) { return []; } })();
-  const wordCount = (a.body || '').split(/s+/).length;
-  const readTime = Math.max(1, Math.round(wordCount / 200)) + ' min read';
+    const img = a.hero_image || a.image || `${SITE_URL}/og-default.jpg`;
+    const author = a.author || 'POTUS Watch Editorial';
+    const dateIso = new Date(a.date).toISOString();
+    const modifiedIso = a.modified ? new Date(a.modified).toISOString() : dateIso;
+    const region = a.region || 'World';
+    const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 
+    const paras = (a.body||'').split('\n').filter(p=>p.trim()).map(p => '<p>'+p+'</p>').join('');
+    const sources = (() => { try { return Array.isArray(a.sources) ? a.sources : JSON.parse(a.sources||'[]'); } catch(e) { return []; } })();
 
-  const shareUrl = encodeURIComponent('https://www.potuswatchdaily.com/article/' + a.slug);
-  const shareText = encodeURIComponent(a.title + ' — POTUS Watch Daily');
-  const socialHTML = `
+    // FIXED: was /s+/ which matched literal 's'. Should be /\s+/ for whitespace.
+    const wordCount = (a.body || '').split(/\s+/).filter(Boolean).length;
+    const readTime = Math.max(1, Math.round(wordCount / 200)) + ' min read';
+
+    const shareUrl = encodeURIComponent(url);
+    const shareText = encodeURIComponent(a.title + ' — POTUS Watch Daily');
+
+    const socialHTML = `
   <div style="margin-top:40px;padding-top:24px;border-top:1px solid #1a1a1a">
     <p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#444;margin-bottom:14px;font-family:Inter,sans-serif">Share this dispatch</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -41,22 +56,21 @@ module.exports = async (req, res) => {
       </a>
     </div>
   </div>`;
-  // Newsletter signup
-  const newsletterHTML = `<div style="margin-top:48px;padding:32px;background:#111;border:1px solid #1e1e1e;border-top:3px solid #cc0000;border-radius:3px;text-align:center"><p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#cc0000;margin-bottom:12px;font-family:Inter,sans-serif">Free Newsletter</p><p style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:900;color:#fff;margin-bottom:8px">Never miss a dispatch</p><p style="font-size:13px;color:#666;margin-bottom:20px;line-height:1.6">Weekly foreign policy intelligence delivered free to your inbox.</p><a href="https://potuswatchdaily.beehiiv.com/subscribe" target="_blank" style="display:inline-block;background:#cc0000;color:#fff;text-decoration:none;padding:10px 28px;border-radius:3px;font-size:12px;font-weight:600;font-family:Inter,sans-serif">Subscribe free</a></div>`;
 
-  // Related articles
-  const { data: related } = await supabase
-    .from('articles')
-    .select('title, slug, excerpt, region, date, image')
-    .eq('region', a.region)
-    .neq('slug', a.slug)
-    .not('slug', 'is', null)
-    .order('id', { ascending: false })
-    .limit(3);
+    const newsletterHTML = `<div style="margin-top:48px;padding:32px;background:#111;border:1px solid #1e1e1e;border-top:3px solid #cc0000;border-radius:3px;text-align:center"><p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#cc0000;margin-bottom:12px;font-family:Inter,sans-serif">Free Newsletter</p><p style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:900;color:#fff;margin-bottom:8px">Never miss a dispatch</p><p style="font-size:13px;color:#666;margin-bottom:20px;line-height:1.6">Weekly foreign policy intelligence delivered free to your inbox.</p><a href="https://potuswatchdaily.beehiiv.com/subscribe" target="_blank" style="display:inline-block;background:#cc0000;color:#fff;text-decoration:none;padding:10px 28px;border-radius:3px;font-size:12px;font-weight:600;font-family:Inter,sans-serif">Subscribe free</a></div>`;
 
-  const relatedHTML = (related && related.length) ? `
+    const { data: related } = await supabase
+      .from('articles')
+      .select('title, slug, excerpt, region, date, image')
+      .eq('region', a.region)
+      .neq('slug', a.slug)
+      .not('slug', 'is', null)
+      .order('id', { ascending: false })
+      .limit(3);
+
+    const relatedHTML = (related && related.length) ? `
   <div style="margin-top:48px;padding-top:32px;border-top:1px solid #1e1e1e">
-    <p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#444;margin-bottom:20px">More from ${esc(a.region)}</p>
+    <p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#444;margin-bottom:20px">More from ${esc(region)}</p>
     <div style="display:grid;gap:20px">
       ${related.map(r => `
       <a href="/article/${r.slug}" style="display:grid;grid-template-columns:${r.image ? '80px 1fr' : '1fr'};gap:14px;text-decoration:none;padding:16px;background:#111;border:1px solid #1e1e1e;border-radius:3px;transition:border-color 0.15s" onmouseover="this.style.borderColor='#333'" onmouseout="this.style.borderColor='#1e1e1e'">
@@ -69,28 +83,83 @@ module.exports = async (req, res) => {
       </a>`).join('')}
     </div>
   </div>` : '';
-    const jsonLd = JSON.stringify({'@context':'https://schema.org','@type':'NewsArticle',headline:a.title,description:desc,datePublished:a.date,author:{'@type':'Organization',name:'POTUS Watch Daily'},publisher:{'@type':'Organization',name:'POTUS Watch Daily',url:'https://potuswatchdaily.com'},image:img,url:url,articleSection:a.region});
+
+    // Improved JSON-LD schemas
+    const newsArticleSchema = {
+      "@context": "https://schema.org",
+      "@type": "NewsArticle",
+      "mainEntityOfPage": { "@type": "WebPage", "@id": url },
+      "headline": a.title,
+      "description": desc,
+      "image": [img],
+      "datePublished": dateIso,
+      "dateModified": modifiedIso,
+      "author": [{ "@type": "Person", "name": author, "url": SITE_URL + "/about.html" }],
+      "publisher": {
+        "@type": "NewsMediaOrganization",
+        "name": SITE_NAME,
+        "url": SITE_URL,
+        "logo": { "@type": "ImageObject", "url": SITE_URL + "/logo.png", "width": 600, "height": 60 }
+      },
+      "articleSection": region
+    };
+
+    const breadcrumbSchema = {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": SITE_URL + "/" },
+        { "@type": "ListItem", "position": 2, "name": region, "item": SITE_URL + "/?region=" + encodeURIComponent(region) },
+        { "@type": "ListItem", "position": 3, "name": a.title }
+      ]
+    };
+
     res.setHeader('Content-Type','text/html; charset=utf-8');
     res.setHeader('Cache-Control','public, s-maxage=1800, stale-while-revalidate=3600');
+
     res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(a.title)} | ${SITE_NAME}</title>
 <meta name="description" content="${esc(desc)}">
+<meta name="author" content="${esc(author)}">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="news_keywords" content="${esc(region)}, foreign policy, geopolitics">
 <link rel="canonical" href="${url}">
+<link rel="alternate" type="application/rss+xml" title="${SITE_NAME}" href="${SITE_URL}/feed.xml">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23cc0000'/><text x='50%25' y='50%25' font-family='Georgia,serif' font-size='14' font-weight='bold' fill='white' text-anchor='middle' dominant-baseline='central'>PW</text></svg>">
+
 <meta property="og:type" content="article">
 <meta property="og:title" content="${esc(a.title)}">
 <meta property="og:description" content="${esc(desc)}">
-<meta property="og:image" content="${img}">
+<meta property="og:image" content="${esc(img)}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta property="og:url" content="${url}">
+<meta property="og:site_name" content="${SITE_NAME}">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="${dateIso}">
+<meta property="article:modified_time" content="${modifiedIso}">
+<meta property="article:author" content="${esc(author)}">
+<meta property="article:section" content="${esc(region)}">
+<meta property="article:tag" content="${esc(region)}">
+
 <meta name="twitter:card" content="summary_large_image">
-<script type="application/ld+json">${jsonLd}</script>
-<script type="application/ld+json">${JSON.stringify({"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://potuswatchdaily.com"},{"@type":"ListItem","position":2,"name":a.region,"item":"https://potuswatchdaily.com"},{"@type":"ListItem","position":3,"name":a.title,"item":url}]})}</script>
+<meta name="twitter:title" content="${esc(a.title)}">
+<meta name="twitter:description" content="${esc(desc)}">
+<meta name="twitter:image" content="${esc(img)}">
+
+<script type="application/ld+json">${JSON.stringify(newsArticleSchema)}</script>
+<script type="application/ld+json">${JSON.stringify(breadcrumbSchema)}</script>
+
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-FRVP4L2Z2T"></script>
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-FRVP4L2Z2T');</script>
+
+<meta name="google-adsense-account" content="ca-pub-7380718671497895">
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7380718671497895" crossorigin="anonymous"></script>
-<script>(adsbygoogle=window.adsbygoogle||[]).push({google_ad_client:"ca-pub-7380718671497895",enable_page_level_ads:true});</script>
+
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@300;400;500&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
@@ -106,7 +175,7 @@ body{font-family:'Inter',sans-serif;background:#0a0a0a;color:#fff;min-height:100
 .back:hover{color:#fff}
 .tag{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#cc0000}
 .byline{font-size:11px;color:#444}
-.eyebrow{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.eyebrow{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
 h1{font-family:'Playfair Display',serif;font-size:38px;font-weight:900;line-height:1.15;color:#fff;margin-bottom:20px}
 hr{border:none;border-top:1px solid #1e1e1e;margin-bottom:28px}
 .article-body p{font-size:17px;line-height:1.9;color:#b0b0b0;margin-bottom:22px;font-weight:300}
@@ -120,20 +189,22 @@ hr{border:none;border-top:1px solid #1e1e1e;margin-bottom:28px}
 .footer-logo{font-family:'Playfair Display',serif;font-size:18px;font-weight:900;color:#fff}
 .footer-logo em{color:#cc0000;font-style:normal}
 .footer-copy{font-size:11px;color:#333}
+.byline a{color:inherit;text-decoration:none}
+.byline a:hover{color:#cc0000}
 @media(max-width:640px){h1{font-size:26px}.article-content{padding:32px 16px 60px}}
 </style>
 </head>
 <body>
 <div class="top-bar"></div>
 <header class="masthead"><div class="masthead-inner"><a href="/" style="text-decoration:none;display:flex;align-items:center;gap:10px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" style="width:44px;height:44px;flex-shrink:0"><circle cx="80" cy="80" r="62" fill="none" stroke="#cc0000" stroke-width="3"/><ellipse cx="80" cy="80" rx="62" ry="22" fill="none" stroke="#cc0000" stroke-width="1.5" opacity="0.5"/><ellipse cx="80" cy="80" rx="62" ry="42" fill="none" stroke="#cc0000" stroke-width="1" opacity="0.3"/><line x1="18" y1="80" x2="142" y2="80" stroke="#cc0000" stroke-width="1.5" opacity="0.5"/><ellipse cx="80" cy="80" rx="22" ry="62" fill="none" stroke="#cc0000" stroke-width="1.5" opacity="0.5"/><ellipse cx="80" cy="80" rx="42" ry="62" fill="none" stroke="#cc0000" stroke-width="1" opacity="0.3"/><line x1="80" y1="18" x2="80" y2="142" stroke="#cc0000" stroke-width="1.5" opacity="0.5"/><line x1="80" y1="0" x2="80" y2="18" stroke="#cc0000" stroke-width="3"/><line x1="80" y1="142" x2="80" y2="160" stroke="#cc0000" stroke-width="3"/><line x1="0" y1="80" x2="18" y2="80" stroke="#cc0000" stroke-width="3"/><line x1="142" y1="80" x2="160" y2="80" stroke="#cc0000" stroke-width="3"/><circle cx="80" cy="80" r="6" fill="#cc0000"/><line x1="76" y1="4" x2="84" y2="4" stroke="#cc0000" stroke-width="2.5"/><line x1="76" y1="156" x2="84" y2="156" stroke="#cc0000" stroke-width="2.5"/><line x1="4" y1="76" x2="4" y2="84" stroke="#cc0000" stroke-width="2.5"/><line x1="156" y1="76" x2="156" y2="84" stroke="#cc0000" stroke-width="2.5"/></svg><div><div style="font-family:'Playfair Display',Georgia,serif;font-size:24px;font-weight:900;color:#fff;line-height:1;letter-spacing:-0.5px">POTUS <span style="color:#cc0000">Watch</span></div><div style="font-family:sans-serif;font-size:8px;color:#666;letter-spacing:2px;text-transform:uppercase;margin-top:2px">Daily · Foreign Policy Intelligence</div></div></a></div></header>
-${img ? '<img class="hero-img" src="'+img+'" alt="'+esc(a.title)+'" fetchpriority="high">' : ''}
+${img && img !== `${SITE_URL}/og-default.jpg` ? '<img class="hero-img" src="'+esc(img)+'" alt="'+esc(a.title)+'" fetchpriority="high">' : ''}
 <div class="article-content">
   <a class="back" href="/">&#8592; Back to feed</a>
-  <div class="eyebrow"><span class="tag">POTUS Watch · ${esc(a.region)}</span><span style="color:#2a2a2a">·</span><span class="byline">${esc(a.date||'')} ${a.time ? '· '+esc(a.time) : ''} · ${readTime}</span></div>
+  <div class="eyebrow"><span class="tag">${esc(region)}</span><span style="color:#2a2a2a">·</span><span class="byline">By <a href="/about.html" rel="author">${esc(author)}</a> · <time datetime="${dateIso}">${esc(a.date||'')}</time>${a.time ? ' · '+esc(a.time) : ''} · ${readTime}</span></div>
   <h1>${esc(a.title)}</h1>
   <hr>
   <div class="article-body">${paras}</div>
-  
+
   <div style="margin-top:48px;padding:28px 32px;background:#111;border:1px solid #1e1e1e;border-top:3px solid #cc0000;border-radius:3px">
     <p style="font-family:'Playfair Display',Georgia,serif;font-size:18px;font-weight:700;color:#fff;margin-bottom:8px">Keep the dispatches coming</p>
     <p style="font-size:13px;color:#666;line-height:1.6;margin-bottom:20px">POTUS Watch Daily is independent and ad-light by design. If this briefing was useful, a coffee keeps the lights on.</p>

@@ -1,27 +1,60 @@
+// Improved sitemap.js — adds <lastmod>, image extension, image namespace,
+// uses www subdomain consistently.
 const { createClient } = require('@supabase/supabase-js');
+
+const SITE_URL = 'https://www.potuswatchdaily.com';
+
+function esc(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 module.exports = async (req, res) => {
   try {
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
     const { data, error } = await supabase
       .from('articles')
-      .select('slug, date')
+      .select('slug, title, hero_image, image, date, modified')
       .order('id', { ascending: false })
-      .limit(500);
+      .limit(1000);
 
     if (error) throw error;
 
     const articles = (data || []).filter(a => a.slug && a.slug.length > 3);
+    const latestModified = articles[0]?.modified || articles[0]?.date || new Date().toISOString();
 
-    const urls = articles.map(a =>
-      '  <url>\n    <loc>https://potuswatchdaily.com/article/' + a.slug + '</loc>\n    <changefreq>never</changefreq>\n    <priority>0.7</priority>\n  </url>'
-    ).join('\n');
+    const staticUrls = [
+      `<url><loc>${SITE_URL}/</loc><lastmod>${new Date(latestModified).toISOString()}</lastmod><changefreq>hourly</changefreq><priority>1.0</priority></url>`,
+      `<url><loc>${SITE_URL}/archive</loc><changefreq>daily</changefreq><priority>0.7</priority></url>`,
+      `<url><loc>${SITE_URL}/about.html</loc><changefreq>monthly</changefreq><priority>0.4</priority></url>`,
+      `<url><loc>${SITE_URL}/contact.html</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>`,
+    ];
 
-    const xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url>\n    <loc>https://potuswatchdaily.com/</loc>\n    <changefreq>hourly</changefreq>\n    <priority>1.0</priority>\n  </url>\n  <url>\n    <loc>https://potuswatchdaily.com/archive</loc>\n    <changefreq>daily</changefreq>\n    <priority>0.5</priority>\n  </url>\n' + urls + '\n</urlset>';
+    const articleUrls = articles.map(a => {
+      const lastmod = new Date(a.modified || a.date).toISOString();
+      const img = a.hero_image || a.image;
+      return `<url>
+  <loc>${SITE_URL}/article/${esc(a.slug)}</loc>
+  <lastmod>${lastmod}</lastmod>
+  <changefreq>weekly</changefreq>
+  <priority>0.8</priority>${img ? `
+  <image:image><image:loc>${esc(img)}</image:loc><image:title>${esc(a.title)}</image:title></image:image>` : ''}
+</url>`;
+    });
 
-    res.setHeader('Content-Type', 'application/xml');
-    res.setHeader('Cache-Control', 'public, s-maxage=1800');
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+${staticUrls.concat(articleUrls).join('\n')}
+</urlset>`;
+
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, s-maxage=1800, max-age=600');
     res.send(xml);
-  } catch(e) {
+  } catch (e) {
+    console.error('[sitemap]', e);
     res.status(500).send('Sitemap error: ' + e.message);
   }
 };

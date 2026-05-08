@@ -21,6 +21,10 @@
     {
       "source": "/ads.txt",
       "destination": "/api/adstxt"
+    },
+    {
+      "source": "/feed.xml",
+      "destination": "/api/feed"
     }
   ],
   "redirects": []
