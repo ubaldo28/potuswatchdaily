@@ -13,7 +13,6 @@ const imageQueries = {
   Mideast:'middle east diplomacy',Russia:'moscow kremlin russia',
   Trade:'global trade economy shipping'
 };
-const affiliate = 'SPONSORED: With global instability rising, thousands of Americans are preparing. Get the #1 rated emergency survival kit on Amazon: https://amzn.to/4cgkdM3';
 
 function slugify(t){return t.toLowerCase().replace(/[^a-z0-9\s-]/g,'').replace(/\s+/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'').slice(0,80);}
 
@@ -67,7 +66,7 @@ async function generateArticles(){
     const types=['breaking news analysis','strategic intelligence briefing','diplomatic developments report','policy implications analysis','geopolitical situation report'];
     const articleType=types[Math.floor(Math.random()*types.length)];
 
-    const prompt='You are a senior foreign policy correspondent at POTUS Watch Daily. Write a '+articleType+' on the '+region+' portfolio.\n\nHeadlines:\n'+newsContext+'\n\nStructure:\n- Para 1: Powerful lede sentence\n- Para 2: Context and background\n- Para 3: Strategic analysis\n- Para 4: Wider implications\n- Para 5: Washington angle\n- Para 6: 48-72 hour outlook\n\nRules: Title maximum 8 words. No colons in title. Active voice. No rhetorical questions.\n\nRespond ONLY with valid JSON no markdown:\n{"title":"max 8 word title","region":"'+region+'","excerpt":"one sentence max 25 words","meta_description":"max 155 chars","slug":"url-slug","body":"para1\\n\\npara2\\n\\npara3\\n\\npara4\\n\\npara5\\n\\npara6"}';
+    const prompt='You are a senior foreign policy correspondent at POTUS Watch Daily. Write a '+articleType+' on the '+region+' portfolio.\n\nHeadlines:\n'+newsContext+'\n\nStructure:\n- Para 1: Powerful lede sentence\n- Para 2: Context and background\n- Para 3: Strategic analysis\n- Para 4: Wider implications\n- Para 5: Washington angle\n- Para 6: 48-72 hour outlook\n\nRules: Title maximum 8 words. No colons in title. Active voice. No rhetorical questions. Focus on POLICY, DIPLOMACY, ECONOMICS and STRATEGY. Never use words like: war, conflict, strike, attack, escalation, military action, bombing, armed conflict. Use words like: negotiations, sanctions, diplomacy, trade, leverage, alliance, strategy.\n\nRespond ONLY with valid JSON no markdown:\n{"title":"max 8 word title","region":"'+region+'","excerpt":"one sentence max 25 words","meta_description":"max 155 chars","slug":"url-slug","body":"para1\\n\\npara2\\n\\npara3\\n\\npara4\\n\\npara5\\n\\npara6"}';
 
     const res=await axios.post('https://api.anthropic.com/v1/messages',{
       model:'claude-haiku-4-5-20251001',
@@ -91,7 +90,7 @@ async function generateArticles(){
     await supabase.from('articles').insert({
       title:parsed.title,region:parsed.region||region,excerpt:parsed.excerpt,
       meta_description:parsed.meta_description||parsed.excerpt,slug:finalSlug,
-      body:parsed.body+'\n\n'+affiliate,image:cardImage||heroImage,hero_image:heroImage||cardImage,
+      body:parsed.body,image:cardImage||heroImage,hero_image:heroImage||cardImage,
       date:now.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}),
       time:now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false}),
       sources:JSON.stringify(top5.slice(0,3).map(a=>({title:a.title,url:a.url})))
@@ -110,7 +109,7 @@ app.get('/get-articles',async(req,res)=>{
   }catch(e){res.status(500).json({error:e.message});}
 });
 
-setInterval(generateArticles,30*60*1000);
+setInterval(generateArticles,60*60*1000);
 app.listen(3000,async()=>{
   console.log('POTUS Watch running at http://localhost:3000');
   await generateArticles();
