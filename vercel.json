@@ -29,6 +29,10 @@
     {
       "source": "/feed.xml",
       "destination": "/api/feed"
+    },
+    {
+      "source": "/robots.txt",
+      "destination": "/api/robots"
     }
   ],
   "redirects": []
