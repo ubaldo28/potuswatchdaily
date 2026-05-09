@@ -33,7 +33,10 @@ module.exports = async (req, res) => {
     const region = a.region || 'World';
     const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 
-    const paras = (a.body||'').split('\n').filter(p=>p.trim()).map(p => '<p>'+p+'</p>').join('');
+    // Strip the legacy in-body SPONSORED block from existing articles so it doesn't pollute
+    // the article text (it's rendered as a separate disclosure further down).
+    const cleanBody = (a.body || '').replace(/\n*SPONSORED:[\s\S]*$/i, '').trim();
+    const paras = cleanBody.split('\n').filter(p=>p.trim()).map(p => '<p>'+esc(p)+'</p>').join('');
     const sources = (() => { try { return Array.isArray(a.sources) ? a.sources : JSON.parse(a.sources||'[]'); } catch(e) { return []; } })();
 
     // FIXED: was /s+/ which matched literal 's'. Should be /\s+/ for whitespace.
@@ -212,6 +215,11 @@ ${img && img !== `${SITE_URL}/og-default.jpg` ? '<img class="hero-img" src="'+es
   <h1>${esc(a.title)}</h1>
   <hr>
   <div class="article-body">${paras}</div>
+
+  <aside style="margin-top:32px;padding:14px 18px;background:#0e0e0e;border-left:2px solid #444;font-size:11px;color:#666;line-height:1.5;font-family:Inter,sans-serif">
+    <strong style="color:#888;letter-spacing:1px;text-transform:uppercase;font-size:9px">Affiliate disclosure</strong><br>
+    With global instability rising, many readers are preparing. As an Amazon Associate POTUS Watch Daily earns from qualifying purchases &mdash; <a href="https://amzn.to/4cgkdM3" target="_blank" rel="noopener nofollow sponsored" style="color:#cc0000">view the #1 rated emergency survival kit</a>.
+  </aside>
 
   <div style="margin-top:48px;padding:28px 32px;background:#111;border:1px solid #1e1e1e;border-top:3px solid #cc0000;border-radius:3px">
     <p style="font-family:'Playfair Display',Georgia,serif;font-size:18px;font-weight:700;color:#fff;margin-bottom:8px">Keep the dispatches coming</p>
