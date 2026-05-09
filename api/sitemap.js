@@ -15,14 +15,14 @@ module.exports = async (req, res) => {
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
     const { data, error } = await supabase
       .from('articles')
-      .select('slug, title, hero_image, image, date, modified')
+      .select('slug, title, hero_image, image, date')
       .order('id', { ascending: false })
       .limit(1000);
 
     if (error) throw error;
 
     const articles = (data || []).filter(a => a.slug && a.slug.length > 3);
-    const latestModified = articles[0]?.modified || articles[0]?.date || new Date().toISOString();
+    const latestModified = articles[0]?.date || new Date().toISOString();
 
     const staticUrls = [
       `<url><loc>${SITE_URL}/</loc><lastmod>${new Date(latestModified).toISOString()}</lastmod><changefreq>hourly</changefreq><priority>1.0</priority></url>`,
@@ -32,7 +32,7 @@ module.exports = async (req, res) => {
     ];
 
     const articleUrls = articles.map(a => {
-      const lastmod = new Date(a.modified || a.date).toISOString();
+      const lastmod = new Date(a.date).toISOString();
       const img = a.hero_image || a.image;
       return `<url>
   <loc>${SITE_URL}/article/${esc(a.slug)}</loc>
