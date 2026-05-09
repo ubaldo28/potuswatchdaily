@@ -20,8 +20,16 @@ module.exports = async (req, res) => {
     const desc = a.meta_description || a.excerpt || '';
     const img = a.hero_image || a.image || `${SITE_URL}/og-default.jpg`;
     const author = a.author || 'POTUS Watch Editorial';
-    const dateIso = new Date(a.date).toISOString();
-    const modifiedIso = a.modified ? new Date(a.modified).toISOString() : dateIso;
+    // Prefer ISO published_at; fall back if missing or unparseable.
+    const isoOf = (val) => {
+      if (val) {
+        const d = new Date(val);
+        if (!isNaN(d.getTime()) && d.getFullYear() >= 2024) return d.toISOString();
+      }
+      return null;
+    };
+    const dateIso = isoOf(a.published_at) || isoOf(a.date) || new Date().toISOString();
+    const modifiedIso = isoOf(a.modified) || dateIso;
     const region = a.region || 'World';
     const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 

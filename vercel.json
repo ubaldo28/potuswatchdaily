@@ -3,6 +3,10 @@
   "outputDirectory": ".",
   "rewrites": [
     {
+      "source": "/",
+      "destination": "/api/home"
+    },
+    {
       "source": "/get-articles",
       "destination": "/api/articles"
     },

@@ -25,9 +25,18 @@ module.exports = async (req, res) => {
 
         const list = articles || [];
 
+        const isoOf = (val) => {
+            if (val) {
+                const d = new Date(val);
+                if (!isNaN(d.getTime()) && d.getFullYear() >= 2024) return d;
+            }
+            return null;
+        };
+
         const items = list.map(a => {
             const url = `${SITE_URL}/article/${a.slug}`;
-            const pub = new Date(a.date).toUTCString();
+            const pubDate = isoOf(a.published_at) || isoOf(a.date) || new Date();
+            const pub = pubDate.toUTCString();
             const author = a.author || 'POTUS Watch Editorial';
             const paragraphs = (a.body || '')
                 .split('\n').filter(p => p.trim())

@@ -92,7 +92,10 @@ async function generateArticles(){
       title:parsed.title,region:parsed.region||region,excerpt:parsed.excerpt,
       meta_description:parsed.meta_description||parsed.excerpt,slug:finalSlug,
       body:parsed.body+'\n\n'+affiliate,image:cardImage||heroImage,hero_image:heroImage||cardImage,
-      date:now.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}),
+      // FIX: store full ISO timestamp (with year) for SEO/sitemap/schema use.
+      // Keep readable date/time strings for the existing UI.
+      published_at:now.toISOString(),
+      date:now.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}),
       time:now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false}),
       sources:JSON.stringify(top5.slice(0,3).map(a=>({title:a.title,url:a.url})))
     });

@@ -15,14 +15,27 @@ module.exports = async (req, res) => {
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
     const { data, error } = await supabase
       .from('articles')
-      .select('slug, title, hero_image, image, date')
+      .select('slug, title, hero_image, image, date, published_at')
       .order('id', { ascending: false })
       .limit(1000);
 
     if (error) throw error;
 
     const articles = (data || []).filter(a => a.slug && a.slug.length > 3);
-    const rawLatest = new Date(articles[0]?.date); const latestModified = (rawLatest.getFullYear() < 2020 ? new Date() : rawLatest).toISOString();
+
+    // Helper: get a real ISO timestamp. Prefer published_at (always ISO);
+    // fall back to date if it parses cleanly; otherwise use now() so we never
+    // emit a bogus 2001 date.
+    const isoOf = a => {
+      if (a.published_at) return new Date(a.published_at).toISOString();
+      if (a.date) {
+        const d = new Date(a.date);
+        if (!isNaN(d.getTime()) && d.getFullYear() >= 2024) return d.toISOString();
+      }
+      return new Date().toISOString();
+    };
+
+    const latestModified = articles[0] ? isoOf(articles[0]) : new Date().toISOString();
 
     const staticUrls = [
       `<url><loc>${SITE_URL}/</loc><lastmod>${new Date(latestModified).toISOString()}</lastmod><changefreq>hourly</changefreq><priority>1.0</priority></url>`,
@@ -32,7 +45,7 @@ module.exports = async (req, res) => {
     ];
 
     const articleUrls = articles.map(a => {
-      const rawDate = new Date(a.date); const lastmod = (rawDate.getFullYear() < 2020 ? new Date() : rawDate).toISOString();
+      const lastmod = isoOf(a);
       const img = a.hero_image || a.image;
       return `<url>
   <loc>${SITE_URL}/article/${esc(a.slug)}</loc>
