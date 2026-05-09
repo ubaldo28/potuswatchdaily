@@ -65,7 +65,7 @@ async function generateArticles(){
     const types=['breaking news analysis','strategic intelligence briefing','diplomatic developments report','policy implications analysis','geopolitical situation report'];
     const articleType=types[Math.floor(Math.random()*types.length)];
 
-    const prompt='You are a senior foreign policy correspondent at POTUS Watch Daily. Write a '+articleType+' on the '+region+' portfolio.\n\nHeadlines:\n'+newsContext+'\n\nStructure:\n- Para 1: Powerful lede sentence\n- Para 2: Context and background\n- Para 3: Strategic analysis\n- Para 4: Wider implications\n- Para 5: Washington angle\n- Para 6: 48-72 hour outlook\n\nRules: Title maximum 8 words. No colons in title. Active voice. No rhetorical questions. Focus on POLICY, DIPLOMACY, ECONOMICS and STRATEGY. Never use words like: war, conflict, strike, attack, escalation, military action, bombing, armed conflict. Use words like: negotiations, sanctions, diplomacy, trade, leverage, alliance, strategy.\n\nRespond ONLY with valid JSON no markdown:\n{"title":"max 8 word title","region":"'+region+'","excerpt":"one sentence max 25 words","meta_description":"max 155 chars","slug":"url-slug","body":"para1\\n\\npara2\\n\\npara3\\n\\npara4\\n\\npara5\\n\\npara6"}';
+    const prompt='You are a senior foreign policy correspondent at POTUS Watch Daily. Write a '+articleType+' on the '+region+' portfolio.\n\nHeadlines:\n'+newsContext+'\n\nStructure:\n- Para 1: Powerful lede sentence\n- Para 2: Context and background\n- Para 3: Strategic analysis\n- Para 4: Wider implications\n- Para 5: Washington angle\n- Para 6: 48-72 hour outlook\n\nRules: Title maximum 8 words. No colons in title. Active voice. No rhetorical questions. Focus on POLICY, DIPLOMACY, ECONOMICS and STRATEGY. Never use words like: war, conflict, strike, attack, escalation, military action, bombing, armed conflict. Use words like: negotiations, sanctions, diplomacy, trade, leverage, alliance, strategy.\n\nRespond ONLY with valid JSON no markdown:\n{"title":"max 8 word title","region":"'+region+'","excerpt":"one sentence max 25 words","meta_description":"max 155 chars","slug":"url-slug-no-years-no-dates","body":"para1\\n\\npara2\\n\\npara3\\n\\npara4\\n\\npara5\\n\\npara6"}';
 
     const res=await axios.post('https://api.anthropic.com/v1/messages',{
       model:'claude-haiku-4-5-20251001',
@@ -82,7 +82,7 @@ async function generateArticles(){
     const parsed=JSON.parse(raw.slice(js,je));
     const slug=(parsed.slug&&parsed.slug.length>3)?slugify(parsed.slug):slugify(parsed.title);
     const {data:existing}=await supabase.from('articles').select('slug').eq('slug',slug).limit(1);
-    const finalSlug=(existing&&existing.length)?slug+'-'+Date.now():slug;
+    const cleanSlug=slug.replace(/\b(2024|2025|2026|2027)\b-?/-g,"").replace(/-+/-g,"-").replace(/^-|-$/-g,"");const finalSlug=(existing&&existing.length)?cleanSlug+"-"+Date.now():cleanSlug;
     const heroImage=await getImage(region,'hero');
     const cardImage=await getImage(region,'thumb');
     const now=new Date();
