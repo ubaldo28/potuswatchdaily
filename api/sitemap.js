@@ -22,7 +22,7 @@ module.exports = async (req, res) => {
     if (error) throw error;
 
     const articles = (data || []).filter(a => a.slug && a.slug.length > 3);
-    const latestModified = articles[0]?.date || new Date().toISOString();
+    const rawLatest = new Date(articles[0]?.date); const latestModified = (rawLatest.getFullYear() < 2020 ? new Date() : rawLatest).toISOString();
 
     const staticUrls = [
       `<url><loc>${SITE_URL}/</loc><lastmod>${new Date(latestModified).toISOString()}</lastmod><changefreq>hourly</changefreq><priority>1.0</priority></url>`,
@@ -32,7 +32,7 @@ module.exports = async (req, res) => {
     ];
 
     const articleUrls = articles.map(a => {
-      const lastmod = new Date(a.date).toISOString();
+      const rawDate = new Date(a.date); const lastmod = (rawDate.getFullYear() < 2020 ? new Date() : rawDate).toISOString();
       const img = a.hero_image || a.image;
       return `<url>
   <loc>${SITE_URL}/article/${esc(a.slug)}</loc>
