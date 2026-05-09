@@ -89,6 +89,10 @@ let _indexCache = null;
 function loadIndexTemplate() {
     if (!_indexCache) {
         const candidates = [
+            // Preferred: template lives outside the public-served paths so Vercel
+            // doesn't auto-serve it at /.
+            path.join(process.cwd(), 'templates', 'index.html'),
+            // Fallbacks (legacy locations).
             path.join(process.cwd(), 'public', 'index.html'),
             path.join(process.cwd(), 'index.html'),
         ];
