@@ -14,13 +14,17 @@ function esc(s) {
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-function fmtDate(iso) {
-    if (!iso) return '';
-    try {
+function fmtDate(article) {
+    // Prefer ISO published_at / created_at over the legacy "Fri, May 9" string,
+    // which Node parses as year 2001.
+    const iso = article && (article.published_at || article.created_at);
+    if (iso) {
         const d = new Date(iso);
-        if (isNaN(d.getTime())) return iso;
-        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    } catch { return iso; }
+        if (!isNaN(d.getTime()) && d.getFullYear() >= 2024) {
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+    }
+    return article && article.date ? String(article.date) : '';
 }
 
 function renderHero(articles) {
@@ -75,7 +79,7 @@ function renderGrid(articles) {
                 <span class="tag">${esc(a.region || 'World')}</span>
                 <div class="card-title">${esc(a.title)}</div>
                 ${a.excerpt ? `<div class="card-excerpt">${esc(a.excerpt)}</div>` : ''}
-                <div class="card-meta">${esc(fmtDate(a.date))}${a.time ? ' · ' + esc(a.time) : ''}</div>
+                <div class="card-meta">${esc(fmtDate(a))}${a.time ? ' · ' + esc(a.time) : ''}</div>
             </div>
         </a></div>`;
     }).join('');
