@@ -264,7 +264,7 @@ app.get('/article/:slug', async (req, res) => {
 app.get('/sitemap.xml', async (req, res) => {
     try {
         const articles = await getArticles({ limit: 1000 });
-        const latest = articles[0]?.modified || articles[0]?.date || new Date().toISOString();
+        const rawLatest = new Date(articles[0]?.modified || articles[0]?.date); const latest = (rawLatest.getFullYear() < 2020 ? new Date() : rawLatest).toISOString();
 
         const urls = [
             `<url><loc>${SITE_URL}/</loc><lastmod>${new Date(latest).toISOString()}</lastmod><changefreq>hourly</changefreq><priority>1.0</priority></url>`,
@@ -273,7 +273,7 @@ app.get('/sitemap.xml', async (req, res) => {
             `<url><loc>${SITE_URL}/contact.html</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>`,
         ];
         for (const a of articles) {
-            const lastmod = new Date(a.modified || a.date).toISOString();
+            const rawDate = new Date(a.modified || a.date); const lastmod = (rawDate.getFullYear() < 2020 ? new Date() : rawDate).toISOString();
             urls.push(
                 `<url>
                   <loc>${SITE_URL}/article/${escapeAttr(a.slug)}</loc>
