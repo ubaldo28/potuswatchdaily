@@ -13,6 +13,7 @@ const imageQueries = {
   Mideast:'middle east diplomacy',Russia:'moscow kremlin russia',
   Trade:'global trade economy shipping'
 };
+const affiliate = 'SPONSORED: With global instability rising, thousands of Americans are preparing. Get the #1 rated emergency survival kit on Amazon: https://amzn.to/4cgkdM3';
 
 function slugify(t){return t.toLowerCase().replace(/[^a-z0-9\s-]/g,'').replace(/\s+/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'').slice(0,80);}
 
@@ -90,7 +91,7 @@ async function generateArticles(){
     await supabase.from('articles').insert({
       title:parsed.title,region:parsed.region||region,excerpt:parsed.excerpt,
       meta_description:parsed.meta_description||parsed.excerpt,slug:finalSlug,
-      body:parsed.body,image:cardImage||heroImage,hero_image:heroImage||cardImage,
+      body:parsed.body+'\n\n'+affiliate,image:cardImage||heroImage,hero_image:heroImage||cardImage,
       date:now.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}),
       time:now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false}),
       sources:JSON.stringify(top5.slice(0,3).map(a=>({title:a.title,url:a.url})))
