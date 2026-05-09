@@ -13,7 +13,6 @@ const imageQueries = {
   Mideast:'middle east diplomacy',Russia:'moscow kremlin russia',
   Trade:'global trade economy shipping'
 };
-
 function slugify(t){return t.toLowerCase().replace(/[^a-z0-9\s-]/g,'').replace(/\s+/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'').slice(0,80);}
 
 async function getImage(region,size){
