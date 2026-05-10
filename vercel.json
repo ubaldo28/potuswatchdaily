@@ -3,6 +3,10 @@
   "outputDirectory": ".",
   "rewrites": [
     {
+      "source": "/logo-masthead.svg",
+      "destination": "/api/logo-masthead"
+    },
+    {
       "source": "/d8a95a427bb64d83b7a64c4e17a9d133.txt",
       "destination": "/api/indexnow-key"
     },
