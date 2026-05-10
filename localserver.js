@@ -99,6 +99,7 @@ async function generateArticles(){
       sources:JSON.stringify(top5.slice(0,3).map(a=>({title:a.title,url:a.url})))
     });
     console.log('Saved:',parsed.title,'| Slug:',finalSlug);
+    try{await fetch('https://api.indexnow.org/indexnow?url=https://www.potuswatchdaily.com/article/'+finalSlug+'&key=d8a95a427bb64d83b7a64c4e17a9d133');console.log('IndexNow pinged:',finalSlug);}catch(ie){console.error('IndexNow error:',ie.message);}
   }catch(e){console.error('Error:',e.message);if(e.response)console.error('API:',JSON.stringify(e.response.data));}
 }
 
