@@ -82,7 +82,7 @@ async function generateArticles(){
     const parsed=JSON.parse(raw.slice(js,je));
     const slug=(parsed.slug&&parsed.slug.length>3)?slugify(parsed.slug):slugify(parsed.title);
     const {data:existing}=await supabase.from('articles').select('slug').eq('slug',slug).limit(1);
-    const cleanSlug=slug.replace(/\b(2024|2025|2026|2027)\b-?/-g,"").replace(/-+/-g,"-").replace(/^-|-$/-g,"");const finalSlug=(existing&&existing.length)?cleanSlug+"-"+Date.now():cleanSlug;
+    const cleanSlug=slug.replace(/\b(2024|2025|2026|2027)\b-?/g,"").replace(/-+/g,"-").replace(/^-|-$/g,"");const finalSlug=(existing&&existing.length)?cleanSlug+"-"+Date.now():cleanSlug;
     const heroImage=await getImage(region,'hero');
     const cardImage=await getImage(region,'thumb');
     const now=new Date();
