@@ -19,8 +19,8 @@ module.exports = async (req, res) => {
         const { data: articles } = await supabase
             .from('articles')
             .select('*')
-            .eq('published', true)
-            .order('date', { ascending: false })
+            .not('slug', 'is', null)
+            .order('published_at', { ascending: false })
             .limit(50);
 
         const list = articles || [];

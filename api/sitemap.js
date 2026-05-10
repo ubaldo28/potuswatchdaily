@@ -42,16 +42,28 @@ module.exports = async (req, res) => {
       `<url><loc>${SITE_URL}/archive</loc><changefreq>daily</changefreq><priority>0.7</priority></url>`,
       `<url><loc>${SITE_URL}/about.html</loc><changefreq>monthly</changefreq><priority>0.4</priority></url>`,
       `<url><loc>${SITE_URL}/contact.html</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>`,
+      `<url><loc>${SITE_URL}/privacy.html</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>`,
+      `<url><loc>${SITE_URL}/terms.html</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>`,
+      `<url><loc>${SITE_URL}/disclaimer.html</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>`,
     ];
 
     const articleUrls = articles.map(a => {
       const lastmod = isoOf(a);
       const img = a.hero_image || a.image;
+      const pubDate = isoOf(a);
       return `<url>
   <loc>${SITE_URL}/article/${esc(a.slug)}</loc>
   <lastmod>${lastmod}</lastmod>
   <changefreq>weekly</changefreq>
-  <priority>0.8</priority>${img ? `
+  <priority>0.8</priority>
+  <news:news>
+    <news:publication>
+      <news:name>POTUS Watch Daily</news:name>
+      <news:language>en</news:language>
+    </news:publication>
+    <news:publication_date>${pubDate}</news:publication_date>
+    <news:title>${esc(a.title)}</news:title>
+  </news:news>${img ? `
   <image:image><image:loc>${esc(img)}</image:loc><image:title>${esc(a.title)}</image:title></image:image>` : ''}
 </url>`;
     });

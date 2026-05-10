@@ -6,7 +6,7 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
 app.use(express.static('.'));
 app.use(express.json());
 
-const regions = ['Iran','China','NATO','Americas','Mideast','Russia','Trade'];
+const regions = ['Iran','China','NATO','Americas','Mideast','Russia','Trade','Analysis'];
 const imageQueries = {
   Iran:'iran diplomacy politics',China:'china beijing diplomacy',
   NATO:'nato military alliance europe',Americas:'washington dc capitol',
@@ -56,7 +56,7 @@ async function generateArticles(){
     const newsItems=await fetchNews();
     if(!newsItems||!newsItems.length){console.log('No news. Skipping.');return;}
     const region=regions[Math.floor(Math.random()*regions.length)];
-    const keywords={Iran:['iran','tehran','nuclear'],China:['china','beijing','xi','taiwan'],NATO:['nato','europe','ukraine'],Americas:['trump','white house','congress'],Mideast:['israel','gaza','saudi','yemen'],Russia:['russia','putin','moscow','ukraine'],Trade:['tariff','trade','economy','sanctions']};
+    const keywords={Iran:['iran','tehran','nuclear'],China:['china','beijing','xi','taiwan'],NATO:['nato','europe','ukraine'],Americas:['trump','white house','congress'],Mideast:['israel','gaza','saudi','yemen'],Russia:['russia','putin','moscow','ukraine'],Trade:['tariff','trade','economy','sanctions'],Analysis:['policy','strategy','diplomacy','geopolitics','foreign','alliance','leverage','sanctions']};
     const kw=keywords[region]||[];
     const relevant=newsItems.filter(a=>kw.some(k=>(a.title+' '+(a.description||'')).toLowerCase().includes(k)));
     const pool=relevant.length>=3?relevant:newsItems;
