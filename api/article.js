@@ -61,6 +61,7 @@ module.exports = async (req, res) => {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="google-adsense-account" content="ca-pub-7380718671497895">
 <title>${title} — ${SITE_NAME}</title>
 <meta name="description" content="${desc}">
 <link rel="canonical" href="${canonicalUrl}">
