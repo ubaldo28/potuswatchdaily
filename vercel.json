@@ -3,6 +3,10 @@
   "outputDirectory": ".",
   "rewrites": [
     {
+      "source": "/BingSiteAuth.xml",
+      "destination": "/api/bingauth"
+    },
+    {
       "source": "/",
       "destination": "/api/home"
     },
