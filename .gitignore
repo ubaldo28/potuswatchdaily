@@ -6,3 +6,4 @@ package-lock.json.bak
 *.log
 npm-debug.log*
 public/index.html.bak.*
+*.bak.*

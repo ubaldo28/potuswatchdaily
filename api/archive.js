@@ -100,6 +100,7 @@ h1{font-family:'Playfair Display',serif;font-size:36px;font-weight:900;color:#ff
     <div class="footer-links">
       <a href="/">Home</a>
       <a href="/about.html">About</a>
+      <a href="/editorial.html">Editorial Standards</a>
       <a href="/contact.html">Contact</a>
       <a href="/privacy.html">Privacy Policy</a>
       <a href="/terms.html">Terms of Service</a>
