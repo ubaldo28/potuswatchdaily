@@ -136,7 +136,7 @@ ${img && img !== `${SITE_URL}/og-default.jpg` ? `<img class="hero-img" src="${es
 </div>
 <footer class="footer"><div class="footer-inner">
   <svg width="200" height="36" viewBox="0 0 300 52" xmlns="http://www.w3.org/2000/svg"><circle cx="26" cy="26" r="18" fill="none" stroke="#cc0000" stroke-width="1.5"/><ellipse cx="26" cy="26" rx="18" ry="6.5" fill="none" stroke="#cc0000" stroke-width="0.8" opacity="0.5"/><circle cx="26" cy="26" r="3" fill="#cc0000"/><text x="60" y="24" font-size="18" font-weight="900" fill="#ffffff" font-family="Georgia, serif" letter-spacing="0.5">POTUS <tspan fill="#cc0000">Watch</tspan> <tspan fill="#888888" font-size="13" font-weight="400">Daily</tspan></text><line x1="60" y1="32" x2="298" y2="32" stroke="#cc0000" stroke-width="0.8" opacity="0.5"/><text x="60" y="46" font-size="9.5" fill="#666666" font-family="Inter, Arial, sans-serif" letter-spacing="1">FOREIGN POLICY INTELLIGENCE  ·  © 2026</text></svg>
-  <span class="footer-copy">&copy; 2026 POTUS Watch Daily. <a href="/about.html">About</a> · <a href="/editorial.html">Editorial Standards</a> · <a href="/contact.html">Contact</a> · <a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a> · <a href="/disclaimer.html">Disclaimer</a></span>
+  <span class="footer-copy">&copy; 2026 POTUS Watch Daily. <a href="/explainers/">Explainers</a> · <a href="/about.html">About</a> · <a href="/author.html">Editorial Staff</a> · <a href="/editorial.html">Editorial Standards</a> · <a href="/contact.html">Contact</a> · <a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a> · <a href="/disclaimer.html">Disclaimer</a></span>
 </div></footer>
 </body></html>`);
   } catch(e) { res.status(500).send('Error: '+e.message); }
