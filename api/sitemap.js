@@ -42,6 +42,7 @@ module.exports = async (req, res) => {
       `<url><loc>${SITE_URL}/archive</loc><changefreq>daily</changefreq><priority>0.7</priority></url>`,
       `<url><loc>${SITE_URL}/about.html</loc><changefreq>monthly</changefreq><priority>0.4</priority></url>`,
       `<url><loc>${SITE_URL}/editorial.html</loc><changefreq>monthly</changefreq><priority>0.4</priority></url>`,
+      `<url><loc>${SITE_URL}/author.html</loc><changefreq>monthly</changefreq><priority>0.4</priority></url>`,
       `<url><loc>${SITE_URL}/contact.html</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>`,
       `<url><loc>${SITE_URL}/privacy.html</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>`,
       `<url><loc>${SITE_URL}/terms.html</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>`,

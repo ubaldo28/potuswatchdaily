@@ -20,13 +20,17 @@ module.exports = async (req, res) => {
     const canonicalUrl = `${SITE_URL}/article/${a.slug}`;
     const img = a.hero_image || a.image || `${SITE_URL}/og-default.jpg`;
     const region = a.region || 'Analysis';
-    const author = 'POTUS Watch Daily Editorial';
+    const author = 'POTUS Watch Daily Editorial Staff';
     const desc = esc(a.meta_description || a.excerpt || '');
     const title = esc(a.title || '');
     const dateIso = a.published_at || a.created_at || new Date().toISOString();
     const words = (a.body||'').split(/\s+/).length;
     const readTime = Math.max(1, Math.round(words/200)) + ' min read';
-    const paras = (a.body||'').split(/\n+/).filter(Boolean).map(p=>`<p>${esc(p)}</p>`).join('');
+    const paras = (a.body||'').split(/\n+/).filter(Boolean).map(p=>{
+      if(p.startsWith('## ')) return `<h2 style="font-family:'Playfair Display',Georgia,serif;font-size:20px;color:#fff;margin:32px 0 12px;font-weight:700">${esc(p.slice(3))}</h2>`;
+      if(p.startsWith('# ')) return `<h2 style="font-family:'Playfair Display',Georgia,serif;font-size:22px;color:#fff;margin:32px 0 12px;font-weight:700">${esc(p.slice(2))}</h2>`;
+      return `<p>${esc(p)}</p>`;
+    }).join('');
     const sources = (() => { try { return JSON.parse(a.sources||'[]'); } catch(e) { return []; } })();
 
     const encodedUrl = encodeURIComponent(canonicalUrl);
@@ -50,7 +54,7 @@ module.exports = async (req, res) => {
       "image": img,
       "datePublished": dateIso,
       "dateModified": dateIso,
-      "author": { "@type": "Organization", "name": SITE_NAME, "url": SITE_URL },
+      "author": { "@type": "Organization", "name": SITE_NAME, "url": `${SITE_URL}/author.html` },
       "publisher": { "@type": "Organization", "name": SITE_NAME, "url": SITE_URL, "logo": { "@type": "ImageObject", "url": `${SITE_URL}/logo.png` } },
       "mainEntityOfPage": { "@type": "WebPage", "@id": canonicalUrl }
     });
@@ -111,7 +115,7 @@ hr{border:none;border-top:1px solid #1e1e1e;margin:20px 0}
 ${img && img !== `${SITE_URL}/og-default.jpg` ? `<img class="hero-img" src="${esc(img)}" alt="${title}" fetchpriority="high">` : ''}
 <div class="article-content">
   <a class="back" href="/">&#8592; Back to feed</a>
-  <div class="eyebrow"><span class="tag">${esc(region)}</span><span style="color:#333">·</span><span class="byline">By <a href="/about.html" rel="author">${esc(author)}</a> · <time datetime="${dateIso}">${esc(a.date||'')}</time>${a.time ? ' · '+esc(a.time) : ''} · ${readTime}</span></div>
+  <div class="eyebrow"><span class="tag">${esc(region)}</span><span style="color:#333">·</span><span class="byline">By <a href="/author.html" rel="author">${esc(author)}</a> · <time datetime="${dateIso}">${esc(a.date||'')}</time>${a.time ? ' · '+esc(a.time) : ''} · ${readTime}</span></div>
   <h1>${title}</h1>
   <hr>
   <div class="article-body">${paras}</div>
