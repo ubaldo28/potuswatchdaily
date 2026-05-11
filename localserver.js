@@ -1,8 +1,11 @@
 const express = require('express');
 const axios = require('axios');
+const ws = require('ws');
 const { createClient } = require('@supabase/supabase-js');
 const app = express();
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY, {
+  realtime: { transport: ws }
+});
 app.use(express.static('.'));
 app.use(express.json());
 
