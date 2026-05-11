@@ -44,7 +44,7 @@ async function fetchNews(){
   for(let i=0;i<3;i++){
     try{
       const r=await axios.get('https://newsapi.org/v2/everything',{
-        params:{q:'Trump foreign policy OR diplomacy OR tariffs OR NATO OR China OR Iran OR geopolitics',language:'en',sortBy:'publishedAt',pageSize:20,apiKey:process.env.NEWS_API_KEY},
+        params:{q:'Trump foreign policy OR Iran nuclear OR Strait of Hormuz OR NATO OR China Xi summit OR Russia Ukraine ceasefire OR tariffs OR sanctions OR diplomacy OR geopolitics',language:'en',sortBy:'publishedAt',pageSize:20,apiKey:process.env.NEWS_API_KEY},
         timeout:15000
       });
       const filtered=r.data.articles.filter(a=>a.title&&a.description&&a.title!=='[Removed]'&&isRelevantSource(a.url));
