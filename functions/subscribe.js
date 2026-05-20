@@ -14,10 +14,10 @@ const WELCOME_HTML = `<!DOCTYPE html>
       </td></tr>
       <!-- Welcome -->
       <tr><td style="background:#111;padding:40px 40px 32px">
-        <div style="font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:#cc0000;margin-bottom:16px">Welcome Dispatch</div>
-        <h1 style="font-family:Georgia,serif;font-size:30px;font-weight:900;color:#fff;line-height:1.2;margin:0 0 20px">You're in the room now.</h1>
-        <p style="font-size:15px;color:#888;line-height:1.8;margin:0 0 24px">Every week, POTUS Watch Daily cuts through the noise to give you the foreign policy intelligence that actually matters — the moves, the signals, the stakes.</p>
-        <p style="font-size:15px;color:#888;line-height:1.8;margin:0 0 32px">Your first weekly briefing is on its way. In the meantime, catch up on what's happening now.</p>
+        <div style="font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:#555;margin-bottom:16px">Welcome</div>
+        <h1 style="font-family:Georgia,serif;font-size:30px;font-weight:900;color:#fff;line-height:1.2;margin:0 0 20px">Good to have you.</h1>
+        <p style="font-size:15px;color:#888;line-height:1.8;margin:0 0 24px">Every Sunday you'll get a short briefing on what happened in U.S. foreign policy and global affairs that week — what it means, and what to watch going forward.</p>
+        <p style="font-size:15px;color:#888;line-height:1.8;margin:0 0 32px">Your first issue is coming this Thursday. In the meantime, here's what's on the site right now.</p>
         <a href="https://www.potuswatchdaily.com" style="display:inline-block;background:#cc0000;color:#fff;text-decoration:none;padding:14px 28px;border-radius:3px;font-size:13px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase">Read the latest →</a>
       </td></tr>
       <!-- Divider -->
@@ -29,28 +29,28 @@ const WELCOME_HTML = `<!DOCTYPE html>
           <tr>
             <td style="padding-bottom:16px;padding-right:12px;vertical-align:top;width:50%">
               <div style="border-left:2px solid #cc0000;padding-left:14px">
-                <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:4px">Weekly Briefing</div>
-                <div style="font-size:12px;color:#555;line-height:1.6">Every week, the key foreign policy developments — what happened and why it matters.</div>
+                <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:4px">Sent every Sunday</div>
+                <div style="font-size:12px;color:#555;line-height:1.6">One short email every Thursday covering the week's most important foreign policy stories.</div>
               </div>
             </td>
             <td style="padding-bottom:16px;padding-left:12px;vertical-align:top;width:50%">
               <div style="border-left:2px solid #cc0000;padding-left:14px">
-                <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:4px">Deep Analysis</div>
-                <div style="font-size:12px;color:#555;line-height:1.6">Context and intelligence beyond the headline. What it signals, what comes next.</div>
+                <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:4px">Real analysis</div>
+                <div style="font-size:12px;color:#555;line-height:1.6">What happened, the context behind it, and what it likely means going forward.</div>
               </div>
             </td>
           </tr>
           <tr>
             <td style="padding-right:12px;vertical-align:top;width:50%">
               <div style="border-left:2px solid #cc0000;padding-left:14px">
-                <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:4px">No noise</div>
-                <div style="font-size:12px;color:#555;line-height:1.6">One dispatch per week. No daily spam, no filler.</div>
+                <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:4px">Short and readable</div>
+                <div style="font-size:12px;color:#555;line-height:1.6">Written to be read in under ten minutes. No padding.</div>
               </div>
             </td>
             <td style="padding-left:12px;vertical-align:top;width:50%">
               <div style="border-left:2px solid #cc0000;padding-left:14px">
-                <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:4px">Always Free</div>
-                <div style="font-size:12px;color:#555;line-height:1.6">No paywall. No credit card. No catch.</div>
+                <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:4px">Free</div>
+                <div style="font-size:12px;color:#555;line-height:1.6">No subscription tiers, no credit card, nothing to upgrade.</div>
               </div>
             </td>
           </tr>
