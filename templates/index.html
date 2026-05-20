@@ -212,7 +212,27 @@ body{font-family:'Inter',sans-serif;background:#0a0a0a;color:#fff;min-height:100
   <p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#cc0000;margin-bottom:12px;font-family:'Inter',sans-serif">Free Newsletter</p>
   <h2 style="font-family:'Playfair Display',serif;font-size:26px;font-weight:900;color:#fff;margin-bottom:10px">Stay ahead of the world</h2>
   <p style="font-size:14px;color:#666;margin-bottom:24px;font-family:'Inter',sans-serif;line-height:1.6;max-width:460px;margin-left:auto;margin-right:auto">Weekly foreign policy intelligence. No spin, no agenda. Free.</p>
-  <a href="https://potuswatchdaily.beehiiv.com/subscribe" target="_blank" style="display:inline-block;background:#cc0000;color:#fff;text-decoration:none;padding:12px 32px;border-radius:3px;font-size:13px;font-weight:600;font-family:'Inter',sans-serif;letter-spacing:0.5px">Subscribe free</a>
+  <form id="subscribe-form" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;max-width:460px;margin:0 auto" onsubmit="handleSubscribe(event)">
+    <input type="email" id="sub-email" placeholder="your@email.com" required style="flex:1;min-width:200px;background:#111;border:1px solid #333;color:#fff;padding:12px 16px;border-radius:3px;font-size:13px;font-family:'Inter',sans-serif;outline:none">
+    <button type="submit" style="background:#cc0000;color:#fff;border:none;padding:12px 24px;border-radius:3px;font-size:13px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;letter-spacing:0.5px">Subscribe free</button>
+  </form>
+  <p id="sub-msg" style="font-size:12px;margin-top:10px;display:none"></p>
+  <script>
+  async function handleSubscribe(e) {
+    e.preventDefault();
+    const email = document.getElementById('sub-email').value;
+    const msg = document.getElementById('sub-msg');
+    const btn = e.target.querySelector('button');
+    btn.textContent = 'Subscribing...'; btn.disabled = true;
+    try {
+      const r = await fetch('/subscribe', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email}) });
+      const d = await r.json();
+      msg.style.display = 'block';
+      if (r.ok) { msg.style.color='#4caf50'; msg.textContent='✓ Subscribed. First dispatch incoming.'; document.getElementById('subscribe-form').style.display='none'; }
+      else { msg.style.color='#cc0000'; msg.textContent=d.error||'Something went wrong. Try again.'; btn.textContent='Subscribe free'; btn.disabled=false; }
+    } catch { msg.style.display='block'; msg.style.color='#cc0000'; msg.textContent='Connection error. Try again.'; btn.textContent='Subscribe free'; btn.disabled=false; }
+  }
+  </script>
 </div>
 
 <footer class="footer">
