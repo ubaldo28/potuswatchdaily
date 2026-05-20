@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "include": [
+    "/",
+    "/article/*",
+    "/archive",
+    "/subscribe",
+    "/get-articles",
+    "/sitemap.xml",
+    "/feed.xml",
+    "/robots.txt",
+    "/ads.txt"
+  ],
+  "exclude": []
+}
