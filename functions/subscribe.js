@@ -34,7 +34,7 @@ u + #body { background-color:#0a0a0a!important; }
   <!-- Body -->
   <tr><td bgcolor="#111111" style="background-color:#111111;padding:36px 36px 28px">
     <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#777777;margin-bottom:14px;font-family:Arial,Helvetica,sans-serif">Welcome</div>
-    <div style="font-family:Georgia,'Times New Roman',serif;font-size:28px;font-weight:900;color:#ffffff;line-height:1.2;margin:0 0 18px">Good to have you.</div>
+    <div style="font-family:Georgia,'Times New Roman',serif;font-size:28px;font-weight:900;color:#ffffff;line-height:1.2;margin:0 0 18px">The briefing starts Thursday.</div>
     <p style="font-size:15px;color:#999999;line-height:1.8;margin:0 0 14px;font-family:Arial,Helvetica,sans-serif">Every Thursday you'll get a short briefing on what happened in U.S. foreign policy and global affairs that week — what it means, and what to watch going forward.</p>
     <p style="font-size:15px;color:#999999;line-height:1.8;margin:0 0 28px;font-family:Arial,Helvetica,sans-serif">Your first issue is coming this Thursday. In the meantime, here's what's on the site right now.</p>
     <table border="0" cellpadding="0" cellspacing="0"><tr><td bgcolor="#cc0000" style="background-color:#cc0000;border-radius:3px">
