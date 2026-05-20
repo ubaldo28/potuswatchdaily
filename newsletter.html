@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Subscribe — POTUS Watch Daily</title>
+<meta name="description" content="Get weekly foreign policy intelligence delivered to your inbox. Independent analysis of the Trump administration, global diplomacy, and geopolitics.">
+<link rel="canonical" href="https://www.potuswatchdaily.com/newsletter">
+<meta property="og:title" content="Subscribe to POTUS Watch Daily">
+<meta property="og:description" content="Weekly foreign policy intelligence. Free.">
+<meta property="og:url" content="https://www.potuswatchdaily.com/newsletter">
+<meta property="og:site_name" content="POTUS Watch Daily">
+<meta property="og:image" content="https://www.potuswatchdaily.com/og-default.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="robots" content="index, follow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#0a0a0a;color:#fff;min-height:100vh;-webkit-font-smoothing:antialiased}
+.top-bar{height:3px;background:#cc0000}
+.masthead{background:#0a0a0a;border-bottom:1px solid #1e1e1e;padding:0 24px}
+.masthead-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:64px}
+.logo{font-family:'Playfair Display',serif;font-size:28px;font-weight:900;color:#fff;letter-spacing:-0.5px;text-decoration:none}
+.logo em{color:#cc0000;font-style:normal}
+.back-link{color:#555;font-size:12px;text-decoration:none;letter-spacing:0.5px;text-transform:uppercase;transition:color 0.15s}
+.back-link:hover{color:#fff}
+.page{max-width:680px;margin:0 auto;padding:80px 24px 120px}
+.eyebrow{font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:#cc0000;margin-bottom:20px}
+h1{font-family:'Playfair Display',serif;font-size:48px;font-weight:900;line-height:1.1;color:#fff;margin-bottom:20px}
+@media(max-width:600px){h1{font-size:34px}}
+.subtitle{font-size:17px;color:#777;line-height:1.7;margin-bottom:48px;max-width:520px}
+.form-wrap{background:#111;border:1px solid #1e1e1e;border-radius:6px;padding:36px;margin-bottom:48px}
+.form-label{font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#555;margin-bottom:10px;display:block}
+.form-row{display:flex;gap:10px;flex-wrap:wrap}
+.form-input{flex:1;min-width:200px;background:#0a0a0a;border:1px solid #2a2a2a;color:#fff;padding:14px 16px;border-radius:3px;font-size:14px;font-family:'Inter',sans-serif;outline:none;transition:border-color 0.2s}
+.form-input:focus{border-color:#444}
+.form-input::placeholder{color:#444}
+.form-btn{background:#cc0000;color:#fff;border:none;padding:14px 28px;border-radius:3px;font-size:13px;font-weight:700;font-family:'Inter',sans-serif;cursor:pointer;letter-spacing:0.5px;text-transform:uppercase;transition:background 0.15s;white-space:nowrap}
+.form-btn:hover{background:#aa0000}
+.form-btn:disabled{opacity:0.5;cursor:not-allowed}
+.form-note{font-size:11px;color:#333;margin-top:14px}
+#sub-msg{font-size:13px;margin-top:16px;display:none;padding:12px 16px;border-radius:3px}
+#sub-msg.success{background:rgba(76,175,80,0.1);border:1px solid rgba(76,175,80,0.2);color:#4caf50}
+#sub-msg.error{background:rgba(204,0,0,0.1);border:1px solid rgba(204,0,0,0.2);color:#cc4444}
+.features{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:48px}
+@media(max-width:500px){.features{grid-template-columns:1fr}}
+.feature{border-left:2px solid #cc0000;padding-left:16px}
+.feature-title{font-size:13px;font-weight:600;color:#fff;margin-bottom:4px}
+.feature-desc{font-size:12px;color:#555;line-height:1.6}
+.divider{border:none;border-top:1px solid #1a1a1a;margin:48px 0}
+.sample-label{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#444;margin-bottom:20px}
+.sample-issue{background:#111;border:1px solid #1e1e1e;border-radius:6px;overflow:hidden}
+.sample-header{background:#cc0000;padding:20px 24px}
+.sample-header-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:900;color:#fff}
+.sample-header-sub{font-size:11px;color:rgba(255,255,255,0.7);margin-top:4px;letter-spacing:1px;text-transform:uppercase}
+.sample-body{padding:24px}
+.sample-section{margin-bottom:20px}
+.sample-section-label{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#cc0000;margin-bottom:8px}
+.sample-headline{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:#e8e8e8;line-height:1.4;margin-bottom:6px}
+.sample-excerpt{font-size:12px;color:#555;line-height:1.6}
+.sample-divider{border:none;border-top:1px solid #1e1e1e;margin:16px 0}
+.footer{background:#0d0d0d;border-top:1px solid #1a1a1a;padding:32px 24px;text-align:center}
+.footer a{color:#444;font-size:11px;text-decoration:none;transition:color 0.15s}
+.footer a:hover{color:#fff}
+.footer-copy{color:#333;font-size:11px;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="top-bar"></div>
+<div class="masthead">
+  <div class="masthead-inner">
+    <a href="/" class="logo">POTUS <em>Watch</em></a>
+    <a href="/" class="back-link">← Back to feed</a>
+  </div>
+</div>
+
+<div class="page">
+  <div class="eyebrow">Weekly Dispatch</div>
+  <h1>Foreign policy intelligence, delivered.</h1>
+  <p class="subtitle">Every week, one briefing. The most consequential moves in global diplomacy, Trump administration foreign policy, and geopolitics — distilled for people who need to know.</p>
+
+  <div class="form-wrap">
+    <label class="form-label" for="nl-email">Your email address</label>
+    <form id="nl-subscribe-form" onsubmit="handleNLSubscribe(event)">
+      <div class="form-row">
+        <input type="email" id="nl-email" class="form-input" placeholder="you@example.com" required autocomplete="email">
+        <button type="submit" class="form-btn" id="nl-btn">Subscribe Free</button>
+      </div>
+      <p class="form-note">Free forever. One email per week. Unsubscribe anytime.</p>
+    </form>
+    <div id="sub-msg"></div>
+  </div>
+
+  <div class="features">
+    <div class="feature">
+      <div class="feature-title">Weekly Briefing</div>
+      <div class="feature-desc">Every week, the key foreign policy developments — what happened and why it matters.</div>
+    </div>
+    <div class="feature">
+      <div class="feature-title">Editorial Intelligence</div>
+      <div class="feature-desc">Not just headlines. Context, analysis, and what comes next.</div>
+    </div>
+    <div class="feature">
+      <div class="feature-title">No noise</div>
+      <div class="feature-desc">One focused dispatch. No daily spam, no filler, no ads in your inbox.</div>
+    </div>
+    <div class="feature">
+      <div class="feature-title">Free</div>
+      <div class="feature-desc">Always free. No paywall, no credit card, no catch.</div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="sample-label">Sample issue</div>
+  <div class="sample-issue">
+    <div class="sample-header">
+      <div class="sample-header-title">POTUS Watch Daily</div>
+      <div class="sample-header-sub">Weekly Foreign Policy Briefing · Issue #12</div>
+    </div>
+    <div class="sample-body">
+      <div class="sample-section">
+        <div class="sample-section-label">This Week's Lead</div>
+        <div class="sample-headline">The Pivot That Wasn't: Trump's Middle East Reset and What It Actually Means</div>
+        <div class="sample-excerpt">Three summits, two contradictory statements, and one very confused State Department. Here's what we know about where U.S. policy actually stands.</div>
+      </div>
+      <hr class="sample-divider">
+      <div class="sample-section">
+        <div class="sample-section-label">Quick Intelligence</div>
+        <div class="sample-excerpt" style="color:#666">· NATO allies push back on burden-sharing demands — again<br>· China-Russia joint exercises expand scope for third straight year<br>· Senate blocks three State Dept. nominees in procedural vote<br>· IMF revises global growth outlook downward citing trade friction</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <a href="/">POTUS Watch Daily</a> · <a href="/about.html">About</a> · <a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a>
+  <div class="footer-copy">© 2026 POTUS Watch Daily. Independent foreign policy intelligence.</div>
+</div>
+
+<script>
+async function handleNLSubscribe(e) {
+  e.preventDefault();
+  const email = document.getElementById('nl-email').value;
+  const msg = document.getElementById('sub-msg');
+  const btn = document.getElementById('nl-btn');
+  btn.textContent = 'Subscribing...'; btn.disabled = true;
+  try {
+    const r = await fetch('/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const d = await r.json();
+    msg.style.display = 'block';
+    if (r.ok) {
+      msg.className = 'success';
+      msg.textContent = '✓ You\'re in. First dispatch incoming.';
+      document.getElementById('nl-subscribe-form').style.display = 'none';
+    } else {
+      msg.className = 'error';
+      msg.textContent = d.error || 'Something went wrong. Try again.';
+      btn.textContent = 'Subscribe Free'; btn.disabled = false;
+    }
+  } catch {
+    msg.style.display = 'block';
+    msg.className = 'error';
+    msg.textContent = 'Connection error. Try again.';
+    btn.textContent = 'Subscribe Free'; btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>
