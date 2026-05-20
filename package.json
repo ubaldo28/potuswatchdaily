@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "scripts": {
     "start": "node localserver.js",
-    "build": "npm install"
+    "build": "npm install",
+    "deploy": "wrangler deploy",
+    "preview": "wrangler dev"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.4",
@@ -11,5 +13,8 @@
     "dotenv": "^16.0.0",
     "express": "^4.18.0",
     "ws": "^8.20.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.93.0"
   }
 }
