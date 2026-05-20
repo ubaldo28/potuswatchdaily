@@ -104,6 +104,8 @@ hr{border:none;border-top:1px solid #1e1e1e;margin:20px 0}
 .footer-copy{font-size:11px;color:#444;font-family:Inter,Arial,sans-serif}
 .footer-copy a{color:#444;text-decoration:none}
 </style>
+<script src="https://actingprofessionshiny.com/37/c5/f9/37c5f97dcf85aef347afb415f071ce90.js"></script>
+<script src="https://actingprofessionshiny.com/05/06/4c/05064cd4192c96a0884ae0f79145c863.js"></script>
 </head>
 <body>
 <header class="masthead">
