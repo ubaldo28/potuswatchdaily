@@ -77,12 +77,24 @@ export async function onRequest(context) {
 <meta property="og:description" content="${desc}">
 <meta property="og:url" content="${canonicalUrl}">
 <meta property="og:image" content="${esc(img)}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta property="og:site_name" content="${SITE_NAME}">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@POTUSwatch">
 <meta name="twitter:title" content="${title}">
 <meta name="twitter:description" content="${desc}">
 <meta name="twitter:image" content="${esc(img)}">
 <script type="application/ld+json">${jsonLd}</script>
+<script type="application/ld+json">${JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Home", "item": SITE_URL },
+    { "@type": "ListItem", "position": 2, "name": region, "item": `${SITE_URL}/?region=${encodeURIComponent(region)}` },
+    { "@type": "ListItem", "position": 3, "name": a.title, "item": canonicalUrl }
+  ]
+})}</script>
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-FRVP4L2Z2T"></script>
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-FRVP4L2Z2T');</script>
 <style>

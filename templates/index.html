@@ -8,6 +8,7 @@
 <meta name="description" content="Independent foreign policy intelligence. Live analysis of Trump administration diplomacy, geopolitics, and global affairs.">
 <link rel="canonical" href="https://www.potuswatchdaily.com/">
 <link rel="sitemap" type="application/xml" href="/sitemap.xml">
+<link rel="alternate" type="application/rss+xml" title="POTUS Watch Daily" href="/feed.xml">
 <meta property="og:type" content="website">
 <meta property="og:title" content="POTUS Watch Daily — Foreign Policy Intelligence">
 <meta property="og:description" content="Independent foreign policy intelligence. Live analysis of global affairs.">
@@ -359,7 +360,7 @@ function renderFeed(){
   var side1 = filtered[1]||null;
   var side2 = filtered[2]||null;
 
-  var heroHTML = '<div class="hero-main" onclick="openArticle(\''+main.slug+'\')">';
+  var heroHTML = '<a class="hero-main" href="/article/'+main.slug+'" style="display:block;text-decoration:none;color:inherit">';
   if(main.hero_image||main.image){
     heroHTML += '<img class="hero-main-img" src="'+(main.hero_image||main.image)+'" alt="'+esc(main.title)+'" fetchpriority="high">';
   } else {
@@ -367,19 +368,19 @@ function renderFeed(){
   }
   heroHTML += '<div class="overlay"><span class="tag">'+(main.region||'World')+'</span>';
   heroHTML += '<div class="card-title">'+main.title+'</div>';
-  heroHTML += '<div class="card-excerpt">'+(main.excerpt||'')+'</div></div></div>';
+  heroHTML += '<div class="card-excerpt">'+(main.excerpt||'')+'</div></div></a>';
 
   heroHTML += '<div class="hero-side">';
   [side1,side2].forEach(function(a){
     if(!a) return;
-    heroHTML += '<div class="hero-small" onclick="openArticle(\''+a.slug+'\')">';
+    heroHTML += '<a class="hero-small" href="/article/'+a.slug+'" style="display:block;text-decoration:none;color:inherit">';
     if(a.image){
       heroHTML += '<img class="hero-small-img" src="'+a.image+'" alt="'+esc(a.title)+'" loading="lazy">';
     } else {
       heroHTML += imgPlaceholder(a.region,'hero-small');
     }
     heroHTML += '<div class="overlay"><span class="tag">'+(a.region||'World')+'</span>';
-    heroHTML += '<div class="card-title">'+a.title+'</div></div></div>';
+    heroHTML += '<div class="card-title">'+a.title+'</div></div></a>';
   });
   heroHTML += '</div>';
   hero.innerHTML = heroHTML;
@@ -387,7 +388,7 @@ function renderFeed(){
   var gridHTML = '';
   for(var i=3;i<Math.min(filtered.length,displayLimit);i++){
     var a = filtered[i];
-    gridHTML += '<div class="card" onclick="openArticle(\''+a.slug+'\')">';
+    gridHTML += '<a class="card" href="/article/'+a.slug+'" style="display:block;text-decoration:none;color:inherit">';
     if(a.image){
       gridHTML += '<img class="card-img" src="'+a.image+'" alt="'+esc(a.title)+'" loading="lazy">';
     } else {
@@ -398,7 +399,7 @@ function renderFeed(){
     gridHTML += '<div class="card-title">'+a.title+'</div>';
     if(a.excerpt) gridHTML += '<div class="card-excerpt">'+a.excerpt+'</div>';
     gridHTML += '<div class="card-meta">'+(a.date||'')+(a.time?' · '+a.time:'')+'</div>';
-    gridHTML += '</div></div>';
+    gridHTML += '</div></a>';
   }
   grid.innerHTML = gridHTML;
 

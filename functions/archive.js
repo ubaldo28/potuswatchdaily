@@ -43,8 +43,11 @@ export async function onRequest(context) {
 <meta name="google-adsense-account" content="ca-pub-7380718671497895">
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-FRVP4L2Z2T"></script>
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-FRVP4L2Z2T');</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@300;400;500&display=swap');
+/* fonts loaded via <link> in <head> */
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Inter',sans-serif;background:#0a0a0a;color:#fff;min-height:100vh}
 .top-bar{height:3px;background:#cc0000}
@@ -75,8 +78,11 @@ ${ADSTERRA}
 <div class="top-bar"></div>
 <header class="masthead">
   <div class="masthead-inner">
-    <a href="/" style="display:flex;align-items:center;text-decoration:none;height:52px"><svg width="300" height="52" viewBox="0 0 300 52" xmlns="http://www.w3.org/2000/svg"><circle cx="26" cy="26" r="18" fill="none" stroke="#cc0000" stroke-width="1.5"/><circle cx="26" cy="26" r="3" fill="#cc0000"/><text x="60" y="24" font-size="18" font-weight="900" fill="#ffffff" font-family="Georgia, serif" letter-spacing="0.5">POTUS <tspan fill="#cc0000">Watch</tspan> <tspan fill="#888888" font-size="13" font-weight="400">Daily</tspan></text><line x1="60" y1="32" x2="298" y2="32" stroke="#cc0000" stroke-width="0.8" opacity="0.5"/><text x="60" y="46" font-size="9.5" fill="#666666" font-family="Inter, Arial, sans-serif" letter-spacing="1">FOREIGN POLICY INTELLIGENCE  ·  © 2026</text></svg></a>
-    <a href="/" style="font-size:12px;color:#555;text-decoration:none">← Back to feed</a>
+    <a href="/" style="display:flex;align-items:center;text-decoration:none;height:52px"><img src="/logo.png" width="300" height="52" alt="POTUS Watch Daily" style="display:block"></a>
+    <div style="display:flex;align-items:center;gap:16px">
+      <a href="/newsletter" style="background:#cc0000;color:#fff;font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;padding:7px 14px;border-radius:3px;text-decoration:none">Subscribe</a>
+      <a href="/" style="font-size:12px;color:#555;text-decoration:none">← Back to feed</a>
+    </div>
   </div>
 </header>
 <div class="page">

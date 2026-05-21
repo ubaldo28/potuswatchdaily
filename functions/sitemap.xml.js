@@ -35,6 +35,7 @@ export async function onRequest(context) {
       `<url><loc>${SITE_URL}/explainers/iran-nuclear-program.html</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>`,
       `<url><loc>${SITE_URL}/explainers/nato-article-5.html</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>`,
       `<url><loc>${SITE_URL}/explainers/us-china-relations.html</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>`,
+      `<url><loc>${SITE_URL}/newsletter</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>`,
       `<url><loc>${SITE_URL}/contact.html</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>`,
       `<url><loc>${SITE_URL}/privacy.html</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>`,
       `<url><loc>${SITE_URL}/terms.html</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>`,
@@ -47,7 +48,7 @@ export async function onRequest(context) {
       return `<url>
   <loc>${SITE_URL}/article/${esc(a.slug)}</loc>
   <lastmod>${lastmod}</lastmod>
-  <changefreq>weekly</changefreq>
+  <changefreq>never</changefreq>
   <priority>0.8</priority>
   <news:news>
     <news:publication><news:name>POTUS Watch Daily</news:name><news:language>en</news:language></news:publication>
