@@ -1,7 +1,7 @@
 globalThis.process ??= {}; globalThis.process.env ??= {};
 import { a1 as createAstro, a2 as createComponent, ae as renderComponent, am as renderTemplate, a6 as defineScriptVars, ac as maybeRenderHead, ak as renderSlot } from '../chunks/astro/server_OjTTKv9z.mjs';
 import { c as createClient } from '../chunks/index_CqzAMo15.mjs';
-import { $ as $$BaseLayout, a as $$Footer } from '../chunks/Footer_DpkYmgHs.mjs';
+import { $ as $$BaseLayout, a as $$Footer } from '../chunks/Footer_BLXYkK5Z.mjs';
 /* empty css                                 */
 export { renderers } from '../renderers.mjs';
 
@@ -140,7 +140,7 @@ async function handleSubscribe(e){
 var titles = articles.slice(0,8).map(function(a){return a.title;});
 if(titles.length) buildTicker(titles);
 renderFeed();
-  })();<\/script> `])), renderSlot($$result2, $$slots["head"], renderTemplate(_a || (_a = __template([' <script type="application/ld+json">{JSON.stringify({\n      "@context":"https://schema.org","@type":"WebSite",\n      "name":"POTUS Watch Daily",\n      "url":"https://www.potuswatchdaily.com",\n      "description":"Independent foreign policy intelligence. Live analysis of global affairs.",\n      "publisher":{"@type":"Organization","name":"POTUS Watch Daily","url":"https://www.potuswatchdaily.com","logo":{"@type":"ImageObject","url":"https://www.potuswatchdaily.com/og-default.jpg"}}\n    })}<\/script> '])))), maybeRenderHead(), renderComponent($$result2, "Footer", $$Footer, { "data-astro-cid-j7pv25f6": true }), defineScriptVars({ articlesJson })) })} `;
+  })();<\/script> `])), renderSlot($$result2, $$slots["head"], renderTemplate(_a || (_a = __template([' <script type="application/ld+json">{JSON.stringify({\n      "@context":"https://schema.org","@type":"WebSite",\n      "name":"POTUS Watch Daily",\n      "url":"https://www.potuswatchdaily.com",\n      "description":"Independent foreign policy intelligence. Live analysis of global affairs.",\n      "publisher":{"@type":"NewsMediaOrganization","name":"POTUS Watch Daily","url":"https://www.potuswatchdaily.com","logo":{"@type":"ImageObject","url":"https://www.potuswatchdaily.com/logo.png","width":300,"height":52}}\n    })}<\/script> <script type="application/ld+json">{JSON.stringify({\n      "@context":"https://schema.org","@type":"NewsMediaOrganization",\n      "name":"POTUS Watch Daily",\n      "url":"https://www.potuswatchdaily.com",\n      "logo":{"@type":"ImageObject","url":"https://www.potuswatchdaily.com/logo.png","width":300,"height":52},\n      "sameAs":["https://twitter.com/POTUSwatch"],\n      "description":"Independent foreign policy intelligence covering U.S. diplomacy, geopolitics, and global affairs.",\n      "foundingDate":"2024",\n      "knowsAbout":["Foreign Policy","Geopolitics","US Foreign Relations","International Affairs","Diplomacy"],\n      "publishingPrinciples":"https://www.potuswatchdaily.com/editorial"\n    })}<\/script> '])))), maybeRenderHead(), renderComponent($$result2, "Footer", $$Footer, { "data-astro-cid-j7pv25f6": true }), defineScriptVars({ articlesJson })) })} `;
 }, "/Users/purpleworldinc/Desktop/potuswatch/src/pages/index.astro", void 0);
 
 const $$file = "/Users/purpleworldinc/Desktop/potuswatch/src/pages/index.astro";

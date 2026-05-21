@@ -18,6 +18,7 @@ const {
 } = Astro.props;
 
 const canonicalUrl = canonical ?? new URL(Astro.url.pathname, Astro.site).href;
+const SITE = 'https://www.potuswatchdaily.com';
 ---
 <!DOCTYPE html>
 <html lang="en">
@@ -27,26 +28,50 @@ const canonicalUrl = canonical ?? new URL(Astro.url.pathname, Astro.site).href;
   <title>{title}</title>
   <meta name="description" content={description}>
   <link rel="canonical" href={canonicalUrl}>
-  {noIndex ? <meta name="robots" content="noindex, nofollow"> : <meta name="robots" content="index, follow">}
+  {noIndex
+    ? <meta name="robots" content="noindex, nofollow">
+    : <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  }
+
+  <!-- Open Graph -->
+  <meta property="og:locale" content="en_US">
+  <meta property="og:type" content={ogType}>
   <meta property="og:title" content={title}>
   <meta property="og:description" content={description}>
   <meta property="og:url" content={canonicalUrl}>
   <meta property="og:image" content={ogImage}>
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content={title}>
   <meta property="og:site_name" content="POTUS Watch Daily">
-  <meta property="og:type" content={ogType}>
+
+  <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:site" content="@POTUSwatch">
+  <meta name="twitter:creator" content="@POTUSwatch">
   <meta name="twitter:title" content={title}>
   <meta name="twitter:description" content={description}>
   <meta name="twitter:image" content={ogImage}>
+  <meta name="twitter:image:alt" content={title}>
+
+  <!-- Ads verification -->
   <meta name="google-adsense-account" content="ca-pub-7380718671497895">
-  <link rel="icon" href="/og-default.jpg" type="image/jpeg">
+
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%230a0a0a'/><circle cx='16' cy='16' r='12' fill='none' stroke='%23cc0000' stroke-width='2.5'/><circle cx='16' cy='16' r='4' fill='%23cc0000'/></svg>">
+
+  <!-- Feeds & discovery -->
   <link rel="alternate" type="application/rss+xml" title="POTUS Watch Daily" href="/feed.xml">
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml">
+
+  <!-- Preload critical assets -->
+  <link rel="preload" as="image" href={`${SITE}/logo.png`} fetchpriority="high">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Google Analytics -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-FRVP4L2Z2T"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
@@ -54,6 +79,7 @@ const canonicalUrl = canonical ?? new URL(Astro.url.pathname, Astro.site).href;
     gtag('js', new Date());
     gtag('config', 'G-FRVP4L2Z2T');
   </script>
+
   <slot name="head" />
 </head>
 <body>

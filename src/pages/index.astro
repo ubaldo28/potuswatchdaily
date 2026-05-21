@@ -26,7 +26,18 @@ const articlesJson = JSON.stringify(articles ?? []);
       "name":"POTUS Watch Daily",
       "url":"https://www.potuswatchdaily.com",
       "description":"Independent foreign policy intelligence. Live analysis of global affairs.",
-      "publisher":{"@type":"Organization","name":"POTUS Watch Daily","url":"https://www.potuswatchdaily.com","logo":{"@type":"ImageObject","url":"https://www.potuswatchdaily.com/og-default.jpg"}}
+      "publisher":{"@type":"NewsMediaOrganization","name":"POTUS Watch Daily","url":"https://www.potuswatchdaily.com","logo":{"@type":"ImageObject","url":"https://www.potuswatchdaily.com/logo.png","width":300,"height":52}}
+    })}</script>
+    <script type="application/ld+json">{JSON.stringify({
+      "@context":"https://schema.org","@type":"NewsMediaOrganization",
+      "name":"POTUS Watch Daily",
+      "url":"https://www.potuswatchdaily.com",
+      "logo":{"@type":"ImageObject","url":"https://www.potuswatchdaily.com/logo.png","width":300,"height":52},
+      "sameAs":["https://twitter.com/POTUSwatch"],
+      "description":"Independent foreign policy intelligence covering U.S. diplomacy, geopolitics, and global affairs.",
+      "foundingDate":"2024",
+      "knowsAbout":["Foreign Policy","Geopolitics","US Foreign Relations","International Affairs","Diplomacy"],
+      "publishingPrinciples":"https://www.potuswatchdaily.com/editorial"
     })}</script>
   </slot>
 
