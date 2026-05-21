@@ -1,0 +1,67 @@
+---
+export const prerender = true;
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from '../components/Masthead.astro';
+import Footer from '../components/Footer.astro';
+---
+<BaseLayout
+  title="About — POTUS Watch Daily"
+  description="POTUS Watch Daily is independent foreign policy coverage. No editorial agenda, no corporate sponsor, no side to take."
+  canonical="https://www.potuswatchdaily.com/about"
+>
+  <Masthead backLink="/" backLabel="← Back to feed" />
+
+  <div style="background:#1a1a1a;border-bottom:1px solid #cc0000;padding:10px 24px;text-align:center">
+    <p style="font-size:12px;color:#999;font-family:Inter,sans-serif;margin:0">
+      POTUS Watch Daily covers foreign policy through an analytical lens. We do not glorify or exploit conflict.
+      <a href="/editorial" style="color:#888;text-decoration:none">Editorial Policy</a>
+    </p>
+  </div>
+
+  <div class="page">
+    <div class="eyebrow">About</div>
+    <h1>Built by someone who got tired of being lied to.</h1>
+    <hr class="rule">
+    <p class="lead">POTUS Watch Daily started as a question: what would foreign policy coverage look like if it had no editorial agenda, no corporate sponsor, and no side to take?</p>
+    <p>Every major outlet covers geopolitics through a lens — left, right, establishment, contrarian. The framing is baked in before the reporter types a word. After years of reading between the lines, trying to piece together what was actually happening in the world versus what various outlets wanted you to think was happening, the frustration became unbearable.</p>
+    <p>So this site was built. Not by a newsroom. Not by a media company. By one person with a deep interest in how power actually moves in the world — and a belief that most people, regardless of politics, just want a clear-eyed account of events.</p>
+    <p>The model is simple: real news sources, independent analysis, no spin. Every hour, the latest foreign policy developments are monitored, synthesized through the lens of American strategic interests, and published as a dispatch. The voice is deliberately neutral. The goal is clarity, not confirmation.</p>
+    <p>We cover eight regions: Americas, China, NATO, Iran, the Middle East, Russia, Trade, and in-depth Analysis. Each dispatch draws on verified news sources and is written to inform — not to persuade.</p>
+    <div class="stats">
+      <div class="stat"><span class="stat-number">24</span><span class="stat-label">Dispatches per day</span></div>
+      <div class="stat"><span class="stat-number">8</span><span class="stat-label">Regions covered</span></div>
+      <div class="stat"><span class="stat-number">24/7</span><span class="stat-label">Always on</span></div>
+    </div>
+    <p>POTUS Watch Daily is entirely independent. There are no investors, no editorial board, no advertisers with veto power over what gets covered. Running it costs money — servers, infrastructure, data sources — and it comes out of one person's pocket.</p>
+    <p>If you find value in having a place that covers the world without an agenda, consider supporting it. Even a small contribution keeps the dispatches coming.</p>
+    <div class="support-box">
+      <h2>Support independent coverage</h2>
+      <p>No paywall. No subscription. Just an honest ask — if this site has been useful to you, help keep it running.</p>
+      <div class="support-buttons">
+        <a class="btn-primary" href="https://www.buymeacoffee.com/POTUSwatch" target="_blank">&#9749; Buy me a coffee</a>
+        <a class="btn-secondary" href="/">&#8592; Back to the feed</a>
+      </div>
+    </div>
+  </div>
+
+  <Footer />
+</BaseLayout>
+
+<style>
+.page { max-width: 740px; margin: 0 auto; padding: 56px 24px 100px; }
+.eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: #cc0000; margin-bottom: 16px; }
+h1 { font-family: 'Playfair Display', serif; font-size: 38px; font-weight: 900; color: #fff; line-height: 1.2; margin-bottom: 20px; }
+.rule { border: none; border-top: 1px solid #1e1e1e; margin: 24px 0; }
+.lead { font-size: 18px; color: #aaa; line-height: 1.7; margin-bottom: 24px; }
+p { font-size: 15px; color: #888; line-height: 1.8; margin-bottom: 20px; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 36px 0; }
+.stat { background: #111; border: 1px solid #1e1e1e; border-top: 2px solid #cc0000; padding: 20px; text-align: center; }
+.stat-number { display: block; font-family: 'Playfair Display', serif; font-size: 32px; font-weight: 900; color: #fff; }
+.stat-label { display: block; font-size: 11px; color: #555; margin-top: 4px; letter-spacing: 0.5px; }
+.support-box { background: #111; border: 1px solid #1e1e1e; border-top: 3px solid #cc0000; padding: 32px; margin-top: 40px; border-radius: 3px; }
+.support-box h2 { font-family: 'Playfair Display', serif; font-size: 22px; color: #fff; margin-bottom: 10px; }
+.support-box p { color: #666; font-size: 14px; margin-bottom: 20px; }
+.support-buttons { display: flex; gap: 12px; flex-wrap: wrap; }
+.btn-primary { background: #cc0000; color: #fff; text-decoration: none; padding: 11px 22px; border-radius: 3px; font-size: 13px; font-weight: 600; }
+.btn-secondary { color: #555; text-decoration: none; padding: 11px 22px; border: 1px solid #2a2a2a; border-radius: 3px; font-size: 13px; }
+</style>

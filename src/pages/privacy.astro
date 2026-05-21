@@ -1,0 +1,48 @@
+---
+export const prerender = true;
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from '../components/Masthead.astro';
+import Footer from '../components/Footer.astro';
+---
+<BaseLayout title="Privacy Policy — POTUS Watch Daily" canonical="https://www.potuswatchdaily.com/privacy">
+  <Masthead backLink="/" backLabel="← Back to feed" />
+  <div class="page">
+    <div class="eyebrow">Legal</div>
+    <h1>Privacy Policy</h1>
+    <p class="updated">Last updated: April 2026</p>
+    <hr>
+    <h2>Overview</h2>
+    <p>POTUS Watch Daily operates potuswatchdaily.com. This page informs you of our policies regarding the collection, use, and disclosure of personal data when you use our service.</p>
+    <h2>Information We Collect</h2>
+    <p>We collect information you provide directly to us, such as when you subscribe to our newsletter or contact us. We also collect usage data automatically, including your IP address, browser type, pages visited, and time spent on pages.</p>
+    <h2>How We Use Your Information</h2>
+    <p>We use the information we collect to operate and improve our website, send you newsletters if you have subscribed, respond to your comments and questions, and monitor and analyze usage trends.</p>
+    <h2>Cookies</h2>
+    <p>We use cookies and similar tracking technologies to track activity on our website. You can instruct your browser to refuse all cookies or to indicate when a cookie is being sent.</p>
+    <h2>Google Analytics</h2>
+    <p>We use Google Analytics to monitor and analyze web traffic. Google Analytics collects information such as how often users visit the site, what pages they visit, and what other sites they used prior to visiting.</p>
+    <h2>Google AdSense</h2>
+    <p>We use Google AdSense to display advertisements. Google AdSense uses cookies to serve ads based on your prior visits to our website or other websites. You may opt out at <a href="https://adssettings.google.com">Google Ad Settings</a>.</p>
+    <h2>Third Party Links</h2>
+    <p>Our website may contain links to third party websites. We have no control over the content and practices of those sites and cannot accept responsibility for their privacy policies.</p>
+    <h2>Your Rights (GDPR)</h2>
+    <p>If you are located in the European Economic Area, you have the right to access, correct, or delete your personal data. Contact us at <a href="mailto:potuswatchdaily@gmail.com">potuswatchdaily@gmail.com</a>.</p>
+    <h2>California Privacy Rights (CCPA)</h2>
+    <p>If you are a California resident, you have the right to know what personal data we collect, to request deletion of your data, and to opt out of the sale of your personal data. We do not sell personal data.</p>
+    <h2>Personalised Advertising</h2>
+    <p>We use Google AdSense to display personalised advertisements. You can opt out at <a href="https://adssettings.google.com">Google Ad Settings</a> or <a href="https://www.aboutads.info">aboutads.info</a>.</p>
+    <h2>Contact Us</h2>
+    <p>Questions about this Privacy Policy: <a href="mailto:potuswatchdaily@gmail.com">potuswatchdaily@gmail.com</a>.</p>
+  </div>
+  <Footer />
+</BaseLayout>
+<style>
+.page { max-width: 740px; margin: 0 auto; padding: 56px 24px 100px; }
+.eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: #cc0000; margin-bottom: 16px; }
+h1 { font-family: 'Playfair Display', serif; font-size: 38px; font-weight: 900; color: #fff; margin-bottom: 8px; }
+h2 { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; color: #ddd; margin: 32px 0 10px; }
+.updated { font-size: 12px; color: #555; margin-bottom: 20px; }
+hr { border: none; border-top: 1px solid #1e1e1e; margin: 20px 0 28px; }
+p { font-size: 14px; color: #777; line-height: 1.8; margin-bottom: 14px; }
+a { color: #cc0000; }
+</style>

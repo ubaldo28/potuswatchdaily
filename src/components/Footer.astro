@@ -1,0 +1,55 @@
+---
+export interface Props {
+  maxWidth?: string;
+}
+const { maxWidth = '1280px' } = Astro.props;
+---
+<footer class="footer">
+  <div class="footer-inner" style={`max-width: ${maxWidth}`}>
+    <a href="/" class="footer-logo">
+      <img src="/logo.png" width="200" height="35" alt="POTUS Watch Daily" style="display:block">
+    </a>
+    <nav class="footer-links">
+      <a href="/">Home</a>
+      <a href="/archive">Archive</a>
+      <a href="/explainers/">Explainers</a>
+      <a href="/newsletter">Newsletter</a>
+      <a href="/about">About</a>
+      <a href="/editorial">Editorial Standards</a>
+      <a href="/contact">Contact</a>
+      <a href="/privacy">Privacy Policy</a>
+      <a href="/terms">Terms of Service</a>
+      <a href="/disclaimer">Disclaimer</a>
+    </nav>
+    <p class="footer-copy">&copy; 2026 POTUS Watch Daily. All rights reserved. Independent foreign policy coverage.</p>
+  </div>
+</footer>
+
+<style>
+.footer {
+  background: #0d0d0d;
+  border-top: 1px solid #1a1a1a;
+  padding: 32px 24px;
+  margin-top: 40px;
+}
+.footer-inner {
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.footer-logo { display: inline-block; }
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+.footer-links a {
+  color: #555;
+  font-size: 12px;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.footer-links a:hover { color: #fff; }
+.footer-copy { font-size: 11px; color: #444; }
+</style>

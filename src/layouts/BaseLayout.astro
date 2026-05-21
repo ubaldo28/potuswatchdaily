@@ -1,0 +1,74 @@
+---
+export interface Props {
+  title: string;
+  description?: string;
+  canonical?: string;
+  ogImage?: string;
+  ogType?: string;
+  noIndex?: boolean;
+}
+
+const {
+  title,
+  description = 'Independent foreign policy intelligence. Live analysis of Trump administration diplomacy, geopolitics, and global affairs.',
+  canonical,
+  ogImage = 'https://www.potuswatchdaily.com/og-default.jpg',
+  ogType = 'website',
+  noIndex = false,
+} = Astro.props;
+
+const canonicalUrl = canonical ?? new URL(Astro.url.pathname, Astro.site).href;
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{title}</title>
+  <meta name="description" content={description}>
+  <link rel="canonical" href={canonicalUrl}>
+  {noIndex ? <meta name="robots" content="noindex, nofollow"> : <meta name="robots" content="index, follow">}
+  <meta property="og:title" content={title}>
+  <meta property="og:description" content={description}>
+  <meta property="og:url" content={canonicalUrl}>
+  <meta property="og:image" content={ogImage}>
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:site_name" content="POTUS Watch Daily">
+  <meta property="og:type" content={ogType}>
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@POTUSwatch">
+  <meta name="twitter:title" content={title}>
+  <meta name="twitter:description" content={description}>
+  <meta name="twitter:image" content={ogImage}>
+  <meta name="google-adsense-account" content="ca-pub-7380718671497895">
+  <link rel="icon" href="/og-default.jpg" type="image/jpeg">
+  <link rel="alternate" type="application/rss+xml" title="POTUS Watch Daily" href="/feed.xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-FRVP4L2Z2T"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-FRVP4L2Z2T');
+  </script>
+  <slot name="head" />
+</head>
+<body>
+  <div class="top-bar"></div>
+  <slot />
+  <style is:global>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #0a0a0a;
+      color: #fff;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    .top-bar { height: 3px; background: #cc0000; }
+  </style>
+</body>
+</html>

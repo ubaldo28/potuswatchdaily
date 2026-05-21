@@ -1,0 +1,64 @@
+---
+export const prerender = true;
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from '../components/Masthead.astro';
+import Footer from '../components/Footer.astro';
+---
+<BaseLayout
+  title="Contact — POTUS Watch Daily"
+  description="Get in touch with POTUS Watch Daily. Tips, corrections, partnerships, and press inquiries."
+  canonical="https://www.potuswatchdaily.com/contact"
+>
+  <Masthead backLink="/" backLabel="← Back to feed" />
+
+  <div class="page">
+    <div class="eyebrow">Get in touch</div>
+    <h1>Contact Us</h1>
+    <hr>
+    <p class="lead">We welcome feedback, tips, corrections, partnership inquiries, and press requests. We read every message.</p>
+
+    <div class="contact-grid">
+      <div class="contact-card">
+        <h3>General Inquiries</h3>
+        <p>Questions, feedback, or anything else — we're here.</p>
+        <a href="mailto:potuswatchdaily@gmail.com">potuswatchdaily@gmail.com</a>
+      </div>
+      <div class="contact-card">
+        <h3>Tips & Corrections</h3>
+        <p>Spotted something we missed or got wrong? Let us know.</p>
+        <a href="mailto:potuswatchdaily@gmail.com">potuswatchdaily@gmail.com</a>
+      </div>
+      <div class="contact-card">
+        <h3>Partnerships</h3>
+        <p>Advertising, sponsorships, and media partnerships.</p>
+        <a href="mailto:potuswatchdaily@gmail.com">potuswatchdaily@gmail.com</a>
+      </div>
+      <div class="contact-card">
+        <h3>Press</h3>
+        <p>Media inquiries and interview requests.</p>
+        <a href="mailto:potuswatchdaily@gmail.com">potuswatchdaily@gmail.com</a>
+      </div>
+    </div>
+
+    <p>We typically respond within 48 hours. For urgent matters please include "URGENT" in your subject line.</p>
+    <p>POTUS Watch Daily is an independent foreign policy intelligence publication covering the Trump administration's global strategy around the clock.</p>
+    <p><a href="/about" style="color:#cc0000">Learn more about us →</a></p>
+  </div>
+
+  <Footer />
+</BaseLayout>
+
+<style>
+.page { max-width: 740px; margin: 0 auto; padding: 56px 24px 100px; }
+.eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: #cc0000; margin-bottom: 16px; }
+h1 { font-family: 'Playfair Display', serif; font-size: 38px; font-weight: 900; color: #fff; margin-bottom: 20px; }
+hr { border: none; border-top: 1px solid #1e1e1e; margin: 24px 0; }
+.lead { font-size: 17px; color: #aaa; line-height: 1.7; margin-bottom: 32px; }
+p { font-size: 15px; color: #777; line-height: 1.8; margin-bottom: 20px; }
+.contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 36px; }
+@media (max-width: 600px) { .contact-grid { grid-template-columns: 1fr; } }
+.contact-card { background: #111; border: 1px solid #1e1e1e; border-top: 2px solid #cc0000; padding: 24px; }
+.contact-card h3 { font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 8px; }
+.contact-card p { font-size: 13px; color: #555; margin-bottom: 12px; }
+.contact-card a { color: #cc0000; font-size: 13px; text-decoration: none; }
+</style>

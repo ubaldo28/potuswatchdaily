@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "include": [
+    "/*"
+  ],
+  "exclude": [
+    "/_astro/*",
+    "/404.html",
+    "/BingSiteAuth.xml",
+    "/d8a95a427bb64d83b7a64c4e17a9d133.txt",
+    "/logo-masthead.svg",
+    "/logo.png",
+    "/og-default.jpg",
+    "/about",
+    "/contact",
+    "/disclaimer",
+    "/editorial",
+    "/explainers/*",
+    "/newsletter",
+    "/privacy",
+    "/terms"
+  ]
+}

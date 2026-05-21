@@ -1,0 +1,307 @@
+---
+import { createClient } from '@supabase/supabase-js';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Footer from '../components/Footer.astro';
+
+const { env } = Astro.locals.runtime;
+const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_KEY);
+
+const { data: articles = [] } = await supabase
+  .from('articles')
+  .select('id,title,slug,excerpt,region,date,time,image')
+  .order('id', { ascending: false })
+  .limit(60);
+
+const articlesJson = JSON.stringify(articles ?? []);
+---
+<BaseLayout
+  title="POTUS Watch Daily — Foreign Policy Intelligence"
+  description="Independent foreign policy intelligence. Live analysis of Trump administration diplomacy, geopolitics, and global affairs."
+  canonical="https://www.potuswatchdaily.com/"
+  ogImage="https://www.potuswatchdaily.com/og-default.jpg"
+>
+  <slot name="head">
+    <script type="application/ld+json">{JSON.stringify({
+      "@context":"https://schema.org","@type":"WebSite",
+      "name":"POTUS Watch Daily",
+      "url":"https://www.potuswatchdaily.com",
+      "description":"Independent foreign policy intelligence. Live analysis of global affairs.",
+      "publisher":{"@type":"Organization","name":"POTUS Watch Daily","url":"https://www.potuswatchdaily.com","logo":{"@type":"ImageObject","url":"https://www.potuswatchdaily.com/og-default.jpg"}}
+    })}</script>
+  </slot>
+
+  <!-- Masthead -->
+  <header class="masthead">
+    <h1 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">POTUS Watch Daily — Foreign Policy Intelligence</h1>
+    <div class="masthead-inner">
+      <a href="/" style="display:flex;align-items:center;text-decoration:none;height:52px">
+        <img src="/logo.png" width="300" height="52" alt="POTUS Watch Daily" style="display:block">
+      </a>
+      <nav class="nav" id="nav">
+        <a href="#" onclick="filterFeed('all');return false;" class="nav-active">All</a>
+        <a href="#" onclick="filterFeed('Americas');return false;">Americas</a>
+        <a href="#" onclick="filterFeed('China');return false;">China</a>
+        <a href="#" onclick="filterFeed('NATO');return false;">NATO</a>
+        <a href="#" onclick="filterFeed('Iran');return false;">Iran</a>
+        <a href="#" onclick="filterFeed('Mideast');return false;">Mideast</a>
+        <a href="#" onclick="filterFeed('Russia');return false;">Russia</a>
+        <a href="#" onclick="filterFeed('Trade');return false;">Trade</a>
+        <a href="#" onclick="filterFeed('Analysis');return false;">Analysis</a>
+      </nav>
+      <div class="masthead-right">
+        <div class="search-input-wrap">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="search-input" placeholder="Search…" oninput="searchArticles(this.value)" onkeydown="if(event.key==='Escape'){this.value='';searchArticles('')}">
+        </div>
+        <a href="/newsletter" style="background:#cc0000;color:#fff;font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;padding:7px 14px;border-radius:3px;text-decoration:none;white-space:nowrap;flex-shrink:0">Subscribe</a>
+        <div class="live-badge"><div class="dot"></div>Live</div>
+      </div>
+    </div>
+  </header>
+
+  <div style="background:#1a1a1a;border-bottom:1px solid #cc0000;padding:10px 24px;text-align:center">
+    <p style="font-size:12px;color:#999;font-family:Inter,sans-serif;margin:0">POTUS Watch Daily covers foreign policy through an analytical lens. We do not glorify or exploit conflict. <a href="/editorial" style="color:#888;text-decoration:none">Editorial Standards</a></p>
+  </div>
+
+  <!-- Ticker -->
+  <div class="ticker-wrap">
+    <div class="ticker-label">Breaking</div>
+    <div class="ticker-track">
+      <div class="ticker-inner" id="ticker-inner"></div>
+    </div>
+  </div>
+
+  <!-- Hero -->
+  <div class="hero-wrap">
+    <div id="hero" class="hero"></div>
+  </div>
+
+  <!-- Grid -->
+  <div class="grid-wrap">
+    <div class="section-header">
+      <span class="section-title" id="section-title">Latest Dispatches</span>
+      <div class="section-line"></div>
+    </div>
+    <div id="grid" class="grid"></div>
+    <div style="text-align:center;padding:32px 0 48px">
+      <button id="load-more-btn" onclick="loadMore()" style="background:none;border:1px solid #2a2a2a;color:#555;padding:10px 32px;font-size:12px;font-family:'Inter',sans-serif;cursor:pointer;border-radius:3px;letter-spacing:0.5px;transition:all 0.15s" onmouseover="this.style.color='#fff';this.style.borderColor='#555'" onmouseout="this.style.color='#555';this.style.borderColor='#2a2a2a'">Load more dispatches</button>
+    </div>
+  </div>
+
+  <!-- Newsletter CTA -->
+  <div style="background:#111;border-top:3px solid #cc0000;border-bottom:1px solid #1e1e1e;padding:40px 24px;text-align:center">
+    <p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#cc0000;margin-bottom:12px;font-family:'Inter',sans-serif">Free Newsletter</p>
+    <h2 style="font-family:'Playfair Display',serif;font-size:26px;font-weight:900;color:#fff;margin-bottom:10px">Stay ahead of the world</h2>
+    <p style="font-size:14px;color:#666;margin-bottom:24px;font-family:'Inter',sans-serif;line-height:1.6;max-width:460px;margin-left:auto;margin-right:auto">Weekly foreign policy intelligence. No spin, no agenda. Free.</p>
+    <form id="subscribe-form" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;max-width:460px;margin:0 auto" onsubmit="handleSubscribe(event)">
+      <input type="email" id="sub-email" placeholder="your@email.com" required style="flex:1;min-width:200px;background:#111;border:1px solid #333;color:#fff;padding:12px 16px;border-radius:3px;font-size:13px;font-family:'Inter',sans-serif;outline:none">
+      <button type="submit" style="background:#cc0000;color:#fff;border:none;padding:12px 24px;border-radius:3px;font-size:13px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;letter-spacing:0.5px">Subscribe free</button>
+    </form>
+    <p id="sub-msg" style="font-size:12px;margin-top:10px;display:none"></p>
+  </div>
+
+  <Footer />
+
+  <!-- Cookie banner -->
+  <div class="cookie-banner" id="cookie-banner">
+    <p>We use cookies to serve personalised ads and improve your experience. This includes Google AdSense. <a href="/privacy">Privacy Policy</a> · <a href="https://adssettings.google.com" target="_blank">Opt out</a>.</p>
+    <div class="cookie-actions">
+      <button class="btn-accept" onclick="acceptCookies()">Accept</button>
+      <button class="btn-decline" onclick="document.getElementById('cookie-banner').style.display='none'">Decline</button>
+    </div>
+  </div>
+
+  <!-- BMC widget -->
+  <script data-name="BMC-Widget" data-cfasync="false" src="https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js" data-id="POTUSwatch" data-description="Support me on Buy me a coffee!" data-message="Your support keeps the dispatches coming 24/7, thank you." data-color="#FF5F5F" data-position="Right" data-x_margin="18" data-y_margin="18"></script>
+
+  <script define:vars={{ articlesJson }}>
+var articles = JSON.parse(articlesJson);
+var currentFilter = 'all';
+var displayLimit = 21;
+var searchQuery = '';
+
+function buildTicker(items) {
+  var inner = document.getElementById('ticker-inner');
+  var duped = items.concat(items);
+  inner.innerHTML = duped.map(function(t){ return '<span>' + escHtml(t) + '</span>'; }).join('');
+}
+
+function acceptCookies(){
+  try { localStorage.setItem('cookies','1'); } catch(e){}
+  document.getElementById('cookie-banner').style.display='none';
+}
+setTimeout(function(){
+  try { if(!localStorage.getItem('cookies')) document.getElementById('cookie-banner').style.display='flex'; } catch(e){}
+}, 3000);
+
+function escHtml(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function imgPlaceholder(region, type){
+  var label = (region || 'POTUS Watch').toUpperCase();
+  if(type==='hero-main') return '<div class="hero-placeholder" style="height:480px"><span class="hero-placeholder-text">'+label+'</span></div>';
+  if(type==='hero-small') return '<div class="hero-placeholder" style="height:100%;min-height:200px"><span class="hero-placeholder-text" style="font-size:11px">'+label+'</span></div>';
+  return '<div class="card-placeholder"><div class="card-placeholder-inner">'+label+'</div></div>';
+}
+
+function getFiltered(){
+  var list = articles;
+  if(currentFilter!=='all') list=list.filter(function(a){return(a.region||'').toLowerCase()===currentFilter.toLowerCase();});
+  if(searchQuery) list=list.filter(function(a){var q=searchQuery.toLowerCase();return(a.title||'').toLowerCase().includes(q)||(a.excerpt||'').toLowerCase().includes(q);});
+  return list;
+}
+
+function renderFeed(){
+  var filtered = getFiltered();
+  var hero = document.getElementById('hero');
+  var grid = document.getElementById('grid');
+  var secTitle = document.getElementById('section-title');
+  var loadBtn = document.getElementById('load-more-btn');
+
+  if(!filtered.length){
+    hero.innerHTML='';
+    grid.innerHTML='<p style="color:#555;font-size:14px;padding:40px 0;grid-column:1/-1">No dispatches found.</p>';
+    if(loadBtn) loadBtn.style.display='none';
+    return;
+  }
+
+  // Hero (top 3)
+  var main = filtered[0];
+  var small1 = filtered[1];
+  var small2 = filtered[2];
+
+  var heroHTML = '<a class="hero-main" href="/article/'+escHtml(main.slug)+'" style="display:block;text-decoration:none;color:inherit">';
+  heroHTML += main.image ? '<img class="hero-main-img" src="'+escHtml(main.image)+'" alt="'+escHtml(main.title)+'" loading="eager">' : imgPlaceholder(main.region,'hero-main');
+  heroHTML += '<div class="overlay"><div class="tag">'+escHtml(main.region||'World')+'</div><div class="card-title">'+escHtml(main.title)+'</div>';
+  if(main.excerpt) heroHTML += '<div class="card-excerpt">'+escHtml(main.excerpt)+'</div>';
+  heroHTML += '</div></a>';
+
+  var sideHTML = '<div class="hero-side">';
+  [small1,small2].forEach(function(a){
+    if(!a) return;
+    sideHTML += '<a class="hero-small" href="/article/'+escHtml(a.slug)+'" style="display:block;text-decoration:none;color:inherit">';
+    sideHTML += a.image ? '<img class="hero-small-img" src="'+escHtml(a.image)+'" alt="'+escHtml(a.title)+'" loading="lazy">' : imgPlaceholder(a.region,'hero-small');
+    sideHTML += '<div class="overlay"><div class="tag">'+escHtml(a.region||'World')+'</div><div class="card-title">'+escHtml(a.title)+'</div></div>';
+    sideHTML += '</a>';
+  });
+  sideHTML += '</div>';
+  hero.innerHTML = heroHTML + sideHTML;
+
+  // Grid (rest up to displayLimit)
+  var gridItems = filtered.slice(3, displayLimit);
+  grid.innerHTML = gridItems.map(function(a){
+    var imgHTML = a.image ? '<img class="card-img" src="'+escHtml(a.image)+'" alt="'+escHtml(a.title)+'" loading="lazy">' : imgPlaceholder(a.region,'card');
+    return '<a class="card" href="/article/'+escHtml(a.slug)+'" style="display:block;text-decoration:none;color:inherit">'+imgHTML+'<div class="card-body"><div class="tag">'+escHtml(a.region||'World')+'</div><div class="card-title">'+escHtml(a.title)+'</div><div class="card-excerpt">'+escHtml(a.excerpt||'')+'</div><div class="card-meta">'+escHtml(a.date||'')+(a.time?' · '+escHtml(a.time):'')+'</div></div></a>';
+  }).join('');
+
+  if(loadBtn) loadBtn.style.display = filtered.length > displayLimit ? 'inline-block' : 'none';
+  if(secTitle) secTitle.textContent = currentFilter==='all' ? 'Latest Dispatches' : currentFilter + ' Dispatches';
+}
+
+function filterFeed(r){
+  currentFilter=r; displayLimit=21; searchQuery='';
+  document.getElementById('search-input').value='';
+  document.querySelectorAll('#nav a').forEach(function(a){ a.classList.remove('nav-active'); });
+  var active = Array.from(document.querySelectorAll('#nav a')).find(function(a){ return a.textContent.toLowerCase()===(r==='all'?'all':r.toLowerCase()); });
+  if(active) active.classList.add('nav-active');
+  renderFeed();
+}
+
+function searchArticles(q){
+  searchQuery=q; displayLimit=21; renderFeed();
+}
+
+function loadMore(){
+  displayLimit += 21; renderFeed();
+}
+
+async function handleSubscribe(e){
+  e.preventDefault();
+  var email = document.getElementById('sub-email').value;
+  var msg = document.getElementById('sub-msg');
+  var btn = e.target.querySelector('button');
+  btn.textContent='Subscribing...'; btn.disabled=true;
+  try {
+    var r = await fetch('/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
+    var d = await r.json();
+    msg.style.display='block';
+    if(r.ok){msg.style.color='#4caf50';msg.textContent='✓ Subscribed. First dispatch incoming.';document.getElementById('subscribe-form').style.display='none';}
+    else{msg.style.color='#cc0000';msg.textContent=d.error||'Something went wrong. Try again.';btn.textContent='Subscribe free';btn.disabled=false;}
+  } catch {
+    msg.style.display='block';msg.style.color='#cc0000';msg.textContent='Connection error. Try again.';btn.textContent='Subscribe free';btn.disabled=false;
+  }
+}
+
+// Init
+var titles = articles.slice(0,8).map(function(a){return a.title;});
+if(titles.length) buildTicker(titles);
+renderFeed();
+  </script>
+</BaseLayout>
+
+<style>
+.masthead { background: #0a0a0a; border-bottom: 1px solid #1e1e1e; padding: 0 24px; }
+.masthead-inner { max-width: 1280px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 24px; }
+.nav { display: flex; align-items: center; }
+.nav a { color: #666; font-size: 12px; font-weight: 500; text-decoration: none; padding: 4px 12px; letter-spacing: 0.5px; text-transform: uppercase; transition: color 0.15s; white-space: nowrap; }
+.nav a:hover { color: #fff; }
+.nav a.nav-active { color: #fff; border-bottom: 2px solid #cc0000; padding-bottom: 2px; }
+.masthead-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.search-input-wrap { position: relative; display: flex; align-items: center; }
+.search-input-wrap svg { position: absolute; left: 9px; width: 12px; height: 12px; fill: none; stroke: #666; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.search-input-wrap input { background: #111; border: 1px solid #333; border-radius: 3px; padding: 5px 8px 5px 28px; font-size: 11px; color: #ccc; font-family: 'Inter', sans-serif; outline: none; width: 180px; transition: all 0.2s; }
+.search-input-wrap input:focus { border-color: #444; background: #111; color: #fff; width: 200px; }
+.search-input-wrap input::placeholder { color: #666; }
+@media(max-width:640px) { .search-input-wrap { display: none; } }
+.live-badge { display: flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 600; letter-spacing: 1px; color: #cc0000; text-transform: uppercase; }
+.dot { width: 5px; height: 5px; background: #cc0000; border-radius: 50%; animation: blink 1.2s ease-in-out infinite; }
+@keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.2; } }
+.ticker-wrap { background: #111; border-bottom: 1px solid #1e1e1e; overflow: hidden; height: 32px; display: flex; align-items: center; }
+.ticker-label { background: #cc0000; color: #fff; font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; padding: 0 14px; height: 100%; display: flex; align-items: center; white-space: nowrap; flex-shrink: 0; }
+.ticker-track { display: flex; overflow: hidden; flex: 1; position: relative; }
+.ticker-inner { display: flex; gap: 80px; animation: ticker-scroll 40s linear infinite; white-space: nowrap; }
+@keyframes ticker-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+.ticker-inner span { font-size: 11px; color: #aaa; font-weight: 400; }
+.ticker-inner span::before { content: '·'; margin-right: 80px; color: #444; }
+.ticker-inner span:first-child::before { display: none; }
+.hero-wrap { padding: 24px 24px 0; max-width: 1280px; margin: 0 auto; }
+.hero { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px; }
+.hero-main { position: relative; border-radius: 4px; overflow: hidden; cursor: pointer; background: #111; }
+.hero-main-img { width: 100%; height: 480px; object-fit: cover; display: block; transition: transform 0.4s ease; }
+.hero-main:hover .hero-main-img { transform: scale(1.03); }
+.hero-main .overlay { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent 0%, rgba(0,0,0,0.5) 30%, rgba(0,0,0,0.97) 100%); padding: 32px 28px 28px; }
+.hero-side { display: grid; grid-template-rows: 1fr 1fr; gap: 16px; }
+.hero-small { position: relative; border-radius: 4px; overflow: hidden; cursor: pointer; background: #111; }
+.hero-small-img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.4s ease; min-height: 200px; }
+.hero-small:hover .hero-small-img { transform: scale(1.03); }
+.hero-small .overlay { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.96)); padding: 20px 18px 18px; }
+.hero-placeholder { width: 100%; background: linear-gradient(135deg,#161616 0%,#111 100%); display: flex; align-items: center; justify-content: center; }
+.hero-placeholder-text { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 900; color: #222; letter-spacing: 2px; text-transform: uppercase; }
+.tag { display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: 1.8px; text-transform: uppercase; color: #cc0000; margin-bottom: 7px; }
+.hero-main .card-title { font-family: 'Playfair Display', serif; font-size: 30px; font-weight: 900; line-height: 1.2; color: #fff; margin-bottom: 10px; }
+.hero-main .card-excerpt { font-size: 14px; color: rgba(255,255,255,0.72); line-height: 1.6; max-width: 560px; }
+.hero-small .card-title { font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 700; line-height: 1.3; color: #fff; }
+.section-header { display: flex; align-items: center; gap: 16px; padding: 28px 0 16px; border-top: 1px solid #1e1e1e; margin-top: 4px; }
+.section-title { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #666; }
+.section-line { flex: 1; height: 1px; background: #1e1e1e; }
+.grid-wrap { max-width: 1280px; margin: 0 auto; padding: 0 24px 48px; }
+.grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; }
+.card { cursor: pointer; overflow: hidden; border-radius: 4px; transition: opacity 0.2s; }
+.card:hover { opacity: 0.85; }
+.card-img { width: 100%; height: 190px; object-fit: cover; display: block; }
+.card-placeholder { width: 100%; height: 190px; background: #111; display: flex; align-items: center; justify-content: center; }
+.card-placeholder-inner { font-family: 'Playfair Display', serif; font-size: 13px; font-weight: 700; color: #2a2a2a; letter-spacing: 3px; text-transform: uppercase; }
+.card-body { padding: 16px 0 4px; }
+.card-title { font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 700; line-height: 1.35; color: #e8e8e8; margin-bottom: 8px; }
+.card-excerpt { font-size: 13px; color: #666; line-height: 1.6; }
+.card-meta { font-size: 11px; color: #3d3d3d; margin-top: 10px; }
+.cookie-banner { display: none; position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #161616; border: 1px solid #2a2a2a; border-radius: 6px; padding: 16px 20px; z-index: 9999; align-items: center; gap: 20px; max-width: 560px; width: calc(100% - 48px); box-shadow: 0 4px 40px rgba(0,0,0,0.6); }
+.cookie-banner p { font-size: 12px; color: #777; margin: 0; flex: 1; line-height: 1.5; }
+.cookie-banner a { color: #cc0000; }
+.cookie-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.btn-accept { background: #cc0000; color: #fff; border: none; padding: 7px 16px; border-radius: 3px; font-size: 11px; font-weight: 600; cursor: pointer; letter-spacing: 0.5px; }
+.btn-decline { background: none; color: #555; border: 1px solid #2a2a2a; padding: 7px 14px; border-radius: 3px; font-size: 11px; cursor: pointer; }
+@media(max-width:900px) { .hero { grid-template-columns: 1fr; } .hero-main-img { height: 360px; } .hero-side { grid-template-rows: auto auto; grid-template-columns: 1fr 1fr; } .nav { display: none; } }
+@media(max-width:640px) { .hero-side { grid-template-columns: 1fr; } .grid { grid-template-columns: 1fr; gap: 16px; } .masthead-inner { height: 52px; } }
+</style>

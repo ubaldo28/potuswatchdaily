@@ -1,0 +1,61 @@
+---
+export const prerender = true;
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from '../components/Masthead.astro';
+import Footer from '../components/Footer.astro';
+---
+<BaseLayout
+  title="Editorial Standards — POTUS Watch Daily"
+  description="How POTUS Watch Daily sources, verifies, and publishes foreign policy coverage. Our commitment to accuracy, transparency, and editorial independence."
+  canonical="https://www.potuswatchdaily.com/editorial"
+>
+  <Masthead backLink="/" backLabel="← Back to feed" />
+  <div class="page">
+    <div class="eyebrow">Transparency</div>
+    <h1>Editorial Standards</h1>
+    <hr class="rule">
+    <p class="lead">POTUS Watch Daily is committed to accuracy, transparency, and editorial independence. This page explains how we source, verify, and publish our foreign policy coverage.</p>
+    <h2>Our Mission</h2>
+    <p>We exist to provide clear-eyed, analytical coverage of U.S. foreign policy — with no corporate sponsor, no political affiliation, and no editorial agenda. Our coverage focuses on policy, diplomacy, economics, and strategy across eight global regions: Americas, China, NATO, Iran, the Middle East, Russia, Trade, and Analysis.</p>
+    <h2>Sourcing Standards</h2>
+    <p>Every dispatch published on POTUS Watch Daily draws on verified news sources. We only reference reporting from established news organisations, government statements, official press releases, and credible policy institutions. Sources are cited at the bottom of every article so readers can verify claims independently.</p>
+    <ul>
+      <li>We do not publish rumour, speculation, or unverified claims</li>
+      <li>All source links are live and traceable at time of publication</li>
+      <li>We cross-reference multiple sources before making analytical claims</li>
+      <li>Government and official statements are treated as primary sources</li>
+    </ul>
+    <h2>Editorial Independence</h2>
+    <p>POTUS Watch Daily has no investors, no editorial board, and no advertisers with influence over our coverage. Advertising on this site is served through third-party networks and has no bearing on what we publish or how we frame it.</p>
+    <h2>Coverage of Armed Conflict</h2>
+    <div class="policy-block">
+      <p>POTUS Watch Daily does not condone, glorify, dismiss, or exploit armed conflict of any kind. Our coverage of wars is strictly analytical and policy-focused. We report on conflict as a geopolitical reality that shapes diplomacy and strategy. We do not sensationalise violence or benefit commercially from conflict coverage.</p>
+    </div>
+    <h2>Analytical Framework</h2>
+    <p>Our analysis is written through the lens of American strategic interests — meaning we assess how events affect U.S. foreign policy objectives, alliance relationships, and global standing. This is a framing device, not an ideological position.</p>
+    <h2>Corrections Policy</h2>
+    <p>We take accuracy seriously. If we publish incorrect information, we correct it promptly and transparently. If you believe we have published something factually inaccurate, please contact us at <a href="mailto:potuswatchdaily@gmail.com">potuswatchdaily@gmail.com</a>.</p>
+    <h2>Affiliate Relationships</h2>
+    <p>Some articles on this site contain affiliate links. When a reader makes a purchase through an affiliate link, POTUS Watch Daily may earn a small commission at no additional cost to the reader. Affiliate relationships have no influence on our editorial content.</p>
+    <h2>Advertising</h2>
+    <p>This site displays third-party advertisements served by Google AdSense and other ad networks. Advertisers have no editorial influence over our content.</p>
+    <h2>Contact the Editor</h2>
+    <p>Questions about our editorial standards can be directed to <a href="mailto:potuswatchdaily@gmail.com">potuswatchdaily@gmail.com</a>.</p>
+    <p style="margin-top:40px"><a href="/about" style="color:#cc0000">Learn more about POTUS Watch Daily →</a></p>
+  </div>
+  <Footer />
+</BaseLayout>
+<style>
+.page { max-width: 740px; margin: 0 auto; padding: 56px 24px 100px; }
+.eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: #cc0000; margin-bottom: 16px; }
+h1 { font-family: 'Playfair Display', serif; font-size: 38px; font-weight: 900; color: #fff; margin-bottom: 20px; }
+h2 { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: #fff; margin: 36px 0 12px; }
+.rule { border: none; border-top: 1px solid #1e1e1e; margin: 24px 0; }
+.lead { font-size: 17px; color: #aaa; line-height: 1.7; margin-bottom: 28px; }
+p { font-size: 15px; color: #777; line-height: 1.8; margin-bottom: 16px; }
+ul { padding-left: 20px; margin-bottom: 20px; }
+li { font-size: 14px; color: #666; line-height: 1.8; margin-bottom: 6px; }
+a { color: #cc0000; }
+.policy-block { background: #111; border-left: 3px solid #cc0000; padding: 20px 24px; margin: 16px 0 24px; border-radius: 0 3px 3px 0; }
+.policy-block p { color: #888; margin: 0; }
+</style>

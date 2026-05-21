@@ -14,6 +14,7 @@ export async function onRequest(context) {
   try {
     const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_KEY);
     const { data: a, error } = await supabase.from('articles').select('*').eq('slug', slug).limit(1).single();
+    const { data: related } = await supabase.from('articles').select('title,slug,excerpt,region,image,date').eq('region', a?.region || '').neq('slug', slug).order('id', { ascending: false }).limit(3);
 
     if (error || !a) {
       return new Response(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Not Found — ${SITE_NAME}</title></head><body style="background:#0a0a0a;color:#fff;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px;text-align:center"><h1 style="font-size:48px;color:#cc0000;margin:0">404</h1><p style="font-size:20px;color:#888">DISPATCH NOT FOUND</p><a href="/" style="color:#cc0000;font-size:14px">&#8592; Back to the feed</a></body></html>`, {
@@ -148,6 +149,19 @@ ${img && img !== `${SITE_URL}/og-default.jpg` ? `<img class="hero-img" src="${es
   </div>
   ${sources.length ? '<div class="sources"><p class="sources-label">Sources</p>'+sources.map(s=>'<a href="'+esc(s.url)+'" target="_blank" rel="noopener">'+esc(s.title)+'</a>').join('')+'</div>' : ''}
   ${socialHTML}
+  ${related && related.length ? `
+  <div style="margin-top:56px;padding-top:32px;border-top:1px solid #1e1e1e">
+    <p style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#cc0000;margin-bottom:24px;font-family:Inter,Arial,sans-serif">More from ${esc(region)}</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:20px">
+      ${related.map(r => `
+      <a href="/article/${esc(r.slug)}" style="display:block;text-decoration:none;color:inherit;background:#0e0e0e;border:1px solid #1e1e1e;border-top:2px solid #cc0000;padding:16px">
+        ${r.image ? `<img src="${esc(r.image)}" alt="${esc(r.title)}" style="width:100%;height:120px;object-fit:cover;display:block;margin-bottom:12px">` : ''}
+        <div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#cc0000;margin-bottom:6px;font-family:Inter,Arial,sans-serif">${esc(r.region||'')}</div>
+        <div style="font-family:'Playfair Display',Georgia,serif;font-size:15px;font-weight:700;color:#e0e0e0;line-height:1.35;margin-bottom:6px">${esc(r.title)}</div>
+        <div style="font-size:11px;color:#555;font-family:Inter,Arial,sans-serif">${r.date||''}</div>
+      </a>`).join('')}
+    </div>
+  </div>` : ''}
 </div>
 <footer class="footer"><div class="footer-inner">
   <img src="/logo.png" width="200" height="35" alt="POTUS Watch Daily" style="display:block">
