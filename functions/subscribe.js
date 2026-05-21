@@ -1,4 +1,4 @@
-const WELCOME_HTML = `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+function buildWelcomeHtml(thuDate) { return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
@@ -34,9 +34,9 @@ u + #body { background-color:#0a0a0a!important; }
   <!-- Body -->
   <tr><td bgcolor="#111111" style="background-color:#111111;padding:36px 36px 28px">
     <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#777777;margin-bottom:14px;font-family:Arial,Helvetica,sans-serif">Welcome</div>
-    <div style="font-family:Georgia,'Times New Roman',serif;font-size:28px;font-weight:900;color:#ffffff;line-height:1.2;margin:0 0 18px">The briefing starts Thursday.</div>
+    <div style="font-family:Georgia,'Times New Roman',serif;font-size:28px;font-weight:900;color:#ffffff;line-height:1.2;margin:0 0 18px">You're in. First issue arrives ${thuDate}.</div>
     <p style="font-size:15px;color:#999999;line-height:1.8;margin:0 0 14px;font-family:Arial,Helvetica,sans-serif">Every Thursday you'll get a short briefing on what happened in U.S. foreign policy and global affairs that week — what it means, and what to watch going forward.</p>
-    <p style="font-size:15px;color:#999999;line-height:1.8;margin:0 0 28px;font-family:Arial,Helvetica,sans-serif">Your first issue is coming this Thursday. In the meantime, here's what's on the site right now.</p>
+    <p style="font-size:15px;color:#999999;line-height:1.8;margin:0 0 28px;font-family:Arial,Helvetica,sans-serif">In the meantime, here's what's on the site right now.</p>
     <table border="0" cellpadding="0" cellspacing="0"><tr><td bgcolor="#cc0000" style="background-color:#cc0000;border-radius:3px">
       <a href="https://www.potuswatchdaily.com" style="display:inline-block;background-color:#cc0000;color:#ffffff;text-decoration:none;padding:13px 26px;border-radius:3px;font-size:12px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;font-family:Arial,Helvetica,sans-serif">Read the latest &rarr;</a>
     </td></tr></table>
@@ -90,36 +90,64 @@ u + #body { background-color:#0a0a0a!important; }
 </td></tr>
 </table>
 </body>
-</html>`;
+</html>`; }
+
+const ALLOWED_ORIGINS = [
+  'https://www.potuswatchdaily.com',
+  'https://potuswatchdaily.com'
+];
+
+function getCorsHeaders(origin) {
+  const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'Access-Control-Allow-Origin': allowed,
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Vary': 'Origin'
+  };
+}
+
+function isValidEmail(email) {
+  return typeof email === 'string' &&
+    email.length <= 320 &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
+}
+
+function nextThursdayStr() {
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun … 4=Thu
+  const daysLeft = (4 - day + 7) % 7 || 7;
+  const thu = new Date(now);
+  thu.setDate(now.getDate() + daysLeft);
+  return thu.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+}
 
 export async function onRequest(context) {
   const { request, env } = context;
+  const origin = request.headers.get('Origin') || '';
+  const corsHeaders = getCorsHeaders(origin);
 
   if (request.method === 'OPTIONS') {
-    return new Response(null, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type'
-      }
-    });
+    return new Response(null, { headers: corsHeaders });
   }
 
   if (request.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
     });
   }
 
   try {
-    const { email } = await request.json();
-    if (!email || !email.includes('@')) {
-      return new Response(JSON.stringify({ error: 'Invalid email address' }), {
+    const body = await request.json();
+    const email = (body.email || '').trim().toLowerCase();
+    if (!isValidEmail(email)) {
+      return new Response(JSON.stringify({ error: 'Please enter a valid email address.' }), {
         status: 400,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
       });
     }
+    const thuDate = nextThursdayStr();
 
     const audienceResp = await fetch(`https://api.resend.com/audiences/${env.RESEND_AUDIENCE_ID}/contacts`, {
       method: 'POST',
@@ -144,18 +172,18 @@ export async function onRequest(context) {
       body: JSON.stringify({
         from: env.RESEND_FROM_EMAIL || 'POTUS Watch Daily <onboarding@resend.dev>',
         to: email,
-        subject: 'Welcome to POTUS Watch Daily — First issue coming Thursday',
-        html: WELCOME_HTML
+        subject: `Welcome to POTUS Watch Daily — First issue arriving ${thuDate}`,
+        html: buildWelcomeHtml(thuDate)
       })
     });
 
     return new Response(JSON.stringify({ success: true }), {
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
     });
   } catch (e) {
     return new Response(JSON.stringify({ error: e.message }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
     });
   }
 }
