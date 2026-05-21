@@ -2,9 +2,10 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "potuswatchdaily",
   "compatibility_date": "2026-05-20",
-  // Cloudflare Pages build output directory: dist/
-  // Build command: npm run build
-  // Set these in the Cloudflare Pages dashboard → Settings → Builds & deployments
+  "main": "dist/_worker.js",
+  "assets": {
+    "directory": "dist"
+  },
   "observability": {
     "enabled": true
   },
