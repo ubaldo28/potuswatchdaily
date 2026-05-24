@@ -2,7 +2,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "potuswatchdaily",
   "compatibility_date": "2026-05-20",
-  "main": "dist/_worker.js",
+  "main": "dist/_worker.js/index.js",
   "assets": {
     "directory": "./dist"
   },
