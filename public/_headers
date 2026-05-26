@@ -17,8 +17,11 @@
 /editorial
   Cache-Control: public, s-maxage=86400, stale-while-revalidate=604800
 
+/logo-v2.png
+  Cache-Control: public, max-age=604800
+
 /logo.png
-  Cache-Control: public, max-age=31536000, immutable
+  Cache-Control: no-store
 
 /og-default.jpg
   Cache-Control: public, max-age=31536000, immutable
