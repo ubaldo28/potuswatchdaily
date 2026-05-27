@@ -219,8 +219,9 @@ process.on('unhandledRejection', (reason) => {
 setInterval(generateArticles, 60 * 60 * 1000);
 
 // ── Start ─────────────────────────────────────────────────────────────────────
-app.listen(3000, async () => {
-  console.log('[server] POTUS Watch article generator running on port 3000');
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, async () => {
+  console.log(`[server] POTUS Watch article generator running on port ${PORT}`);
   console.log('[server] Health check available at /health');
   await generateArticles();
 });
