@@ -71,10 +71,8 @@ const articlesJson = JSON.stringify(articles ?? []);
     </div>
   </div>
 
-  <!-- Hero -->
-  <div class="hero-wrap">
-    <div id="hero" class="hero"></div>
-  </div>
+  <!-- Hero (hidden) -->
+  <div style="display:none"><div id="hero"></div></div>
 
   <!-- Grid -->
   <div class="grid-wrap">
@@ -166,30 +164,10 @@ function renderFeed(){
     return;
   }
 
-  // Hero (top 3)
-  var main = filtered[0];
-  var small1 = filtered[1];
-  var small2 = filtered[2];
+  hero.innerHTML = '';
 
-  var heroHTML = '<a class="hero-main" href="/article/'+escHtml(main.slug)+'" style="display:block;text-decoration:none;color:inherit">';
-  heroHTML += main.image ? '<img class="hero-main-img" src="'+escHtml(main.image)+'" alt="'+escHtml(main.title)+'" loading="eager">' : imgPlaceholder(main.region,'hero-main');
-  heroHTML += '<div class="overlay"><div class="tag">'+escHtml(main.region||'World')+'</div><div class="card-title">'+escHtml(main.title)+'</div>';
-  if(main.excerpt) heroHTML += '<div class="card-excerpt">'+escHtml(main.excerpt)+'</div>';
-  heroHTML += '</div></a>';
-
-  var sideHTML = '<div class="hero-side">';
-  [small1,small2].forEach(function(a){
-    if(!a) return;
-    sideHTML += '<a class="hero-small" href="/article/'+escHtml(a.slug)+'" style="display:block;text-decoration:none;color:inherit">';
-    sideHTML += a.image ? '<img class="hero-small-img" src="'+escHtml(a.image)+'" alt="'+escHtml(a.title)+'" loading="lazy">' : imgPlaceholder(a.region,'hero-small');
-    sideHTML += '<div class="overlay"><div class="tag">'+escHtml(a.region||'World')+'</div><div class="card-title">'+escHtml(a.title)+'</div></div>';
-    sideHTML += '</a>';
-  });
-  sideHTML += '</div>';
-  hero.innerHTML = heroHTML + sideHTML;
-
-  // Grid (rest up to displayLimit)
-  var gridItems = filtered.slice(3, displayLimit);
+  // Grid (all articles up to displayLimit)
+  var gridItems = filtered.slice(0, displayLimit);
   grid.innerHTML = gridItems.map(function(a){
     var imgHTML = a.image ? '<img class="card-img" src="'+escHtml(a.image)+'" alt="'+escHtml(a.title)+'" loading="lazy">' : imgPlaceholder(a.region,'card');
     return '<a class="card" href="/article/'+escHtml(a.slug)+'" style="display:block;text-decoration:none;color:inherit">'+imgHTML+'<div class="card-body"><div class="tag">'+escHtml(a.region||'World')+'</div><div class="card-title">'+escHtml(a.title)+'</div><div class="card-excerpt">'+escHtml(a.excerpt||'')+'</div><div class="card-meta">'+escHtml(a.date||'')+(a.time?' · '+escHtml(a.time):'')+'</div></div></a>';
