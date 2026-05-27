@@ -5,8 +5,8 @@ export const GET: APIRoute = () => {
     // Google AdSense
     'google.com, pub-7380718671497895, DIRECT, f08c47fec0942fa0',
     // Adsterra
-    'adsterra.com, 2163601, DIRECT',
-    'effectivercpmnetwork.com, 2163601, DIRECT',
+    'adsterra.com, 3301202, DIRECT',
+    'effectivercpmnetwork.com, 3301202, DIRECT',
     // Amazon
     'amazon.com, 3159, DIRECT',
   ].join('\n');
