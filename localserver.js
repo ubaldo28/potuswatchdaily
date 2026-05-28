@@ -181,10 +181,20 @@ async function generateArticles() {
     totalGenerated++;
     console.log(`[generator] ✓ Saved: "${parsed.title}" | Region: ${region} | Slug: ${finalSlug}`);
 
-    // Ping IndexNow for SEO
+    // Ping IndexNow for SEO (submits to Bing, Yandex, and others simultaneously)
     try {
-      await fetch(`https://api.indexnow.org/indexnow?url=https://www.potuswatchdaily.com/article/${finalSlug}&key=d8a95a427bb64d83b7a64c4e17a9d133`);
-      console.log('[indexnow] Pinged:', finalSlug);
+      const INDEXNOW_KEY = 'e7d7dce91b634bc5bf610ae2367c52c7';
+      await fetch('https://api.indexnow.org/indexnow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        body: JSON.stringify({
+          host: 'www.potuswatchdaily.com',
+          key: INDEXNOW_KEY,
+          keyLocation: `https://www.potuswatchdaily.com/${INDEXNOW_KEY}.txt`,
+          urlList: [`https://www.potuswatchdaily.com/article/${finalSlug}`]
+        })
+      });
+      console.log('[indexnow] Submitted:', finalSlug);
     } catch(ie) {
       console.warn('[indexnow] Failed:', ie.message);
     }
