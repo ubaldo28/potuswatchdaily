@@ -12,7 +12,8 @@ const { data: articles = [] } = await supabase
   .order('id', { ascending: false })
   .limit(60);
 
-const articlesJson = JSON.stringify(articles ?? []);
+const list = articles ?? [];
+const tickerTitles = list.slice(0, 8).map(a => a.title);
 ---
 <BaseLayout
   title="POTUS Watch Daily — Foreign Policy Intelligence"
@@ -38,20 +39,20 @@ const articlesJson = JSON.stringify(articles ?? []);
         <img src="/logo-v2.png" width="300" height="52" alt="POTUS Watch Daily" style="display:block">
       </a>
       <nav class="nav" id="nav">
-        <a href="#" onclick="filterFeed('all');return false;" class="nav-active">All</a>
-        <a href="#" onclick="filterFeed('Americas');return false;">Americas</a>
-        <a href="#" onclick="filterFeed('China');return false;">China</a>
-        <a href="#" onclick="filterFeed('NATO');return false;">NATO</a>
-        <a href="#" onclick="filterFeed('Iran');return false;">Iran</a>
-        <a href="#" onclick="filterFeed('Mideast');return false;">Mideast</a>
-        <a href="#" onclick="filterFeed('Russia');return false;">Russia</a>
-        <a href="#" onclick="filterFeed('Trade');return false;">Trade</a>
-        <a href="#" onclick="filterFeed('Analysis');return false;">Analysis</a>
+        <a href="#" data-filter="all" class="nav-active">All</a>
+        <a href="#" data-filter="Americas">Americas</a>
+        <a href="#" data-filter="China">China</a>
+        <a href="#" data-filter="NATO">NATO</a>
+        <a href="#" data-filter="Iran">Iran</a>
+        <a href="#" data-filter="Mideast">Mideast</a>
+        <a href="#" data-filter="Russia">Russia</a>
+        <a href="#" data-filter="Trade">Trade</a>
+        <a href="#" data-filter="Analysis">Analysis</a>
       </nav>
       <div class="masthead-right">
         <div class="search-input-wrap">
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="search-input" placeholder="Search…" oninput="searchArticles(this.value)" onkeydown="if(event.key==='Escape'){this.value='';searchArticles('')}">
+          <input type="text" id="search-input" placeholder="Search…">
         </div>
         <a href="/newsletter" style="background:#cc0000;color:#fff;font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;padding:7px 14px;border-radius:3px;text-decoration:none;white-space:nowrap;flex-shrink:0">Subscribe</a>
         <div class="live-badge"><div class="dot"></div>Live</div>
@@ -67,12 +68,13 @@ const articlesJson = JSON.stringify(articles ?? []);
   <div class="ticker-wrap">
     <div class="ticker-label">Breaking</div>
     <div class="ticker-track">
-      <div class="ticker-inner" id="ticker-inner"></div>
+      <div class="ticker-inner" id="ticker-inner">
+        {tickerTitles.concat(tickerTitles).map(title => (
+          <span>{title}</span>
+        ))}
+      </div>
     </div>
   </div>
-
-  <!-- Hero (hidden) -->
-  <div style="display:none"><div id="hero"></div></div>
 
   <!-- Grid -->
   <div class="grid-wrap">
@@ -80,15 +82,32 @@ const articlesJson = JSON.stringify(articles ?? []);
       <span class="section-title" id="section-title">Latest Dispatches</span>
       <div class="section-line"></div>
     </div>
-    <!-- SSR links for search crawlers — hidden visually but indexable -->
-    <div aria-hidden="true" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">
-      {(articles ?? []).map(a => (
-        <a href={`/article/${a.slug}`}>{a.title}</a>
+
+    <div id="grid" class="grid">
+      {list.map((a, i) => (
+        <a
+          class="card"
+          href={`/article/${a.slug}`}
+          data-region={(a.region || '').toLowerCase()}
+          data-search={`${(a.title || '').toLowerCase()} ${(a.excerpt || '').toLowerCase()}`}
+        >
+          {a.image
+            ? <img class="card-img" src={a.image} alt={a.title} loading={i < 6 ? 'eager' : 'lazy'} />
+            : <div class="card-placeholder"><div class="card-placeholder-inner">{(a.region || 'POTUS Watch').toUpperCase()}</div></div>
+          }
+          <div class="card-body">
+            <div class="tag">{a.region || 'World'}</div>
+            <div class="card-title">{a.title}</div>
+            <div class="card-excerpt">{a.excerpt || ''}</div>
+            <div class="card-meta">{a.date || ''}{a.time ? ` · ${a.time}` : ''}</div>
+          </div>
+        </a>
       ))}
+      <p id="no-results" style="display:none;color:#555;font-size:14px;padding:40px 0;grid-column:1/-1">No dispatches found.</p>
     </div>
-    <div id="grid" class="grid"></div>
+
     <div style="text-align:center;padding:32px 0 48px">
-      <button id="load-more-btn" onclick="loadMore()" style="background:none;border:1px solid #2a2a2a;color:#555;padding:10px 32px;font-size:12px;font-family:'Inter',sans-serif;cursor:pointer;border-radius:3px;letter-spacing:0.5px;transition:all 0.15s" onmouseover="this.style.color='#fff';this.style.borderColor='#555'" onmouseout="this.style.color='#555';this.style.borderColor='#2a2a2a'">Load more dispatches</button>
+      <button id="load-more-btn" style="background:none;border:1px solid #2a2a2a;color:#555;padding:10px 32px;font-size:12px;font-family:'Inter',sans-serif;cursor:pointer;border-radius:3px;letter-spacing:0.5px;transition:all 0.15s" onmouseover="this.style.color='#fff';this.style.borderColor='#555'" onmouseout="this.style.color='#555';this.style.borderColor='#2a2a2a'">Load more dispatches</button>
     </div>
   </div>
 
@@ -118,109 +137,109 @@ const articlesJson = JSON.stringify(articles ?? []);
   <!-- BMC widget -->
   <script data-name="BMC-Widget" data-cfasync="false" src="https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js" data-id="POTUSwatch" data-description="Support me on Buy me a coffee!" data-message="Your support keeps the dispatches coming 24/7, thank you." data-color="#FF5F5F" data-position="Right" data-x_margin="18" data-y_margin="18"></script>
 
-  <script define:vars={{ articlesJson }}>
-var articles = JSON.parse(articlesJson);
-var currentFilter = 'all';
-var displayLimit = 21;
-var searchQuery = '';
+  <script is:inline>
+    // --- Filter & Search ---
+    var currentFilter = 'all';
+    var visibleCount = 21;
+    var allCards = Array.from(document.querySelectorAll('#grid .card'));
 
-function buildTicker(items) {
-  var inner = document.getElementById('ticker-inner');
-  var duped = items.concat(items);
-  inner.innerHTML = duped.map(function(t){ return '<span>' + escHtml(t) + '</span>'; }).join('');
-}
+    function applyFilters() {
+      var searchVal = document.getElementById('search-input').value.toLowerCase().trim();
+      var shown = 0;
+      allCards.forEach(function(card) {
+        var regionMatch = currentFilter === 'all' || card.dataset.region === currentFilter.toLowerCase();
+        var searchMatch = !searchVal || card.dataset.search.includes(searchVal);
+        var withinLimit = shown < visibleCount;
+        if (regionMatch && searchMatch) {
+          if (withinLimit) {
+            card.style.display = 'block';
+            shown++;
+          } else {
+            card.style.display = 'none';
+          }
+        } else {
+          card.style.display = 'none';
+        }
+      });
 
-function acceptCookies(){
-  try { localStorage.setItem('cookies','1'); } catch(e){}
-  document.getElementById('cookie-banner').style.display='none';
-}
-setTimeout(function(){
-  try { if(!localStorage.getItem('cookies')) document.getElementById('cookie-banner').style.display='flex'; } catch(e){}
-}, 3000);
+      var noResults = document.getElementById('no-results');
+      noResults.style.display = shown === 0 ? 'block' : 'none';
 
-function escHtml(s){
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+      var total = allCards.filter(function(c) {
+        var regionMatch = currentFilter === 'all' || c.dataset.region === currentFilter.toLowerCase();
+        var searchMatch = !searchVal || c.dataset.search.includes(searchVal);
+        return regionMatch && searchMatch;
+      }).length;
+      var loadBtn = document.getElementById('load-more-btn');
+      loadBtn.style.display = total > visibleCount ? 'inline-block' : 'none';
 
-function imgPlaceholder(region, type){
-  var label = (region || 'POTUS Watch').toUpperCase();
-  if(type==='hero-main') return '<div class="hero-placeholder" style="height:480px"><span class="hero-placeholder-text">'+label+'</span></div>';
-  if(type==='hero-small') return '<div class="hero-placeholder" style="height:100%;min-height:200px"><span class="hero-placeholder-text" style="font-size:11px">'+label+'</span></div>';
-  return '<div class="card-placeholder"><div class="card-placeholder-inner">'+label+'</div></div>';
-}
+      var secTitle = document.getElementById('section-title');
+      secTitle.textContent = currentFilter === 'all' ? 'Latest Dispatches' : currentFilter + ' Dispatches';
+    }
 
-function getFiltered(){
-  var list = articles;
-  if(currentFilter!=='all') list=list.filter(function(a){return(a.region||'').toLowerCase()===currentFilter.toLowerCase();});
-  if(searchQuery) list=list.filter(function(a){var q=searchQuery.toLowerCase();return(a.title||'').toLowerCase().includes(q)||(a.excerpt||'').toLowerCase().includes(q);});
-  return list;
-}
+    // Nav filter clicks
+    document.querySelectorAll('#nav a').forEach(function(a) {
+      a.addEventListener('click', function(e) {
+        e.preventDefault();
+        currentFilter = this.dataset.filter;
+        visibleCount = 21;
+        document.querySelectorAll('#nav a').forEach(function(n) { n.classList.remove('nav-active'); });
+        this.classList.add('nav-active');
+        document.getElementById('search-input').value = '';
+        applyFilters();
+      });
+    });
 
-function renderFeed(){
-  var filtered = getFiltered();
-  var hero = document.getElementById('hero');
-  var grid = document.getElementById('grid');
-  var secTitle = document.getElementById('section-title');
-  var loadBtn = document.getElementById('load-more-btn');
+    // Search
+    document.getElementById('search-input').addEventListener('input', function() {
+      visibleCount = 21;
+      applyFilters();
+    });
+    document.getElementById('search-input').addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') { this.value = ''; applyFilters(); }
+    });
 
-  if(!filtered.length){
-    hero.innerHTML='';
-    grid.innerHTML='<p style="color:#555;font-size:14px;padding:40px 0;grid-column:1/-1">No dispatches found.</p>';
-    if(loadBtn) loadBtn.style.display='none';
-    return;
-  }
+    // Load more
+    document.getElementById('load-more-btn').addEventListener('click', function() {
+      visibleCount += 21;
+      applyFilters();
+    });
 
-  hero.innerHTML = '';
+    // Initial state — hide cards beyond 21
+    applyFilters();
 
-  // Grid (all articles up to displayLimit)
-  var gridItems = filtered.slice(0, displayLimit);
-  grid.innerHTML = gridItems.map(function(a){
-    var imgHTML = a.image ? '<img class="card-img" src="'+escHtml(a.image)+'" alt="'+escHtml(a.title)+'" loading="lazy">' : imgPlaceholder(a.region,'card');
-    return '<a class="card" href="/article/'+escHtml(a.slug)+'" style="display:block;text-decoration:none;color:inherit">'+imgHTML+'<div class="card-body"><div class="tag">'+escHtml(a.region||'World')+'</div><div class="card-title">'+escHtml(a.title)+'</div><div class="card-excerpt">'+escHtml(a.excerpt||'')+'</div><div class="card-meta">'+escHtml(a.date||'')+(a.time?' · '+escHtml(a.time):'')+'</div></div></a>';
-  }).join('');
+    // --- Cookie banner ---
+    function acceptCookies() {
+      try { localStorage.setItem('cookies', '1'); } catch(e) {}
+      document.getElementById('cookie-banner').style.display = 'none';
+    }
+    setTimeout(function() {
+      try { if (!localStorage.getItem('cookies')) document.getElementById('cookie-banner').style.display = 'flex'; } catch(e) {}
+    }, 3000);
 
-  if(loadBtn) loadBtn.style.display = filtered.length > displayLimit ? 'inline-block' : 'none';
-  if(secTitle) secTitle.textContent = currentFilter==='all' ? 'Latest Dispatches' : currentFilter + ' Dispatches';
-}
-
-function filterFeed(r){
-  currentFilter=r; displayLimit=21; searchQuery='';
-  document.getElementById('search-input').value='';
-  document.querySelectorAll('#nav a').forEach(function(a){ a.classList.remove('nav-active'); });
-  var active = Array.from(document.querySelectorAll('#nav a')).find(function(a){ return a.textContent.toLowerCase()===(r==='all'?'all':r.toLowerCase()); });
-  if(active) active.classList.add('nav-active');
-  renderFeed();
-}
-
-function searchArticles(q){
-  searchQuery=q; displayLimit=21; renderFeed();
-}
-
-function loadMore(){
-  displayLimit += 21; renderFeed();
-}
-
-async function handleSubscribe(e){
-  e.preventDefault();
-  var email = document.getElementById('sub-email').value;
-  var msg = document.getElementById('sub-msg');
-  var btn = e.target.querySelector('button');
-  btn.textContent='Subscribing...'; btn.disabled=true;
-  try {
-    var r = await fetch('/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
-    var d = await r.json();
-    msg.style.display='block';
-    if(r.ok){msg.style.color='#4caf50';msg.textContent='✓ Subscribed. First dispatch incoming.';document.getElementById('subscribe-form').style.display='none';}
-    else{msg.style.color='#cc0000';msg.textContent=d.error||'Something went wrong. Try again.';btn.textContent='Subscribe free';btn.disabled=false;}
-  } catch {
-    msg.style.display='block';msg.style.color='#cc0000';msg.textContent='Connection error. Try again.';btn.textContent='Subscribe free';btn.disabled=false;
-  }
-}
-
-// Init
-var titles = articles.slice(0,8).map(function(a){return a.title;});
-if(titles.length) buildTicker(titles);
-renderFeed();
+    // --- Subscribe ---
+    async function handleSubscribe(e) {
+      e.preventDefault();
+      var email = document.getElementById('sub-email').value;
+      var msg = document.getElementById('sub-msg');
+      var btn = e.target.querySelector('button');
+      btn.textContent = 'Subscribing...'; btn.disabled = true;
+      try {
+        var r = await fetch('/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+        var d = await r.json();
+        msg.style.display = 'block';
+        if (r.ok) {
+          msg.style.color = '#4caf50'; msg.textContent = '✓ Subscribed. First dispatch incoming.';
+          document.getElementById('subscribe-form').style.display = 'none';
+        } else {
+          msg.style.color = '#cc0000'; msg.textContent = d.error || 'Something went wrong. Try again.';
+          btn.textContent = 'Subscribe free'; btn.disabled = false;
+        }
+      } catch {
+        msg.style.display = 'block'; msg.style.color = '#cc0000'; msg.textContent = 'Connection error. Try again.';
+        btn.textContent = 'Subscribe free'; btn.disabled = false;
+      }
+    }
   </script>
 </BaseLayout>
 
@@ -249,29 +268,13 @@ renderFeed();
 .ticker-inner span { font-size: 11px; color: #aaa; font-weight: 400; }
 .ticker-inner span::before { content: '·'; margin-right: 80px; color: #444; }
 .ticker-inner span:first-child::before { display: none; }
-.hero-wrap { padding: 24px 24px 0; max-width: 1280px; margin: 0 auto; }
-.hero { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px; }
-.hero-main { position: relative; border-radius: 4px; overflow: hidden; cursor: pointer; background: #111; }
-.hero-main-img { width: 100%; height: 480px; object-fit: cover; display: block; transition: transform 0.4s ease; }
-.hero-main:hover .hero-main-img { transform: scale(1.03); }
-.hero-main .overlay { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent 0%, rgba(0,0,0,0.5) 30%, rgba(0,0,0,0.97) 100%); padding: 32px 28px 28px; }
-.hero-side { display: grid; grid-template-rows: 1fr 1fr; gap: 16px; }
-.hero-small { position: relative; border-radius: 4px; overflow: hidden; cursor: pointer; background: #111; }
-.hero-small-img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.4s ease; min-height: 200px; }
-.hero-small:hover .hero-small-img { transform: scale(1.03); }
-.hero-small .overlay { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.96)); padding: 20px 18px 18px; }
-.hero-placeholder { width: 100%; background: linear-gradient(135deg,#161616 0%,#111 100%); display: flex; align-items: center; justify-content: center; }
-.hero-placeholder-text { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 900; color: #222; letter-spacing: 2px; text-transform: uppercase; }
 .tag { display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: 1.8px; text-transform: uppercase; color: #cc0000; margin-bottom: 7px; }
-.hero-main .card-title { font-family: 'Playfair Display', serif; font-size: 30px; font-weight: 900; line-height: 1.2; color: #fff; margin-bottom: 10px; }
-.hero-main .card-excerpt { font-size: 14px; color: rgba(255,255,255,0.72); line-height: 1.6; max-width: 560px; }
-.hero-small .card-title { font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 700; line-height: 1.3; color: #fff; }
 .section-header { display: flex; align-items: center; gap: 16px; padding: 28px 0 16px; border-top: 1px solid #1e1e1e; margin-top: 4px; }
 .section-title { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #666; }
 .section-line { flex: 1; height: 1px; background: #1e1e1e; }
 .grid-wrap { max-width: 1280px; margin: 0 auto; padding: 0 24px 48px; }
 .grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; }
-.card { cursor: pointer; overflow: hidden; border-radius: 4px; transition: opacity 0.2s; }
+.card { cursor: pointer; overflow: hidden; border-radius: 4px; transition: opacity 0.2s; text-decoration: none; color: inherit; display: block; }
 .card:hover { opacity: 0.85; }
 .card-img { width: 100%; height: 190px; object-fit: cover; display: block; }
 .card-placeholder { width: 100%; height: 190px; background: #111; display: flex; align-items: center; justify-content: center; }
@@ -286,6 +289,6 @@ renderFeed();
 .cookie-actions { display: flex; gap: 8px; flex-shrink: 0; }
 .btn-accept { background: #cc0000; color: #fff; border: none; padding: 7px 16px; border-radius: 3px; font-size: 11px; font-weight: 600; cursor: pointer; letter-spacing: 0.5px; }
 .btn-decline { background: none; color: #555; border: 1px solid #2a2a2a; padding: 7px 14px; border-radius: 3px; font-size: 11px; cursor: pointer; }
-@media(max-width:900px) { .hero { grid-template-columns: 1fr; } .hero-main-img { height: 360px; } .hero-side { grid-template-rows: auto auto; grid-template-columns: 1fr 1fr; } .nav { display: none; } }
-@media(max-width:640px) { .hero-side { grid-template-columns: 1fr; } .grid { grid-template-columns: 1fr; gap: 16px; } .masthead-inner { height: 52px; } }
+@media(max-width:900px) { .nav { display: none; } }
+@media(max-width:640px) { .grid { grid-template-columns: 1fr; gap: 16px; } .masthead-inner { height: 52px; } }
 </style>
