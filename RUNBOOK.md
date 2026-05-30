@@ -82,11 +82,18 @@ git push
 
 ---
 
-## 🚨 CSS/layout broken
+## 🚨 CSS/layout broken (images too big, grid wrong, styles not applying)
 
-- Astro scoped CSS doesn't apply to JavaScript-rendered elements
-- Fix: change `<style>` to `<style is:global>` in the affected `.astro` file
-- Then `git push` to rebuild
+**Root cause:** `<style is:global>` placed in a page file (outside the `<BaseLayout>` wrapper) does NOT reliably inject into `<head>` in Astro SSR + Cloudflare production. Works fine in dev, silently breaks in prod.
+
+**The permanent rule:** ALL CSS lives in `src/layouts/BaseLayout.astro` inside the `<head>` block. Never add `<style is:global>` to page-level `.astro` files.
+
+**Fix:**
+1. Cut the `<style is:global>` block from the page file (e.g. `index.astro`)
+2. Paste the styles into `BaseLayout.astro` inside the existing `<style is:global>` block in `<head>`
+3. `git push` to rebuild
+
+**After deploying:** open the live URL and visually confirm styles are rendering before calling it done.
 
 ---
 

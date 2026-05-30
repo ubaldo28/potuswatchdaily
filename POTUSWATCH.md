@@ -91,10 +91,12 @@ potuswatch/
 ## Critical Rules
 
 1. **`package.json` has `"type": "module"`** — always use `import/export`, never `require()`
-2. **Astro scoped CSS** doesn't apply to JS-rendered elements — use `<style is:global>`
+2. **ALL CSS lives in `BaseLayout.astro`** — never in `<style>` blocks in page files. `<style is:global>` outside a layout wrapper is unreliable in Astro SSR + Cloudflare and silently breaks in production while working in dev. Article page uses scoped `<style>` which is fine — only `is:global` in page files is the problem.
 3. **`dist/` is in `.gitignore`** — never commit it, GitHub Actions builds fresh
 4. **Railway listens on `process.env.PORT`** — not hardcoded 3000
 5. **Cloudflare Pages env vars** (SUPABASE_URL, SUPABASE_KEY) are set in Cloudflare dashboard, not in code
+6. **Static files in `public/` don't work with Cloudflare SSR adapter** — serve them as Astro API routes (`.ts` files in `src/pages/`) like `ads.txt.ts`, `robots.txt.ts`, `favicon.svg.ts`
+7. **After every deployment, verify the live site visually** — code looking correct locally is not enough. CSS failures only appear in production.
 
 ---
 
