@@ -76,6 +76,41 @@ const tickerTitles = list.slice(0, 8).map(a => a.title);
     </div>
   </div>
 
+  <!-- Hero -->
+  {list.length > 0 && (
+    <div class="hero-wrap" id="hero-wrap">
+      <div class="hero">
+        <!-- Main featured article -->
+        <a class="hero-main" href={`/article/${list[0].slug}`}>
+          {list[0].image
+            ? <img class="hero-main-img" src={list[0].image} alt={list[0].title} fetchpriority="high" />
+            : <div class="hero-placeholder" style="height:480px"><span class="hero-placeholder-text">{(list[0].region||'POTUS Watch').toUpperCase()}</span></div>
+          }
+          <div class="overlay">
+            <div class="tag">{list[0].region || 'World'}</div>
+            <div class="card-title">{list[0].title}</div>
+            <div class="card-excerpt">{list[0].excerpt || ''}</div>
+          </div>
+        </a>
+        <!-- Side articles -->
+        <div class="hero-side">
+          {list.slice(1, 3).map(a => (
+            <a class="hero-small" href={`/article/${a.slug}`}>
+              {a.image
+                ? <img class="hero-small-img" src={a.image} alt={a.title} loading="eager" />
+                : <div class="hero-placeholder" style="height:100%;min-height:200px"><span class="hero-placeholder-text" style="font-size:11px">{(a.region||'POTUS Watch').toUpperCase()}</span></div>
+              }
+              <div class="overlay">
+                <div class="tag">{a.region || 'World'}</div>
+                <div class="card-title">{a.title}</div>
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+    </div>
+  )}
+
   <!-- Grid -->
   <div class="grid-wrap">
     <div class="section-header">
