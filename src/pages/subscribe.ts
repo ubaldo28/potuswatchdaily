@@ -73,6 +73,13 @@ function nextThursdayStr() {
   return thu.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
 }
 
+export const GET: APIRoute = () => {
+  return new Response(null, {
+    status: 301,
+    headers: { Location: '/newsletter' }
+  });
+};
+
 export const OPTIONS: APIRoute = ({ request }) => {
   const origin = request.headers.get('Origin') || '';
   return new Response(null, { headers: corsHeaders(origin) });
