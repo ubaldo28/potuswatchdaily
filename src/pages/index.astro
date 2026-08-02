@@ -26,8 +26,21 @@ const tickerTitles = list.slice(0, 8).map(a => a.title);
       "@context":"https://schema.org","@type":"WebSite",
       "name":"POTUS Watch Daily",
       "url":"https://www.potuswatchdaily.com",
-      "description":"Independent foreign policy intelligence. Live analysis of global affairs.",
-      "publisher":{"@type":"Organization","name":"POTUS Watch Daily","url":"https://www.potuswatchdaily.com","logo":{"@type":"ImageObject","url":"https://www.potuswatchdaily.com/og-default.jpg"}}
+      "description":"Independent foreign policy intelligence. Live analysis of Trump administration diplomacy, geopolitics, and global affairs.",
+      "potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https://www.potuswatchdaily.com/?q={search_term_string}"},"query-input":"required name=search_term_string"},
+      "publisher":{"@type":"NewsMediaOrganization","name":"POTUS Watch Daily","url":"https://www.potuswatchdaily.com","logo":{"@type":"ImageObject","url":"https://www.potuswatchdaily.com/logo-v2.png","width":300,"height":52},"sameAs":["https://twitter.com/POTUSwatch"],"foundingDate":"2025","knowsAbout":["Foreign Policy","Geopolitics","US Diplomacy","Trump Administration","NATO","Middle East","China","Russia"]}
+    })}</script>
+    <script type="application/ld+json">{JSON.stringify({
+      "@context":"https://schema.org","@type":"NewsMediaOrganization",
+      "name":"POTUS Watch Daily",
+      "url":"https://www.potuswatchdaily.com",
+      "logo":{"@type":"ImageObject","url":"https://www.potuswatchdaily.com/logo-v2.png","width":300,"height":52},
+      "sameAs":["https://twitter.com/POTUSwatch"],
+      "contactPoint":{"@type":"ContactPoint","email":"potuswatchdaily@gmail.com","contactType":"editorial"},
+      "publishingPrinciples":"https://www.potuswatchdaily.com/editorial",
+      "ethicsPolicy":"https://www.potuswatchdaily.com/editorial",
+      "masthead":"https://www.potuswatchdaily.com/about",
+      "missionCoveragePrioritiesPolicy":"https://www.potuswatchdaily.com/editorial"
     })}</script>
   </slot>
 
