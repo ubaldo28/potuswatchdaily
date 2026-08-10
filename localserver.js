@@ -36,10 +36,14 @@ app.get('/health', (req, res) => {
 // ── Config ────────────────────────────────────────────────────────────────────
 const regions = ['Iran','China','NATO','Americas','Mideast','Russia','Trade','Analysis'];
 const imageQueries = {
-  Iran:'iran diplomacy politics', China:'china beijing diplomacy',
-  NATO:'nato military alliance europe', Americas:'washington dc capitol',
-  Mideast:'middle east diplomacy', Russia:'moscow kremlin russia',
-  Trade:'global trade economy shipping', Analysis:'united nations diplomacy world'
+  Iran:['iran diplomacy politics','tehran nuclear negotiations','persian gulf military','iran flag politics','middle east sanctions'],
+  China:['china beijing diplomacy','xi jinping summit','south china sea military','china us relations','beijing government'],
+  NATO:['nato military alliance europe','european defense summit','ukraine war military','nato headquarters brussels','transatlantic alliance'],
+  Americas:['washington dc capitol','white house diplomacy','us congress foreign policy','state department washington','american foreign policy'],
+  Mideast:['middle east diplomacy','israel gaza conflict','saudi arabia oil politics','gulf states diplomacy','arab league summit'],
+  Russia:['moscow kremlin russia','putin diplomacy','russia ukraine war','eastern europe military','russian foreign policy'],
+  Trade:['global trade economy shipping','container ships port','world trade organization','tariffs trade war','global supply chain'],
+  Analysis:['united nations diplomacy world','global summit leaders','international relations diplomacy','foreign policy strategy','world leaders summit']
 };
 
 function slugify(t) {
@@ -49,8 +53,10 @@ function slugify(t) {
 
 async function getImage(region, size) {
   try {
+    const queries = imageQueries[region] || ['politics world diplomacy'];
+    const query = queries[Math.floor(Math.random() * queries.length)];
     const r = await axios.get('https://api.unsplash.com/photos/random', {
-      params: { query: imageQueries[region] || 'politics world', orientation: 'landscape', content_filter: 'high' },
+      params: { query, orientation: 'landscape', content_filter: 'high' },
       headers: { Authorization: 'Client-ID ' + process.env.UNSPLASH_ACCESS_KEY },
       timeout: 10000
     });
@@ -61,6 +67,41 @@ async function getImage(region, size) {
   } catch(e) {
     console.warn('Image fetch failed:', e.message);
     return '';
+  }
+}
+
+// ── Title similarity check ────────────────────────────────────────────────────
+async function isTooSimilar(newTitle) {
+  try {
+    const since = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+    const { data } = await supabase.from('articles').select('title').gte('published_at', since);
+    if (!data || !data.length) return false;
+    const newWords = new Set(newTitle.toLowerCase().replace(/[^a-z0-9\s]/g,'').split(/\s+/).filter(w => w.length > 3));
+    for (const row of data) {
+      const existWords = row.title.toLowerCase().replace(/[^a-z0-9\s]/g,'').split(/\s+/).filter(w => w.length > 3);
+      const overlap = existWords.filter(w => newWords.has(w)).length;
+      if (overlap >= 4) {
+        console.log(`[similarity] Too similar to: "${row.title}" (${overlap} words overlap)`);
+        return true;
+      }
+    }
+    return false;
+  } catch(e) {
+    console.warn('[similarity] Check failed:', e.message);
+    return false;
+  }
+}
+
+// ── Round-robin region selector ───────────────────────────────────────────────
+async function getNextRegion() {
+  try {
+    const { data } = await supabase.from('articles').select('region').order('id', { ascending: false }).limit(1);
+    const lastRegion = data?.[0]?.region || null;
+    const lastIndex = lastRegion ? regions.indexOf(lastRegion) : -1;
+    return regions[(lastIndex + 1) % regions.length];
+  } catch(e) {
+    console.warn('[region] Round-robin failed, using random:', e.message);
+    return regions[Math.floor(Math.random() * regions.length)];
   }
 }
 
@@ -109,7 +150,7 @@ async function generateArticles() {
       return;
     }
 
-    const region = regions[Math.floor(Math.random() * regions.length)];
+    const region = await getNextRegion();
     const keywords = {
       Iran:['iran','tehran','nuclear'], China:['china','beijing','xi','taiwan'],
       NATO:['nato','europe','ukraine'], Americas:['trump','white house','congress'],
@@ -153,6 +194,11 @@ async function generateArticles() {
     raw = raw.replace(/[\x00-\x1F\x7F]/g,' ').replace(/```json|```/g,'').trim();
     const js = raw.indexOf('{'), je = raw.lastIndexOf('}') + 1;
     const parsed = JSON.parse(raw.slice(js, je));
+
+    if (await isTooSimilar(parsed.title)) {
+      console.log('[generator] Article too similar to recent content — skipping.');
+      return;
+    }
 
     const slug = (parsed.slug && parsed.slug.length > 3) ? slugify(parsed.slug) : slugify(parsed.title);
     const { data: existing } = await supabase.from('articles').select('slug').eq('slug', slug).limit(1);

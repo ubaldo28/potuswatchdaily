@@ -133,25 +133,35 @@ const tickerTitles = list.slice(0, 8).map(a => a.title);
 
     <div id="grid" class="grid">
       {list.map((a, i) => (
-        <a
-          class="card"
-          href={`/article/${a.slug}`}
-          data-region={(a.region || '').toLowerCase()}
-          data-search={`${(a.title || '').toLowerCase()} ${(a.excerpt || '').toLowerCase()}`}
-        >
-          {a.image
-            ? <img class="card-img" src={a.image} alt={a.title} loading={i < 6 ? 'eager' : 'lazy'} />
-            : <div class="card-placeholder"><div class="card-placeholder-inner">{(a.region || 'POTUS Watch').toUpperCase()}</div></div>
-          }
-          <div class="card-body">
-            <div class="tag">{a.region || 'World'}</div>
-            <div class="card-title">{a.title}</div>
-            <div class="card-excerpt">{a.excerpt || ''}</div>
-            <div class="card-meta">{a.date || ''}{a.time ? ` · ${a.time}` : ''}</div>
-          </div>
-        </a>
+        <>
+          <a
+            class="card"
+            href={`/article/${a.slug}`}
+            data-region={(a.region || '').toLowerCase()}
+            data-search={`${(a.title || '').toLowerCase()} ${(a.excerpt || '').toLowerCase()}`}
+          >
+            {a.image
+              ? <img class="card-img" src={a.image} alt={a.title} loading={i < 6 ? 'eager' : 'lazy'} />
+              : <div class="card-placeholder"><div class="card-placeholder-inner">{(a.region || 'POTUS Watch').toUpperCase()}</div></div>
+            }
+            <div class="card-body">
+              <div class="tag">{a.region || 'World'}</div>
+              <div class="card-title">{a.title}</div>
+              <div class="card-excerpt">{a.excerpt || ''}</div>
+              <div class="card-meta">{a.date || ''}{a.time ? ` · ${a.time}` : ''}</div>
+            </div>
+          </a>
+          {i === 5 && (
+            <div class="affiliate-banner" id="affiliate-banner" style="grid-column:1/-1;background:#0e0e0e;border:1px solid #1e1e1e;border-left:3px solid #cc0000;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+              <div>
+                <p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#cc0000;margin-bottom:4px;font-family:'Inter',sans-serif">Sponsored · Affiliate Disclosure</p>
+                <p style="font-size:13px;color:#aaa;font-family:'Inter',sans-serif;line-height:1.5;margin:0">With global instability rising, many readers are preparing. <a href="https://amzn.to/4cgkdM3" target="_blank" rel="noopener nofollow sponsored" style="color:#fff;text-decoration:underline;text-underline-offset:3px">View the #1 rated emergency survival kit →</a></p>
+              </div>
+            </div>
+          )}
+        </>
       ))}
-      <p id="no-results" style="display:none;color:#555;font-size:14px;padding:40px 0;grid-column:1/-1">No dispatches found.</p>
+      <p id="no-results" style="display:none;color:#555;font-size:14px;padding:40px 0;grid-column:1/-1;text-align:center">No dispatches found for this filter.</p>
     </div>
 
     <div style="text-align:center;padding:32px 0 48px">
@@ -211,7 +221,11 @@ const tickerTitles = list.slice(0, 8).map(a => a.title);
       });
 
       var noResults = document.getElementById('no-results');
-      noResults.style.display = shown === 0 ? 'block' : 'none';
+      if (shown === 0 && (currentFilter !== 'all' || document.getElementById('search-input').value.trim())) {
+        noResults.style.display = 'block';
+      } else {
+        noResults.style.display = 'none';
+      }
 
       var total = allCards.filter(function(c) {
         var regionMatch = currentFilter === 'all' || c.dataset.region === currentFilter.toLowerCase();
