@@ -7,4 +7,5 @@ export default defineConfig({
     platformProxy: { enabled: true }
   }),
   site: 'https://www.potuswatchdaily.com',
+  build: { inlineStylesheets: 'always' },
 });

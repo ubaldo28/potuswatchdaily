@@ -1,0 +1,105 @@
+---
+import { createClient } from '@supabase/supabase-js';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Masthead from '../../components/Masthead.astro';
+import Footer from '../../components/Footer.astro';
+
+const SITE_URL = 'https://www.potuswatchdaily.com';
+
+const REGIONS: Record<string, { name: string; aliases: string[]; blurb: string }> = {
+  americas: { name: 'Americas', aliases: ['Americas'], blurb: 'U.S. policy across the Western Hemisphere — trade, migration, and hemispheric security.' },
+  china:    { name: 'China',    aliases: ['China'],    blurb: 'U.S.–China competition: trade, technology, Taiwan, and the Indo-Pacific balance.' },
+  nato:     { name: 'NATO',     aliases: ['NATO'],     blurb: 'The Atlantic alliance — burden-sharing, enlargement, and Article 5 in practice.' },
+  iran:     { name: 'Iran',     aliases: ['Iran'],     blurb: 'Sanctions, the nuclear file, and Iran’s regional proxies.' },
+  mideast:  { name: 'Middle East', aliases: ['Mideast', 'Middle East'], blurb: 'Gulf diplomacy, the Israeli–Palestinian file, and regional realignment.' },
+  russia:   { name: 'Russia',   aliases: ['Russia'],   blurb: 'Ukraine, sanctions, and Moscow’s partnerships with Beijing, Tehran and Pyongyang.' },
+  trade:    { name: 'Trade',    aliases: ['Trade'],    blurb: 'Tariffs, export controls, and the economic instruments of U.S. foreign policy.' },
+  analysis: { name: 'Analysis', aliases: ['Analysis'], blurb: 'Long-form strategic assessment of U.S. foreign policy.' },
+};
+
+const key = (Astro.params.region || '').toLowerCase();
+const meta = REGIONS[key];
+
+let articles: any[] = [];
+if (meta) {
+  const { env } = Astro.locals.runtime;
+  const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_KEY);
+  const { data } = await supabase
+    .from('articles')
+    .select('title,slug,excerpt,region,date,time')
+    .in('region', meta.aliases)
+    .order('id', { ascending: false })
+    .limit(100);
+  articles = data ?? [];
+}
+
+const canonical = `${SITE_URL}/region/${key}`;
+
+const collectionLd = meta ? {
+  '@context': 'https://schema.org',
+  '@type': 'CollectionPage',
+  name: `${meta.name} — Foreign Policy Coverage`,
+  description: meta.blurb,
+  url: canonical,
+  isPartOf: { '@type': 'WebSite', name: 'POTUS Watch Daily', url: SITE_URL },
+  mainEntity: {
+    '@type': 'ItemList',
+    itemListElement: articles.map((a, i) => ({
+      '@type': 'ListItem', position: i + 1,
+      url: `${SITE_URL}/article/${a.slug}`, name: a.title,
+    })),
+  },
+} : null;
+
+const breadcrumbLd = meta ? {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+    { '@type': 'ListItem', position: 2, name: meta.name },
+  ],
+} : null;
+---
+{!meta ? (
+  <BaseLayout title="Not found — POTUS Watch Daily" noIndex={true}>
+    <Masthead backLink="/" backLabel="← Back to feed" />
+    <div class="page">
+      <h1>Region not found</h1>
+      <p class="page-sub">No such coverage area. <a href="/">Return to the feed</a>.</p>
+    </div>
+    <Footer />
+  </BaseLayout>
+) : (
+  <BaseLayout
+    title={`${meta.name} — Foreign Policy Coverage | POTUS Watch Daily`}
+    description={meta.blurb}
+    canonical={canonical}
+  >
+    <Fragment slot="head">
+      <script type="application/ld+json" set:html={JSON.stringify(collectionLd)} />
+      <script type="application/ld+json" set:html={JSON.stringify(breadcrumbLd)} />
+    </Fragment>
+    <Masthead backLink="/" backLabel="← Back to feed" />
+    <div class="page">
+      <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> <span>›</span> <span>{meta.name}</span></nav>
+      <div class="eyebrow">Region</div>
+      <h1>{meta.name}</h1>
+      <p class="page-sub">{meta.blurb}</p>
+
+      {articles.length === 0 && <p class="page-sub">No dispatches filed in this area yet.</p>}
+
+      {articles.map(a => (
+        <div class="archive-item">
+          <a href={`/article/${a.slug}`} class="archive-link">
+            <span class="archive-title">{a.title}</span>
+            <span class="archive-meta">{a.date || ''}{a.time ? ` · ${a.time}` : ''}</span>
+          </a>
+          {a.excerpt && <p class="archive-excerpt">{a.excerpt}</p>}
+        </div>
+      ))}
+
+      <p class="page-sub" style="margin-top:32px"><a href="/archive">Browse the full archive →</a></p>
+    </div>
+    <Footer />
+  </BaseLayout>
+)}

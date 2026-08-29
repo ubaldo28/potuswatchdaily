@@ -9,7 +9,7 @@ import Footer from '../../components/Footer.astro';
   description="Trade wars, Taiwan, technology restrictions, and competing visions for world order — a plain-English account of how the U.S.-China relationship went from strategic partnership to strategic competition."
   canonical="https://www.potuswatchdaily.com/explainers/us-china-relations"
 >
-  <slot name="head">
+  <Fragment slot="head">
     <script type="application/ld+json">{JSON.stringify({
       "@context":"https://schema.org","@type":"Article",
       "headline":"The U.S.-China Rivalry: How Two Powers Ended Up Here",
@@ -18,7 +18,7 @@ import Footer from '../../components/Footer.astro';
       "publisher":{"@type":"Organization","name":"POTUS Watch Daily","url":"https://www.potuswatchdaily.com"},
       "mainEntityOfPage":"https://www.potuswatchdaily.com/explainers/us-china-relations"
     })}</script>
-  </slot>
+  </Fragment>
   <Masthead backLink="/explainers/" backLabel="← Explainers" />
   <div class="article-wrap">
     <a class="back" href="/explainers/">← All Explainers</a>

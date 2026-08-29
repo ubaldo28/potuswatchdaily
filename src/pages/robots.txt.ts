@@ -1,30 +1,43 @@
 import type { APIRoute } from 'astro';
 
+// robots.txt groups are most-specific-wins and do NOT merge. A named group
+// (Googlebot) that omits the Disallow lines from the `*` group leaves those
+// paths fully crawlable for that bot, so every group repeats its own rules.
 export const GET: APIRoute = () => {
   const content = `User-agent: *
 Allow: /
 Disallow: /api/
 Disallow: /get-articles
 Disallow: /subscribe
+Disallow: /_image
 
-# Google
 User-agent: Googlebot
 Allow: /
-Crawl-delay: 1
+Disallow: /api/
+Disallow: /get-articles
+Disallow: /subscribe
+Disallow: /_image
 
-# Google News
 User-agent: Googlebot-News
 Allow: /
 Allow: /article/
+Disallow: /api/
+Disallow: /get-articles
+Disallow: /subscribe
 
-# Bing
 User-agent: Bingbot
 Allow: /
-Crawl-delay: 2
+Disallow: /api/
+Disallow: /get-articles
+Disallow: /subscribe
+Disallow: /_image
 
 Sitemap: https://www.potuswatchdaily.com/sitemap.xml`;
 
   return new Response(content, {
-    headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+    headers: {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'public, max-age=3600, s-maxage=86400'
+    }
   });
 };

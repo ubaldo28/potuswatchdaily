@@ -1,0 +1,38 @@
+name: Backup articles table
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # 06:00 UTC daily
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Dump articles table
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: node scripts/backup-articles.mjs
+
+      - name: Keep the 14 most recent daily snapshots
+        run: |
+          cd backups
+          ls -1 articles-*.json | sort | head -n -14 | xargs -r rm --
+          cd ..
+
+      - name: Commit snapshot
+        run: |
+          git config user.name  "potuswatch-backup"
+          git config user.email "actions@github.com"
+          git add backups/
+          git diff --staged --quiet || git commit -m "backup: articles table $(date -u +%Y-%m-%d) ($(cat backups/LATEST-COUNT.txt | tr -d '\n') rows)"
+          git push

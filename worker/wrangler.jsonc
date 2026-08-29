@@ -1,0 +1,34 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+
+  // Separate Worker from the Pages project in ../wrangler.jsonc.
+  // Deploy with:  npx wrangler deploy --config worker/wrangler.jsonc
+  "name": "potuswatch-generator",
+  "main": "generator.js",
+  "compatibility_date": "2026-05-20",
+
+  // Hourly, at the top of the hour (UTC). Cloudflare's smallest cron
+  // granularity is one minute; the Workers Free plan allows 5 Cron Triggers
+  // per account. An interval of >= 1 hour also gets the most generous
+  // duration ceiling on paid plans, should you ever upgrade.
+  "triggers": {
+    "crons": ["0 * * * *"]
+  },
+
+  // Sends console.log/warn/error to the dashboard's Workers Logs as well as
+  // `wrangler tail`, so failed 3am runs are still inspectable the next day.
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+
+  // Gives you https://potuswatch-generator.<your-subdomain>.workers.dev for
+  // the /health and /run endpoints. Set to false if you want the Worker to be
+  // reachable only by its Cron Trigger.
+  "workers_dev": true
+
+  // NOTE: no "nodejs_compat" flag and no bundled dependencies. generator.js is
+  // plain fetch() only, which keeps startup well inside the 1s startup budget.
+  //
+  // Secrets are NOT set here. Use `wrangler secret put` — see ../MIGRATION.md.
+}

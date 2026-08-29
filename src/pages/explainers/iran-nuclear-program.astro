@@ -9,7 +9,7 @@ import Footer from '../../components/Footer.astro';
   description="From the Shah's American-supplied reactors to the JCPOA collapse — how one of the world's most consequential diplomatic standoffs actually developed."
   canonical="https://www.potuswatchdaily.com/explainers/iran-nuclear-program"
 >
-  <slot name="head">
+  <Fragment slot="head">
     <script type="application/ld+json">{JSON.stringify({
       "@context":"https://schema.org","@type":"Article",
       "headline":"The Iran Nuclear File: A Plain-English Timeline",
@@ -18,7 +18,7 @@ import Footer from '../../components/Footer.astro';
       "publisher":{"@type":"Organization","name":"POTUS Watch Daily","url":"https://www.potuswatchdaily.com"},
       "mainEntityOfPage":"https://www.potuswatchdaily.com/explainers/iran-nuclear-program"
     })}</script>
-  </slot>
+  </Fragment>
   <Masthead backLink="/explainers/" backLabel="← Explainers" />
   <div class="article-wrap">
     <a class="back" href="/explainers/">← All Explainers</a>

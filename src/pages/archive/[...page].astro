@@ -1,0 +1,97 @@
+---
+import { createClient } from '@supabase/supabase-js';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Masthead from '../../components/Masthead.astro';
+import Footer from '../../components/Footer.astro';
+
+const SITE_URL = 'https://www.potuswatchdaily.com';
+const PER = 100;
+
+const raw = Astro.params.page;
+const page = Math.max(1, parseInt(String(raw ?? '1'), 10) || 1);
+
+const { env } = Astro.locals.runtime;
+const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_KEY);
+
+const { data: articles, count } = await supabase
+  .from('articles')
+  .select('title,slug,excerpt,region,date,time', { count: 'exact' })
+  .not('slug', 'is', null)
+  .order('id', { ascending: false })
+  .range((page - 1) * PER, page * PER - 1);
+
+const list = articles ?? [];
+const totalPages = Math.max(1, Math.ceil((count ?? 0) / PER));
+
+const canonical = page === 1 ? `${SITE_URL}/archive` : `${SITE_URL}/archive/${page}`;
+const prevUrl = page === 2 ? `${SITE_URL}/archive` : page > 2 ? `${SITE_URL}/archive/${page - 1}` : null;
+const nextUrl = page < totalPages ? `${SITE_URL}/archive/${page + 1}` : null;
+
+const byRegion: Record<string, typeof list> = {};
+for (const a of list) {
+  const r = a.region || 'World';
+  if (!byRegion[r]) byRegion[r] = [];
+  byRegion[r].push(a);
+}
+---
+<BaseLayout
+  title={page === 1 ? 'Archive — POTUS Watch Daily' : `Archive, page ${page} of ${totalPages} — POTUS Watch Daily`}
+  description={page === 1
+    ? 'Full archive of foreign policy intelligence dispatches from POTUS Watch Daily.'
+    : `Foreign policy dispatches from POTUS Watch Daily, archive page ${page} of ${totalPages}.`}
+  canonical={canonical}
+>
+  <Fragment slot="head">
+    {prevUrl && <link rel="prev" href={prevUrl} />}
+    {nextUrl && <link rel="next" href={nextUrl} />}
+  </Fragment>
+  <Masthead backLink="/" backLabel="← Back to feed" />
+  <div class="page">
+    <div class="eyebrow">Archive</div>
+    <h1>{page === 1 ? 'All Dispatches' : `All Dispatches — Page ${page}`}</h1>
+    <p class="page-sub">Full archive of foreign policy intelligence, organised by region. Page {page} of {totalPages}.</p>
+
+    {list.length === 0 && <p class="page-sub">Nothing filed on this page.</p>}
+
+    {Object.entries(byRegion).map(([region, items]) => (
+      <section class="region-section">
+        <h2 class="region-heading">{region}</h2>
+        {items.map(a => (
+          <div class="archive-item">
+            <a href={`/article/${a.slug}`} class="archive-link">
+              <span class="archive-title">{a.title}</span>
+              <span class="archive-meta">{a.date || ''}{a.time ? ` · ${a.time}` : ''}</span>
+            </a>
+            {a.excerpt && <p class="archive-excerpt">{a.excerpt}</p>}
+          </div>
+        ))}
+      </section>
+    ))}
+
+    <nav class="pager" aria-label="Archive pagination">
+      {prevUrl ? <a href={prevUrl} rel="prev">← Newer</a> : <span></span>}
+      <span class="pager-count">Page {page} of {totalPages}</span>
+      {nextUrl ? <a href={nextUrl} rel="next">Older →</a> : <span></span>}
+    </nav>
+  </div>
+  <Footer />
+</BaseLayout>
+
+<style>
+.page { max-width: 900px; margin: 0 auto; padding: 56px 24px 100px; }
+.eyebrow { font-size: 9px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #cc0000; margin-bottom: 12px; }
+h1 { font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 900; color: #fff; margin-bottom: 8px; }
+.page-sub { font-size: 14px; color: #555; margin-bottom: 48px; }
+.region-section { margin-bottom: 48px; }
+.region-heading { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #444; padding-bottom: 12px; border-bottom: 1px solid #1a1a1a; margin-bottom: 0; font-family: Inter, sans-serif; }
+.archive-item { border-bottom: 1px solid #141414; padding: 16px 0; }
+.archive-link { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; text-decoration: none; margin-bottom: 4px; }
+.archive-link:hover .archive-title { color: #cc0000; }
+.archive-title { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700; color: #e0e0e0; line-height: 1.35; transition: color 0.15s; flex: 1; }
+.archive-meta { font-size: 11px; color: #333; white-space: nowrap; flex-shrink: 0; font-family: Inter, sans-serif; }
+.archive-excerpt { font-size: 13px; color: #555; line-height: 1.5; margin-top: 2px; font-family: Inter, sans-serif; }
+.pager { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 48px; padding-top: 24px; border-top: 1px solid #1a1a1a; font-family: Inter, sans-serif; font-size: 13px; }
+.pager a { color: #cc0000; text-decoration: none; font-weight: 600; }
+.pager a:hover { text-decoration: underline; }
+.pager-count { color: #444; font-size: 12px; }
+</style>

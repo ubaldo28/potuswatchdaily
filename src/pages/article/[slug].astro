@@ -81,17 +81,15 @@ const breadcrumbLd = {
   ogImage={img}
   ogType="article"
 >
-  <slot name="head">
+  <Fragment slot="head">
     <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
     <script type="application/ld+json" set:html={JSON.stringify(breadcrumbLd)} />
-    <meta property="og:article:published_time" content={dateIso} />
-    <meta property="og:article:modified_time" content={a.updated_at || dateIso} />
-    <meta property="og:article:section" content={region} />
-    <meta property="og:article:author" content="POTUS Watch Daily" />
+    <meta property="article:published_time" content={dateIso} />
+    <meta property="article:modified_time" content={a.updated_at || dateIso} />
+    <meta property="article:section" content={region} />
+    <meta property="article:author" content="POTUS Watch Daily" />
     <meta name="news_keywords" content={`${region}, foreign policy, diplomacy, geopolitics, POTUS Watch Daily`} />
-    <meta name="syndication-source" content={canonicalUrl} />
-    <meta name="original-source" content={canonicalUrl} />
-  </slot>
+  </Fragment>
 
   <header class="masthead">
     <a href="/" style="display:flex;align-items:center;text-decoration:none">
@@ -101,7 +99,7 @@ const breadcrumbLd = {
   <div class="editorial-bar">POTUS Watch Daily covers foreign policy through an analytical lens — policy, diplomacy, economics and strategy.</div>
 
   {img && img !== `${SITE_URL}/og-default.jpg` && (
-    <img class="hero-img" src={img} alt={a.title} fetchpriority="high" />
+    <img class="hero-img" src={img} srcset={`${img.replace(/&w=\d+/, "&w=640")} 640w, ${img.replace(/&w=\d+/, "&w=1024")} 1024w, ${img} 1600w`} sizes="100vw" width="1600" height="640" alt={a.title} fetchpriority="high" decoding="async" />
   )}
 
   <div class="article-content">
@@ -117,13 +115,14 @@ const breadcrumbLd = {
 
     <div class="support-box">
       <p class="support-title">Keep the dispatches coming</p>
-      <p class="support-sub">POTUS Watch Daily is independent and ad-light by design. If this briefing was useful, a coffee keeps the lights on.</p>
+      <p class="support-sub">POTUS Watch Daily is independent and reader-supported. If this briefing was useful, a coffee keeps the lights on.</p>
       <a href="https://www.buymeacoffee.com/POTUSwatch" target="_blank" rel="noopener" class="btn-coffee">☕ Buy me a coffee</a>
     </div>
 
     {sources.length > 0 && (
       <div class="sources">
-        <p class="sources-label">Sources</p>
+        <p class="sources-label">Headlines in today's news cycle</p>
+        <p class="sources-note">Wire headlines from this reporting cycle that this dispatch was written against. They are context for the analysis above, not citations for specific claims within it.</p>
         {sources.map(s => <a href={s.url} target="_blank" rel="noopener">{s.title}</a>)}
       </div>
     )}
@@ -167,7 +166,8 @@ const breadcrumbLd = {
 <style>
 .masthead { background: #0a0a0a; border-bottom: 1px solid #1a1a1a; padding: 12px 24px; display: flex; align-items: center; }
 .editorial-bar { background: #1a1a1a; border-bottom: 1px solid #cc0000; padding: 6px 24px; font-size: 10px; color: #666; letter-spacing: 1px; font-family: Inter, Arial, sans-serif; text-transform: uppercase; }
-.hero-img { width: 100%; max-height: 480px; object-fit: cover; display: block; }
+.hero-img { width: 100%; height: 480px; max-height: 480px; aspect-ratio: 5 / 2; object-fit: cover; display: block; }
+@media (max-width: 640px) { .hero-img { height: 220px; } }
 .article-content { max-width: 740px; margin: 0 auto; padding: 40px 24px 80px; }
 .back { color: #cc0000; text-decoration: none; font-size: 12px; font-family: Inter, Arial, sans-serif; letter-spacing: 0.5px; display: inline-block; margin-bottom: 20px; }
 .eyebrow { margin: 16px 0 8px; font-size: 12px; font-family: Inter, Arial, sans-serif; color: #666; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
@@ -182,6 +182,7 @@ hr { border: none; border-top: 1px solid #1e1e1e; margin: 20px 0; }
 .support-sub { font-size: 13px; color: #666; line-height: 1.6; margin-bottom: 20px; font-family: Inter, sans-serif; }
 .btn-coffee { display: inline-flex; align-items: center; gap: 8px; background: #cc0000; color: #fff; text-decoration: none; padding: 10px 20px; border-radius: 3px; font-size: 12px; font-weight: 600; letter-spacing: 0.5px; font-family: Inter, sans-serif; }
 .sources { margin-top: 40px; padding-top: 20px; border-top: 1px solid #1e1e1e; }
+.sources-note { font-size: 11px; color: #444; line-height: 1.5; margin-bottom: 12px; font-family: Inter, Arial, sans-serif; }
 .sources-label { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: #555; font-family: Inter, Arial, sans-serif; margin-bottom: 10px; }
 .sources a { display: block; color: #666; font-size: 12px; text-decoration: none; margin-bottom: 6px; font-family: Inter, Arial, sans-serif; }
 .sources a:hover { color: #cc0000; }

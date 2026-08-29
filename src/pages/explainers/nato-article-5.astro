@@ -9,7 +9,7 @@ import Footer from '../../components/Footer.astro';
   description="NATO's mutual defense clause is the most invoked and least understood commitment in modern diplomacy. Here is what it actually says, what it doesn't say, and what happens when it's triggered."
   canonical="https://www.potuswatchdaily.com/explainers/nato-article-5"
 >
-  <slot name="head">
+  <Fragment slot="head">
     <script type="application/ld+json">{JSON.stringify({
       "@context":"https://schema.org","@type":"Article",
       "headline":"What NATO's Article 5 Actually Means — and When It Applies",
@@ -18,7 +18,7 @@ import Footer from '../../components/Footer.astro';
       "publisher":{"@type":"Organization","name":"POTUS Watch Daily","url":"https://www.potuswatchdaily.com"},
       "mainEntityOfPage":"https://www.potuswatchdaily.com/explainers/nato-article-5"
     })}</script>
-  </slot>
+  </Fragment>
   <Masthead backLink="/explainers/" backLabel="← Explainers" />
   <div class="article-wrap">
     <a class="back" href="/explainers/">← All Explainers</a>

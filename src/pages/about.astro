@@ -9,7 +9,7 @@ import Footer from '../components/Footer.astro';
   description="POTUS Watch Daily is independent foreign policy coverage. No editorial agenda, no corporate sponsor, no side to take."
   canonical="https://www.potuswatchdaily.com/about"
 >
-  <slot name="head">
+  <Fragment slot="head">
     <script type="application/ld+json">{JSON.stringify({
       "@context":"https://schema.org","@type":"NewsMediaOrganization",
       "name":"POTUS Watch Daily",
@@ -22,7 +22,7 @@ import Footer from '../components/Footer.astro';
       "masthead":"https://www.potuswatchdaily.com/about",
       "missionCoveragePrioritiesPolicy":"https://www.potuswatchdaily.com/editorial"
     })}</script>
-  </slot>
+  </Fragment>
   <Masthead backLink="/" backLabel="← Back to feed" />
 
   <div style="background:#1a1a1a;border-bottom:1px solid #cc0000;padding:10px 24px;text-align:center">

@@ -21,7 +21,7 @@ const tickerTitles = list.slice(0, 8).map(a => a.title);
   canonical="https://www.potuswatchdaily.com/"
   ogImage="https://www.potuswatchdaily.com/og-default.jpg"
 >
-  <slot name="head">
+  <Fragment slot="head">
     <script type="application/ld+json">{JSON.stringify({
       "@context":"https://schema.org","@type":"WebSite",
       "name":"POTUS Watch Daily",
@@ -42,7 +42,7 @@ const tickerTitles = list.slice(0, 8).map(a => a.title);
       "masthead":"https://www.potuswatchdaily.com/about",
       "missionCoveragePrioritiesPolicy":"https://www.potuswatchdaily.com/editorial"
     })}</script>
-  </slot>
+  </Fragment>
 
   <!-- Masthead -->
   <header class="masthead">
@@ -52,15 +52,15 @@ const tickerTitles = list.slice(0, 8).map(a => a.title);
         <img src="/logo-v2.png" width="300" height="52" alt="POTUS Watch Daily" style="display:block">
       </a>
       <nav class="nav" id="nav">
-        <a href="#" data-filter="all" class="nav-active">All</a>
-        <a href="#" data-filter="Americas">Americas</a>
-        <a href="#" data-filter="China">China</a>
-        <a href="#" data-filter="NATO">NATO</a>
-        <a href="#" data-filter="Iran">Iran</a>
-        <a href="#" data-filter="Mideast">Mideast</a>
-        <a href="#" data-filter="Russia">Russia</a>
-        <a href="#" data-filter="Trade">Trade</a>
-        <a href="#" data-filter="Analysis">Analysis</a>
+        <a href="/" data-filter="all" class="nav-active">All</a>
+        <a href="/region/americas" data-filter="Americas">Americas</a>
+        <a href="/region/china" data-filter="China">China</a>
+        <a href="/region/nato" data-filter="NATO">NATO</a>
+        <a href="/region/iran" data-filter="Iran">Iran</a>
+        <a href="/region/mideast" data-filter="Mideast">Mideast</a>
+        <a href="/region/russia" data-filter="Russia">Russia</a>
+        <a href="/region/trade" data-filter="Trade">Trade</a>
+        <a href="/region/analysis" data-filter="Analysis">Analysis</a>
       </nav>
       <div class="masthead-right">
         <div class="search-input-wrap">
