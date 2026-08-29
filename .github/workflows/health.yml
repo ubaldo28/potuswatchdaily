@@ -1,0 +1,31 @@
+name: Generator health check
+
+# The generator died silently at 00:41 UTC on 2026-08-29 (revoked API key) and
+# nobody noticed for four hours. The Worker exposes /health; nothing polled it.
+# This does. A failed run emails the repo owner via GitHub's normal
+# workflow-failure notification.
+
+on:
+  schedule:
+    - cron: '25 */3 * * *'   # every 3 hours, off the hour so it never races the generator
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Poll the generator health endpoint
+        run: |
+          URL="https://potuswatch-generator.peakvending.workers.dev/health"
+          BODY=$(curl -sS --max-time 30 "$URL") || { echo "::error::Health endpoint unreachable at $URL"; exit 1; }
+          echo "$BODY"
+
+          STATUS=$(echo "$BODY" | sed -n 's/.*"status":"\([^"]*\)".*/\1/p')
+          MINS=$(echo "$BODY"   | sed -n 's/.*"last_article_minutes_ago":\([0-9]*\).*/\1/p')
+
+          if [ "$STATUS" != "ok" ]; then
+            echo "::error::Generator is $STATUS — last article ${MINS:-unknown} minutes ago. Check: npx wrangler tail --config worker/wrangler.jsonc"
+            exit 1
+          fi
+
+          echo "Healthy — last article ${MINS} minutes ago."
