@@ -35,7 +35,7 @@ Go to https://railway.com → potuswatch service → Deploy Logs
 
 ### General Railway fix:
 ```bash
-cd ~/Desktop/potuswatch
+cd ~/potuswatch
 git commit --allow-empty -m "trigger Railway redeploy"
 git push
 ```
@@ -108,7 +108,7 @@ git push
 ## Routine deployment
 
 ```bash
-cd ~/Desktop/potuswatch
+cd ~/potuswatch
 # make your changes
 git add -A
 git commit -m "describe what you changed"

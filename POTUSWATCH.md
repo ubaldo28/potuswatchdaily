@@ -8,7 +8,7 @@
 - **URL**: https://www.potuswatchdaily.com
 - **Purpose**: Auto-generated foreign policy news site. Articles generated hourly by AI from live news.
 - **GitHub**: https://github.com/ubaldo28/potuswatch
-- **Local folder**: `~/Desktop/potuswatch`
+- **Local folder**: `~/potuswatch`
 
 ---
 
