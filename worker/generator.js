@@ -222,6 +222,50 @@ const FR_AGENCIES = {
   Analysis: ['state-department', 'treasury-department']
 };
 
+// Topical scoring. Without this the White House feed — which is in every
+// region's source list and carries the heaviest weight — always won the lead
+// slot, so a flag-half-staff proclamation got filed under "Russia".
+const REGION_TERMS = {
+  Americas: ['mexico','canada','brazil','venezuela','colombia','cuba','haiti','hemisphere','border','migration','cartel','western hemisphere','latin america','panama','argentina'],
+  China:    ['china','chinese','beijing','xi jinping','taiwan','hong kong','indo-pacific','south china sea','prc','semiconductor','huawei','tariff on china'],
+  NATO:     ['nato','alliance','article 5','baltic','poland','germany','france','united kingdom','norway','allied','transatlantic','european defence','european defense','burden-sharing'],
+  Iran:     ['iran','iranian','tehran','irgc','nuclear','enrichment','hormuz','houthi','proxy','jcpoa','snapback'],
+  Mideast:  ['israel','gaza','palestin','saudi','yemen','syria','lebanon','iraq','jordan','egypt','qatar','uae','emirates','hezbollah','hamas','abraham accords','middle east','afghan'],
+  Russia:   ['russia','russian','moscow','putin','ukraine','kyiv','kremlin','wagner','belarus','black sea','donbas','oil price cap'],
+  Trade:    ['tariff','trade','export control','import','customs','wto','supply chain','sanction','duty','duties','trade agreement','commerce','economic security'],
+  Analysis: ['foreign policy','national security','diplomacy','treaty','alliance','sanction','state department','secretary of state','geopolitic','defense','defence','security council']
+};
+
+// Anything foreign-policy-adjacent at all. A document that matches nothing here
+// is domestic or ceremonial and has no business on this site.
+const FOREIGN_POLICY_TERMS = [
+  'foreign','international','national security','diplomat','treaty','alliance','ally','allied',
+  'sanction','tariff','trade','export','import','embassy','ambassador','state department',
+  'defense','defence','military','nato','united nations','security council','war','weapon',
+  'nuclear','missile','terrorism','terrorist','border','immigration','visa','refugee',
+  'china','russia','iran','israel','ukraine','taiwan','korea','venezuela','mexico','canada'
+];
+
+// Ceremonial and administrative proclamations. These are not policy documents:
+// national observance days, flag orders, renamings, appointments.
+const CEREMONIAL = /half-staff|half staff|national .{0,30}(day|week|month)\b|proclaim.{0,40}(day|week|month)\b|anniversary|in memory of|honoring the|renaming|rename|birthday|awareness (day|week|month)|greetings|observance/i;
+
+function scoreDocument(doc, region) {
+  const title = (doc.title || '').toLowerCase();
+  const body = (doc.text || '').slice(0, 3000).toLowerCase();
+
+  if (CEREMONIAL.test(title)) return -1;                       // hard reject
+  if (!FOREIGN_POLICY_TERMS.some(t => title.includes(t) || body.includes(t))) return -1;
+
+  const terms = REGION_TERMS[region] || REGION_TERMS.Analysis;
+  let score = 0;
+  for (const t of terms) {
+    if (title.includes(t)) score += 5;   // the subject of the document
+    else if (body.includes(t)) score += 1;
+  }
+  return score;
+}
+
 /** Strip tags and decode the handful of entities that actually show up. */
 function stripHtml(html) {
   return String(html || '')
@@ -482,7 +526,7 @@ async function generateArticle(env) {
     throw new Error(`Missing required secrets: ${missing.join(', ')}. Set them with: wrangler secret put <NAME>`);
   }
 
-  const region = await getNextRegion(env);
+  let region = await getNextRegion(env);
   console.log(`[generator] Region selected: ${region}`);
 
   const allDocs = await fetchPrimarySources(region);
@@ -503,10 +547,45 @@ async function generateArticle(env) {
     return { status: 'skipped', reason: 'no-fresh-sources' };
   }
 
-  const lead = fresh[0];
-  const context = allDocs.filter(d => d.url !== lead.url).slice(0, 3);
+  // Score every fresh document against the chosen region. Anything ceremonial
+  // or with no foreign-policy content at all scores -1 and is dropped outright.
+  const scored = fresh
+    .map(d => ({ doc: d, score: scoreDocument(d, region) }))
+    .filter(x => x.score > 0)
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      if (a.doc.hasFullText !== b.doc.hasFullText) return a.doc.hasFullText ? -1 : 1;
+      return new Date(b.doc.date || 0) - new Date(a.doc.date || 0);
+    });
+
+  if (!scored.length) {
+    // The round-robin region has nothing relevant today. Rather than forcing an
+    // off-topic article into it, find the region that DOES match the material.
+    let best = null;
+    for (const r of Object.keys(REGION_TERMS)) {
+      for (const d of fresh) {
+        const sc = scoreDocument(d, r);
+        if (sc > 0 && (!best || sc > best.score)) best = { doc: d, score: sc, region: r };
+      }
+    }
+    if (!best) {
+      console.warn(`[generator] No document scored as foreign-policy relevant for any region. Skipping.`);
+      return { status: 'skipped', reason: 'no-relevant-sources' };
+    }
+    console.log(`[generator] No relevant ${region} material; reassigning to ${best.region}.`);
+    region = best.region;
+    scored.push({ doc: best.doc, score: best.score });
+  }
+
+  const lead = scored[0].doc;
+  console.log(`[generator] Lead: "${lead.title}" (${lead.source}, ${region} score ${scored[0].score})`);
+
+  // Context must also clear the relevance bar, or it drags the article off topic.
+  const context = allDocs
+    .filter(d => d.url !== lead.url && scoreDocument(d, region) > 0)
+    .slice(0, 3);
   const used = [lead, ...context];
-  console.log(`[generator] Lead: "${lead.title}" (${lead.source}); ${context.length} supporting documents.`);
+  console.log(`[generator] ${context.length} supporting documents.`);
 
   const leadBlock = `[1] LEAD DOCUMENT — this article is about this document\n    ${lead.title}\n    Source: ${lead.source}${lead.date ? ` (${lead.date})` : ''}\n    URL: ${lead.url}\n    ${lead.text.slice(0, lead.hasFullText ? 6000 : 1500)}`;
 
