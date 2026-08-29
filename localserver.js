@@ -216,7 +216,7 @@ async function generateArticles() {
       image: cardImage || heroImage, hero_image: heroImage || cardImage,
       published_at: now.toISOString(),
       date: now.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' }),
-      time: now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', hour12:false }),
+      time: now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', hourCycle:'h23' }),
       sources: JSON.stringify(top5.slice(0,3).map(a => ({ title: a.title, url: a.url })))
     });
 
