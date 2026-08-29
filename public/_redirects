@@ -1,6 +1,5 @@
-# Canonical host — apex to www (301)
-http://potuswatchdaily.com/* https://www.potuswatchdaily.com/:splat 301!
-https://potuswatchdaily.com/* https://www.potuswatchdaily.com/:splat 301!
+# NOTE: host-level redirects do NOT work here — Cloudflare Pages _redirects
+# matches paths only. The apex -> www 301 lives in src/middleware.ts.
 
 # HTML → clean URL redirects (301 permanent)
 /about.html /about 301
