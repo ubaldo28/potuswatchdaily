@@ -10,7 +10,7 @@ const { data: articles = [] } = await supabase
   .from('articles')
   .select('id,title,slug,excerpt,region,date,time,image')
   .order('id', { ascending: false })
-  .limit(60);
+  .limit(24);
 
 const list = articles ?? [];
 const tickerTitles = list.slice(0, 8).map(a => a.title);

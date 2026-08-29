@@ -354,6 +354,30 @@ async function generateArticle(env) {
     console.warn('[indexnow] Failed:', ie.message);
   }
 
+  // Purge the edge cache for the surfaces that list articles, so a new dispatch
+  // appears immediately despite the s-maxage set in src/middleware.ts. The new
+  // article's own URL was never cached, so it needs no purge. No-ops silently
+  // when the two optional vars are unset.
+  if (env.CF_ZONE_ID && env.CF_PURGE_TOKEN) {
+    try {
+      const r = await fetch(`https://api.cloudflare.com/client/v4/zones/${env.CF_ZONE_ID}/purge_cache`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${env.CF_PURGE_TOKEN}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ files: [
+          'https://www.potuswatchdaily.com/',
+          'https://www.potuswatchdaily.com/archive',
+          'https://www.potuswatchdaily.com/sitemap.xml',
+          'https://www.potuswatchdaily.com/news-sitemap.xml',
+          'https://www.potuswatchdaily.com/feed.xml',
+          `https://www.potuswatchdaily.com/region/${String(region).toLowerCase() === 'middle east' ? 'mideast' : String(region).toLowerCase().replace(/\s+/g, '-')}`,
+        ] }),
+      });
+      console.log(`[cf-purge] HTTP ${r.status}`);
+    } catch (pe) {
+      console.warn('[cf-purge] Failed:', pe.message);
+    }
+  }
+
   return { status: 'ok', title: parsed.title, region, slug: finalSlug };
 }
 

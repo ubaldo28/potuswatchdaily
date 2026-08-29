@@ -119,6 +119,27 @@ git push
 
 ---
 
+## 🚨 Articles missing from Google / archive looks short
+
+Check the row count first — the articles are probably present but undiscoverable:
+
+```bash
+railway run bash -c 'curl -s -o /dev/null -D - "$SUPABASE_URL/rest/v1/articles?select=id&limit=1" -H "apikey: $SUPABASE_KEY" -H "Authorization: Bearer $SUPABASE_KEY" -H "Prefer: count=exact" | grep -i content-range'
+```
+
+`content-range: 0-0/N` — N is the true row count.
+
+- **N is large, but few pages indexed** → a discovery cap. Check `sitemap-articles-[page].xml.ts`, `archive/[...page].astro`, `index.astro` for a `.limit()` without pagination.
+- **N is small / dropped** → restore from a backup:
+  ```bash
+  node scripts/restore-articles.mjs backups/articles-YYYY-MM-DD.json --dry-run   # inspect
+  node scripts/restore-articles.mjs backups/articles-YYYY-MM-DD.json             # insert
+  ```
+  It only inserts slugs not already live and never deletes.
+- **Backup workflow failing** → it fails on purpose when rows drop >5%. Investigate before overriding; a blind re-run would overwrite the last good snapshot.
+
+---
+
 ## Credentials location
 
 | Secret | Where stored |
@@ -130,3 +151,5 @@ git push
 | CLOUDFLARE_API_KEY | GitHub Secrets |
 | CLOUDFLARE_EMAIL | GitHub Secrets |
 | CLOUDFLARE_ACCOUNT_ID | GitHub Secrets |
+| SUPABASE_URL / SUPABASE_KEY | GitHub Secrets (deploy + backup workflows) |
+| CF_ZONE_ID / CF_PURGE_TOKEN | Worker secrets — optional, enables purge-on-publish |

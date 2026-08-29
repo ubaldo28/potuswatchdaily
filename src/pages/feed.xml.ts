@@ -30,7 +30,9 @@ export const GET: APIRoute = async ({ locals }) => {
     const items = list.map(a => {
       const url = `${SITE_URL}/article/${a.slug}`;
       const pubDate = (isoOf(a.published_at) || isoOf(a.date) || new Date()).toUTCString();
-      const paragraphs = (a.body || '').split('\n').filter((p: string) => p.trim()).map((p: string) => `<p>${esc(p)}</p>`).join('');
+      const paragraphs = (a.body || '').split('\n').filter((p: string) => p.trim()).slice(0, 3)
+        .map((p: string) => `<p>${esc(p)}</p>`).join('')
+        + `<p><a href="${url}">Continue reading at POTUS Watch Daily &rarr;</a></p>`;
       const heroImg = a.hero_image ? `<img src="${esc(a.hero_image)}" alt="${esc(a.title)}"/>` : '';
       return `<item>
   <title><![CDATA[${a.title}]]></title>
