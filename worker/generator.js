@@ -96,11 +96,68 @@ const IMAGE_STOPWORDS = new Set([
   'proclaims','proclaimed','secures','secured','faces','seeks','moves','sets'
 ]);
 
+// U.S. Department of War lead-photo feed. Public domain under 17 U.S.C. 105:
+// no licence, no attribution requirement, no API key, no rate limit. When a
+// photo genuinely matches the story this beats any stock image, because it is
+// an actual photograph of the subject rather than a mood shot.
+const GOV_PHOTO_FEED = 'https://www.war.gov/desktopmodules/imagegallery/dgovfeeds/leadphotos.ashx?SMPI=1096&ModuleId=579&TabId=131';
+
+/**
+ * Look for a government photo whose title or caption overlaps the article's
+ * subject. Returns a URL only on a real keyword match — a random military photo
+ * on an unrelated story would be no better than random stock.
+ */
+async function getGovImage(titleWords, size) {
+  if (!titleWords.length) return '';
+  try {
+    const r = await fetch(GOV_PHOTO_FEED, {
+      headers: { 'User-Agent': 'potuswatch-generator/1.0 (+https://www.potuswatchdaily.com)' },
+      signal: AbortSignal.timeout(10000)
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const xml = await r.text();
+
+    const items = (xml.match(/<item[\s\S]*?<\/item>/gi) || []).map(b => {
+      const title = stripHtml(pickTag(b, 'title'));
+      const desc = stripHtml(pickTag(b, 'description'));
+      const m = b.match(/https:\/\/media\.defense\.gov\/[^\s"'<>]+\.(?:JPG|jpg|jpeg|png)/);
+      return { title, desc, url: m ? m[0] : '' };
+    }).filter(i => i.url);
+
+    let best = null;
+    for (const it of items) {
+      const hay = `${it.title} ${it.desc}`.toLowerCase();
+      const score = titleWords.filter(w => hay.includes(w)).length;
+      if (score > 0 && (!best || score > best.score)) best = { ...it, score };
+    }
+    if (!best) return '';
+
+    // The feed serves 600x400; ask for a larger render for the hero.
+    const url = size === 'hero'
+      ? best.url.replace(/\/600\/400\//, '/1200/800/')
+      : best.url;
+
+    console.log(`[image] gov photo matched (${best.score}): "${best.title}"`);
+    return `${url}?pw_src=gov&pw_by=${encodeURIComponent('U.S. Department of War')}&pw_at=${encodeURIComponent('https://www.war.gov')}`;
+  } catch (e) {
+    console.warn('[image] gov photo lookup failed:', e.message);
+    return '';
+  }
+}
+
 /**
  * Build an image query from the article's own subject rather than a canned
  * per-region list. A stock photo can never truly depict a Federal Register
  * notice, but "iran sanctions" beats a random "persian gulf military" shot.
  */
+function titleKeywords(title) {
+  return String(title || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(w => w.length > 3 && !IMAGE_STOPWORDS.has(w));
+}
+
 function imageQueryFor(title, region) {
   const words = String(title || '')
     .toLowerCase()
@@ -124,6 +181,11 @@ function imageQueryFor(title, region) {
  * Guidelines and were previously not done at all.
  */
 async function getImage(env, region, size, title) {
+  // Prefer public-domain U.S. government photography when it actually matches
+  // the story. Falls through to Unsplash when it does not.
+  const gov = await getGovImage(titleKeywords(title), size);
+  if (gov) return gov;
+
   try {
     const query = imageQueryFor(title, region);
     const u = new URL('https://api.unsplash.com/photos/random');
@@ -158,7 +220,7 @@ async function getImage(env, region, size, title) {
     const name = data.user?.name;
     const link = data.user?.links?.html;
     if (name && link) {
-      url += `&pw_by=${encodeURIComponent(name)}&pw_at=${encodeURIComponent(link)}`;
+      url += `&pw_src=unsplash&pw_by=${encodeURIComponent(name)}&pw_at=${encodeURIComponent(link)}`;
     }
     return url;
   } catch (e) {

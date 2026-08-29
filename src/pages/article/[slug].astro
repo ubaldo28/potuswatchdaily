@@ -44,11 +44,11 @@ const img = a.hero_image || a.image || `${SITE_URL}/og-default.jpg`;
 
 // The generator encodes the Unsplash photographer into the image URL (the
 // articles table has no column for it). Unsplash ignores the extra params.
-let photoCredit: { name: string; url: string } | null = null;
+let photoCredit: { name: string; url: string; src: string } | null = null;
 try {
   const q = new URL(img).searchParams;
-  const by = q.get('pw_by'), at = q.get('pw_at');
-  if (by && at) photoCredit = { name: by, url: at };
+  const by = q.get('pw_by'), at = q.get('pw_at'), src = q.get('pw_src') || 'unsplash';
+  if (by && at) photoCredit = { name: by, url: at, src };
 } catch {}
 const region = a.region || 'Analysis';
 const regionSlug = region.toLowerCase() === 'middle east' ? 'mideast' : region.toLowerCase().replace(/\s+/g, '-');
@@ -125,14 +125,22 @@ const breadcrumbLd = {
   <div class="editorial-bar">POTUS Watch Daily covers foreign policy through an analytical lens — policy, diplomacy, economics and strategy.</div>
 
   {img && img !== `${SITE_URL}/og-default.jpg` && (
+  <Fragment>
     <img class="hero-img" src={img} srcset={`${img.replace(/&w=\d+/, "&w=640")} 640w, ${img.replace(/&w=\d+/, "&w=1024")} 1024w, ${img} 1600w`} sizes="100vw" width="1600" height="640" alt={a.title} fetchpriority="high" decoding="async" />
-    {photoCredit && (
+    {photoCredit && photoCredit.src === 'gov' && (
+      <p class="photo-credit">
+        Photo: <a href={photoCredit.url} target="_blank" rel="noopener">{photoCredit.name}</a>
+        <span class="photo-credit-note"> — public domain (17 U.S.C. § 105).</span>
+      </p>
+    )}
+    {photoCredit && photoCredit.src !== 'gov' && (
       <p class="photo-credit">
         Photo by <a href={`${photoCredit.url}?utm_source=potuswatch&utm_medium=referral`} target="_blank" rel="noopener nofollow">{photoCredit.name}</a>
         {' '}on <a href="https://unsplash.com/?utm_source=potuswatch&utm_medium=referral" target="_blank" rel="noopener nofollow">Unsplash</a>
         <span class="photo-credit-note"> — illustrative stock image, not a depiction of the events described.</span>
       </p>
     )}
+  </Fragment>
   )}
 
   <div class="article-content">
