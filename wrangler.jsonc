@@ -1,6 +1,9 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "potuswatchdaily",
+  // Deliberately NOT "potuswatchdaily": that name is taken by the existing
+  // Pages project, which stays up as the rollback target until the custom
+  // domain is moved onto this Worker.
+  "name": "potuswatchdaily-site",
   "compatibility_date": "2026-05-20",
   "compatibility_flags": [
     "nodejs_compat"

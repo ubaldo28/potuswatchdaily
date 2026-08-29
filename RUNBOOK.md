@@ -178,7 +178,8 @@ SSRF (GHSA-2pvr-wf23-7pc7) and a **high** reflected XSS via unescaped slot name
 (GHSA-8hv8-536x-4wqp). Staying on Astro 5 meant shipping those. `npm audit` is
 now clean.
 
-The old Pages project is left in place as the rollback target. Nothing about the
+The Worker is named `potuswatchdaily-site`, not `potuswatchdaily`: the old
+Pages project still owns that name and is left in place as the rollback target. Nothing about the
 generator Worker changed.
 
 ### Cutover, in order
@@ -197,7 +198,8 @@ generator Worker changed.
    `/`, `/article/<any-slug>`, `/archive/`, `/region/china`, `/sitemap.xml`,
    `/news-sitemap.xml`, `/robots.txt`, `/feed.xml`.
 5. Only then, in the dashboard: Workers & Pages → potuswatchdaily → Settings →
-   Domains & Routes → add `www.potuswatchdaily.com` and `potuswatchdaily.com`.
+   Domains & Routes on **potuswatchdaily-site** → add `www.potuswatchdaily.com`
+   and `potuswatchdaily.com`.
    Adding the custom domain to the Worker takes it off the Pages project.
 6. Re-verify on the real domain, including the apex → www 301.
 
