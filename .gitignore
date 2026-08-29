@@ -17,3 +17,7 @@ public/index.html.bak.*
 
 # Astro generated types
 .astro/
+
+# migration artefacts
+articles-dump.json
+articles-schema.sql
