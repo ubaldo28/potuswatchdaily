@@ -7,6 +7,11 @@
   "main": "generator.js",
   "compatibility_date": "2026-05-20",
 
+  // Workers AI binding. This is what makes generation free: 10,000 Neurons/day
+  // at no charge, no API key, and the call never leaves Cloudflare's network
+  // (so it does not count against the 50-subrequest limit either).
+  "ai": { "binding": "AI" },
+
   // Hourly, at the top of the hour (UTC). Cloudflare's smallest cron
   // granularity is one minute; the Workers Free plan allows 5 Cron Triggers
   // per account. An interval of >= 1 hour also gets the most generous

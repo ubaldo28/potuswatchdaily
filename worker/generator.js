@@ -9,7 +9,9 @@
  * Supabase is reached over its PostgREST HTTP API directly.
  *
  * Secrets come from Worker env bindings:
- *   ANTHROPIC_API_KEY, NEWS_API_KEY, UNSPLASH_ACCESS_KEY, SUPABASE_URL, SUPABASE_KEY
+ *   NEWS_API_KEY, UNSPLASH_ACCESS_KEY, SUPABASE_URL, SUPABASE_KEY
+ *   ANTHROPIC_API_KEY is OPTIONAL - set it only if you want paid Haiku prose
+ *   instead of the free Workers AI model.
  * Optional:
  *   RUN_TOKEN  — if set, enables POST /run?token=... to fire a generation by hand.
  */
@@ -190,6 +192,87 @@ async function fetchNews(env) {
   return null;
 }
 
+// ── Cloudflare Workers AI (default, free) ────────────────────────────────────
+// 10,000 Neurons/day are free and reset at 00:00 UTC. @cf/openai/gpt-oss-120b
+// bills 31,818 Neurons/M input and 68,182/M output, so at ~1,200 in / ~1,600 out
+// an article costs ~147 Neurons — roughly 67 articles/day, ~2.8x headroom at the
+// hourly cadence. Do NOT switch to kimi-k2.6/2.7, glm-5.2/5.3 or deepseek-v4-*:
+// those require a paid billing method and hard-fail on the Workers Free plan.
+const WORKERS_AI_MODEL = '@cf/openai/gpt-oss-120b';
+
+/**
+ * Workers AI has shipped more than one response shape for reasoning models,
+ * so accept any of them rather than trusting a single field.
+ */
+function extractWorkersAIText(result) {
+  if (typeof result === 'string') return result;
+  if (typeof result?.response === 'string') return result.response;
+  const choice = result?.choices?.[0];
+  if (typeof choice?.message?.content === 'string') return choice.message.content;
+  if (typeof choice?.text === 'string') return choice.text;
+  if (Array.isArray(result?.response)) {
+    const joined = result.response.map(x => (typeof x === 'string' ? x : x?.text ?? '')).join('');
+    if (joined) return joined;
+  }
+  return null;
+}
+
+async function callWorkersAI(env, prompt) {
+  if (!env.AI) throw new Error('Workers AI binding "AI" is not configured. Add {"ai":{"binding":"AI"}} to wrangler.jsonc and redeploy.');
+
+  let lastErr;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      // max_tokens defaults to 256 on Workers AI. Without this the article is
+      // truncated mid-JSON and the parse fails.
+      const result = await env.AI.run(WORKERS_AI_MODEL, {
+        messages: [
+          { role: 'system', content: 'You are a senior foreign policy correspondent. Respond with a single valid JSON object and nothing else - no prose before or after, no markdown code fences.' },
+          { role: 'user', content: prompt }
+        ],
+        max_tokens: 2500,
+        temperature: 0.7
+      });
+
+      const text = extractWorkersAIText(result);
+      if (typeof text !== 'string' || !text.trim()) {
+        throw new Error(`Unexpected Workers AI response shape: ${JSON.stringify(result).slice(0, 500)}`);
+      }
+      return text;
+    } catch (e) {
+      lastErr = e;
+      const msg = String(e?.message || e);
+      // 3040/4006 mean the daily free Neuron allocation is spent. Retrying cannot help.
+      if (/\b(3040|4006)\b/.test(msg) || /neuron/i.test(msg)) {
+        console.error(`[workers-ai] Daily free Neuron allocation exhausted: ${msg}`);
+        throw new Error(msg);
+      }
+      console.warn(`[workers-ai] Attempt ${attempt}/3 failed: ${msg}`);
+      if (attempt < 3) await sleep(3000 * attempt);
+    }
+  }
+  throw lastErr;
+}
+
+/**
+ * Anthropic writes better prose but costs money, so it is strictly optional:
+ * used only when ANTHROPIC_API_KEY is set, and any failure falls through to the
+ * free Workers AI path rather than losing the slot.
+ */
+async function generateText(env, prompt) {
+  if (env.ANTHROPIC_API_KEY) {
+    try {
+      const r = await callAnthropic(env, prompt);
+      const t = r?.content?.[0]?.text;
+      if (typeof t === 'string' && t.trim()) return t;
+      console.warn('[generator] Anthropic returned an unexpected shape; falling back to Workers AI.');
+    } catch (e) {
+      console.warn(`[generator] Anthropic failed (${e.message}); falling back to Workers AI.`);
+    }
+  }
+  return callWorkersAI(env, prompt);
+}
+
 // ── Anthropic ─────────────────────────────────────────────────────────────────
 async function callAnthropic(env, prompt) {
   let lastErr;
@@ -237,7 +320,7 @@ async function callAnthropic(env, prompt) {
 async function generateArticle(env) {
   console.log('[generator] Starting article generation...');
 
-  const missing = ['ANTHROPIC_API_KEY','NEWS_API_KEY','UNSPLASH_ACCESS_KEY','SUPABASE_URL','SUPABASE_KEY']
+  const missing = ['NEWS_API_KEY','UNSPLASH_ACCESS_KEY','SUPABASE_URL','SUPABASE_KEY']
     .filter(k => !env[k]);
   if (missing.length) {
     throw new Error(`Missing required secrets: ${missing.join(', ')}. Set them with: wrangler secret put <NAME>`);
@@ -273,12 +356,7 @@ async function generateArticle(env) {
   // Prompt text is byte-for-byte identical to localserver.js.
   const prompt = `You are a senior foreign policy correspondent at POTUS Watch Daily. Write a ${articleType} on the ${region} portfolio. Minimum 600 words.\n\nHeadlines:\n${newsContext}\n\nStructure (use ## for section headings):\n## [Context heading]\n2 paragraphs: Powerful lede + background context. Each paragraph 3-4 sentences.\n\n## [Strategic heading]\n2 paragraphs: Strategic analysis and key dynamics. Each paragraph 3-4 sentences.\n\n## [Implications heading]\n2 paragraphs: Wider regional or global implications. Each paragraph 3-4 sentences.\n\n## Washington Angle\n2 paragraphs: White House and Congressional dimension. Each paragraph 2-3 sentences.\n\n## Outlook\n1 paragraph: 72-hour outlook and 3 specific signals to watch. 3-4 sentences.\n\nRules: Title maximum 8 words. No colons in title. Active voice. No rhetorical questions. Section headings must be short (3-5 words), descriptive, and unique. Focus on POLICY, DIPLOMACY, ECONOMICS and STRATEGY. Maintain an analytical tone. Use precise factual language. Never sensationalize or glorify violence. Write at least 600 words total.\n\nRespond ONLY with valid JSON no markdown:\n{"title":"max 8 word title","region":"${region}","excerpt":"one sentence max 25 words","meta_description":"max 155 chars","slug":"url-slug-no-years-no-dates","body":"## Heading One\\n\\nparagraph text\\n\\nparagraph text\\n\\n## Heading Two\\n\\nparagraph text\\n\\nparagraph text\\n\\n## Heading Three\\n\\nparagraph text\\n\\nparagraph text\\n\\n## Washington Angle\\n\\nparagraph text\\n\\nparagraph text\\n\\n## Outlook\\n\\nparagraph text"}`;
 
-  const apiResponse = await callAnthropic(env, prompt);
-
-  let raw = apiResponse?.content?.[0]?.text;
-  if (typeof raw !== 'string') {
-    throw new Error(`Unexpected Anthropic response shape: ${JSON.stringify(apiResponse).slice(0, 500)}`);
-  }
+  let raw = await generateText(env, prompt);
   raw = raw.replace(/[\x00-\x1F\x7F]/g,' ').replace(/```json|```/g,'').trim();
   const js = raw.indexOf('{'), je = raw.lastIndexOf('}') + 1;
 
