@@ -725,11 +725,15 @@ Respond ONLY with valid JSON, no markdown:
   // appears immediately despite the s-maxage set in src/middleware.ts. The new
   // article's own URL was never cached, so it needs no purge. No-ops silently
   // when the two optional vars are unset.
-  if (env.CF_ZONE_ID && env.CF_PURGE_TOKEN) {
+  if (env.CF_ZONE_ID && (env.CF_PURGE_TOKEN || (env.CF_EMAIL && env.CF_API_KEY))) {
     try {
       const r = await fetch(`https://api.cloudflare.com/client/v4/zones/${env.CF_ZONE_ID}/purge_cache`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${env.CF_PURGE_TOKEN}`, 'Content-Type': 'application/json' },
+        // Either a scoped token (preferred) or the Global API Key, whichever
+        // is configured. The Global Key is what already lives in GitHub Secrets.
+        headers: env.CF_PURGE_TOKEN
+          ? { Authorization: `Bearer ${env.CF_PURGE_TOKEN}`, 'Content-Type': 'application/json' }
+          : { 'X-Auth-Email': env.CF_EMAIL, 'X-Auth-Key': env.CF_API_KEY, 'Content-Type': 'application/json' },
         body: JSON.stringify({ files: [
           'https://www.potuswatchdaily.com/',
           'https://www.potuswatchdaily.com/archive',

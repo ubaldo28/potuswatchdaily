@@ -1,0 +1,22 @@
+name: Apply Cloudflare Cache Rule
+
+# Cloudflare will not cache HTML from the Pages Function on Cache-Control alone.
+# This applies the Cache Rule that makes it do so, using the credentials already
+# in GitHub Secrets. Idempotent — re-running replaces the rule, never stacks it.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply cache rule
+        env:
+          CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
+          CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
+        run: node scripts/setup-cache-rule.mjs
