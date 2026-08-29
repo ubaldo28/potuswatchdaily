@@ -18,7 +18,7 @@
 |---|---|---|
 | **Astro** | Site framework (SSR) | - |
 | **Cloudflare Pages** | Hosts the website | dash.cloudflare.com |
-| **Railway** | Runs article generator | railway.com |
+| **Cloudflare Workers AI** | Writes the articles (free, 10k neurons/day) | dash.cloudflare.com |
 | **Supabase** | Stores articles in DB | supabase.com |
 | **GitHub** | Code + triggers deploys | github.com/ubaldo28/potuswatch |
 | **AdSense** | Ads (`ca-pub-7380718671497895`) | - |
@@ -49,16 +49,21 @@ git push → GitHub Actions → npm run build → wrangler pages deploy dist →
 - **File**: `localserver.js`
 - **Runs**: `node localserver.js`
 - **Health check**: `GET /health` on `process.env.PORT`
-- **Schedule**: Generates 1 article per hour via Claude Haiku + NewsAPI + Unsplash
+- **Schedule**: 1 article per hour via Cloudflare Workers AI + primary sources + Unsplash
 - **Config**: `railway.toml` — always-restart policy, healthcheck at /health
 - **Auto-deploys**: Yes, from GitHub pushes
 
-### Railway env vars (set in Railway dashboard):
-- `ANTHROPIC_API_KEY`
-- `NEWS_API_KEY`
-- `UNSPLASH_ACCESS_KEY`
-- `SUPABASE_URL`
-- `SUPABASE_KEY`
+### Worker secrets (`wrangler secret put <NAME> --config worker/wrangler.jsonc`):
+- `UNSPLASH_ACCESS_KEY`, `SUPABASE_URL`, `SUPABASE_KEY` — required
+- `RUN_TOKEN` — optional, enables `POST /run` for manual triggering
+- `ANTHROPIC_API_KEY` — OPTIONAL. Costs money. Set it only to get Haiku prose
+  instead of the free model; failures fall back to Workers AI automatically.
+- `CF_ZONE_ID` / `CF_PURGE_TOKEN` — optional, purges the edge cache on publish
+
+**No NEWS_API_KEY.** NewsAPI's free plan forbids production use; the generator
+now reads public-domain U.S. government primary sources instead (White House
+Presidential Actions with full document text, Federal Register, war.gov, UN,
+EU Council). No keys, no licence, no rate limits.
 
 ---
 

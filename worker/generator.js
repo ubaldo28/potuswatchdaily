@@ -9,7 +9,7 @@
  * Supabase is reached over its PostgREST HTTP API directly.
  *
  * Secrets come from Worker env bindings:
- *   NEWS_API_KEY, UNSPLASH_ACCESS_KEY, SUPABASE_URL, SUPABASE_KEY
+ *   UNSPLASH_ACCESS_KEY, SUPABASE_URL, SUPABASE_KEY
  *   ANTHROPIC_API_KEY is OPTIONAL - set it only if you want paid Haiku prose
  *   instead of the free Workers AI model.
  * Optional:
@@ -30,20 +30,6 @@ const imageQueries = {
   Analysis:['united nations diplomacy world','global summit leaders','international relations diplomacy','foreign policy strategy','world leaders summit']
 };
 
-const keywords = {
-  Iran:['iran','tehran','nuclear'], China:['china','beijing','xi','taiwan'],
-  NATO:['nato','europe','ukraine'], Americas:['trump','white house','congress'],
-  Mideast:['israel','gaza','saudi','yemen'], Russia:['russia','putin','moscow','ukraine'],
-  Trade:['tariff','trade','economy','sanctions'],
-  Analysis:['policy','strategy','diplomacy','geopolitics','foreign','alliance','leverage','sanctions']
-};
-
-const JUNK_DOMAINS = [
-  'smartbitchestrashybooks','podbean','rollingstone','billboard','hiphopwired',
-  'insidethemagic','commondreams','thenation','rt.com','slowboring',
-  'theintercept','salon.com','newrepublic'
-];
-
 const INDEXNOW_KEY = 'e7d7dce91b634bc5bf610ae2367c52c7';
 const SITE_HOST = 'www.potuswatchdaily.com';
 
@@ -56,12 +42,6 @@ const SIMILARITY_ROW_CAP = 500;
 function slugify(t) {
   return t.toLowerCase().replace(/[^a-z0-9\s-]/g,'').replace(/\s+/g,'-')
     .replace(/-+/g,'-').replace(/^-|-$/g,'').slice(0,80);
-}
-
-function isRelevantSource(url) {
-  if (!url) return false;
-  const u = url.toLowerCase();
-  return !JUNK_DOMAINS.some(d => u.includes(d));
 }
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -159,37 +139,190 @@ async function getNextRegion(env) {
   }
 }
 
-// ── NewsAPI ───────────────────────────────────────────────────────────────────
-async function fetchNews(env) {
-  for (let i = 0; i < 3; i++) {
-    try {
-      const u = new URL('https://newsapi.org/v2/everything');
-      u.searchParams.set('q', 'Trump foreign policy OR Iran nuclear OR Strait of Hormuz OR NATO OR China Xi summit OR Russia Ukraine ceasefire OR tariffs OR sanctions OR diplomacy OR geopolitics');
-      u.searchParams.set('language', 'en');
-      u.searchParams.set('sortBy', 'publishedAt');
-      u.searchParams.set('pageSize', '20');
-      u.searchParams.set('apiKey', env.NEWS_API_KEY);
+// ── Primary sources ───────────────────────────────────────────────────────────
+// Replaces NewsAPI. Two reasons, both serious:
+//
+//  1. LICENSING. NewsAPI's Developer plan is free but its terms state it "may be
+//     used for development and testing in a development environment only, and
+//     cannot be used in a staging or production environment". This site is live
+//     and ad-monetised, so that usage was a breach. The paid cure is $449/month.
+//
+//  2. ORIGINALITY. Rewriting other outlets' headlines is close to Google's
+//     definition of scaled content abuse. US government works are public domain
+//     (17 U.S.C. 105) — no licence, no key, no attribution obligation — and the
+//     White House feed carries the FULL TEXT of each presidential action. An
+//     analysis grounded in the actual text of an executive order is original
+//     commentary; a rewrite of five Reuters headlines is not.
+//
+// Everything here is keyless and free.
 
-      const r = await fetch(u, {
-        // NewsAPI rejects requests without a User-Agent from some edge networks.
-        headers: { 'User-Agent': 'potuswatch-generator/1.0' },
-        signal: AbortSignal.timeout(15000)
-      });
-      if (!r.ok) throw new Error(`NewsAPI ${r.status}: ${(await r.text()).slice(0, 300)}`);
-      const data = await r.json();
-      if (!data.articles) throw new Error(`NewsAPI returned no articles array: ${JSON.stringify(data).slice(0, 300)}`);
-
-      const filtered = data.articles.filter(a =>
-        a.title && a.description && a.title !== '[Removed]' && isRelevantSource(a.url)
-      );
-      return filtered.length >= 3 ? filtered :
-        data.articles.filter(a => a.title && a.description && a.title !== '[Removed]');
-    } catch (e) {
-      console.warn(`News fetch attempt ${i+1}/3 failed:`, e.message);
-      if (i < 2) await sleep(5000 * (i + 1));
-    }
+const RSS_SOURCES = [
+  {
+    id: 'whitehouse-actions',
+    name: 'White House Presidential Actions',
+    url: 'https://www.whitehouse.gov/presidential-actions/feed/',
+    regions: ['Americas', 'Analysis', 'Trade', 'China', 'Iran', 'Russia', 'NATO', 'Mideast'],
+    weight: 3   // full document text — the most valuable input we have
+  },
+  {
+    id: 'war-releases',
+    name: 'U.S. Department of War Releases',
+    url: 'https://www.war.gov/DesktopModules/ArticleCS/RSS.ashx?ContentType=9&Site=945&max=10',
+    regions: ['NATO', 'Russia', 'Mideast', 'China', 'Analysis'],
+    weight: 2
+  },
+  {
+    id: 'un-press',
+    name: 'UN Meetings Coverage and Press Releases',
+    url: 'https://press.un.org/en/rss.xml',
+    regions: ['Mideast', 'Russia', 'Iran', 'Analysis', 'NATO'],
+    weight: 2
+  },
+  {
+    id: 'eu-council',
+    name: 'Council of the European Union Press Releases',
+    url: 'https://www.consilium.europa.eu/en/rss/pressreleases.ashx',
+    regions: ['NATO', 'Russia', 'Trade', 'Analysis'],
+    weight: 2
   }
-  return null;
+];
+
+// Federal Register agency slugs per region. Keyless JSON API, no rate limit.
+const FR_AGENCIES = {
+  Americas: ['state-department', 'homeland-security-department'],
+  China:    ['commerce-department', 'treasury-department'],
+  NATO:     ['defense-department', 'state-department'],
+  Iran:     ['treasury-department', 'state-department'],
+  Mideast:  ['state-department', 'treasury-department'],
+  Russia:   ['treasury-department', 'commerce-department'],
+  Trade:    ['commerce-department', 'trade-representative-office-of-united-states'],
+  Analysis: ['state-department', 'treasury-department']
+};
+
+/** Strip tags and decode the handful of entities that actually show up. */
+function stripHtml(html) {
+  return String(html || '')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&rsquo;|&apos;/g, "'")
+    .replace(/&ldquo;|&rdquo;/g, '"')
+    .replace(/&mdash;/g, '—')
+    .replace(/&#\d+;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function pickTag(xml, tag) {
+  const m = xml.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'i'));
+  if (!m) return '';
+  return m[1].replace(/^\s*<!\[CDATA\[/, '').replace(/\]\]>\s*$/, '').trim();
+}
+
+/**
+ * Minimal RSS/Atom reader. Workers has no DOMParser and pulling in an XML
+ * library would blow the startup budget, so this parses the four fields we use
+ * and nothing more.
+ */
+function parseFeed(xml) {
+  const items = [];
+  const blocks = xml.match(/<item[\s\S]*?<\/item>/gi) || xml.match(/<entry[\s\S]*?<\/entry>/gi) || [];
+  for (const b of blocks) {
+    const title = stripHtml(pickTag(b, 'title'));
+    let link = pickTag(b, 'link');
+    if (!link) {
+      const alt = b.match(/<link[^>]*href="([^"]+)"/i);
+      link = alt ? alt[1] : '';
+    }
+    const full = stripHtml(pickTag(b, 'content:encoded') || pickTag(b, 'content'));
+    const summary = stripHtml(pickTag(b, 'description') || pickTag(b, 'summary'));
+    const date = pickTag(b, 'pubDate') || pickTag(b, 'updated') || pickTag(b, 'published');
+    if (!title) continue;
+    items.push({ title, url: link, date, text: full || summary, hasFullText: Boolean(full) });
+  }
+  return items;
+}
+
+async function fetchFeed(src) {
+  try {
+    const r = await fetch(src.url, {
+      headers: { 'User-Agent': 'potuswatch-generator/1.0 (+https://www.potuswatchdaily.com)' },
+      signal: AbortSignal.timeout(12000)
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const items = parseFeed(await r.text());
+    console.log(`[sources] ${src.id}: ${items.length} items`);
+    return items.map(i => ({ ...i, source: src.name, weight: src.weight }));
+  } catch (e) {
+    console.warn(`[sources] ${src.id} failed: ${e.message}`);
+    return [];
+  }
+}
+
+async function fetchFederalRegister(region) {
+  const agencies = FR_AGENCIES[region] || FR_AGENCIES.Analysis;
+  try {
+    const u = new URL('https://www.federalregister.gov/api/v1/documents.json');
+    u.searchParams.set('per_page', '20');
+    u.searchParams.set('order', 'newest');
+    for (const a of agencies) u.searchParams.append('conditions[agencies][]', a);
+
+    const r = await fetch(u, {
+      headers: { 'User-Agent': 'potuswatch-generator/1.0 (+https://www.potuswatchdaily.com)' },
+      signal: AbortSignal.timeout(12000)
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+
+    // Most Federal Register traffic is procedural (Paperwork Reduction Act
+    // notices, meeting announcements). Those make dull, uninformative articles,
+    // so drop them and prefer substantive rules and determinations.
+    const NOISE = /paperwork reduction|information collection|meeting notice|privacy act|sunshine act|agency information/i;
+    const items = (data.results || [])
+      .filter(d => d.title && !NOISE.test(d.title))
+      .map(d => ({
+        title: d.title,
+        url: d.html_url,
+        date: d.publication_date,
+        text: d.abstract || '',
+        hasFullText: false,
+        source: `Federal Register (${d.type || 'Document'})`,
+        weight: 2
+      }));
+    console.log(`[sources] federal-register: ${items.length} usable of ${(data.results || []).length}`);
+    return items;
+  } catch (e) {
+    console.warn(`[sources] federal-register failed: ${e.message}`);
+    return [];
+  }
+}
+
+/**
+ * Gather primary documents relevant to a region. Returns newest-first, with
+ * full-text items promoted ahead of summary-only ones.
+ */
+async function fetchPrimarySources(region) {
+  const feeds = RSS_SOURCES.filter(s => s.regions.includes(region));
+  const results = await Promise.all([
+    ...feeds.map(fetchFeed),
+    fetchFederalRegister(region)
+  ]);
+
+  const all = results.flat().filter(i => i.title && i.text && i.text.length > 120);
+
+  // Rank: full text first, then source weight, then recency.
+  all.sort((a, b) => {
+    if (a.hasFullText !== b.hasFullText) return a.hasFullText ? -1 : 1;
+    if (a.weight !== b.weight) return b.weight - a.weight;
+    return new Date(b.date || 0) - new Date(a.date || 0);
+  });
+
+  return all;
 }
 
 // ── Cloudflare Workers AI (default, free) ────────────────────────────────────
@@ -320,30 +453,26 @@ async function callAnthropic(env, prompt) {
 async function generateArticle(env) {
   console.log('[generator] Starting article generation...');
 
-  const missing = ['NEWS_API_KEY','UNSPLASH_ACCESS_KEY','SUPABASE_URL','SUPABASE_KEY']
+  const missing = ['UNSPLASH_ACCESS_KEY','SUPABASE_URL','SUPABASE_KEY']
     .filter(k => !env[k]);
   if (missing.length) {
     throw new Error(`Missing required secrets: ${missing.join(', ')}. Set them with: wrangler secret put <NAME>`);
   }
 
-  const newsItems = await fetchNews(env);
-  if (!newsItems || !newsItems.length) {
-    console.warn('[generator] No news available. Skipping.');
-    return { status: 'skipped', reason: 'no-news' };
-  }
-  console.log(`[generator] Fetched ${newsItems.length} usable headlines.`);
-
   const region = await getNextRegion(env);
   console.log(`[generator] Region selected: ${region}`);
 
-  const kw = keywords[region] || [];
-  const relevant = newsItems.filter(a =>
-    kw.some(k => (a.title + ' ' + (a.description || '')).toLowerCase().includes(k))
-  );
-  const pool = relevant.length >= 3 ? relevant : newsItems;
-  const top5 = pool.slice(0, 5);
-  const newsContext = top5.map((a, i) =>
-    `${i+1}. ${a.title}${a.description ? '\n   ' + a.description : ''}`
+  const docs = await fetchPrimarySources(region);
+  if (!docs.length) {
+    console.warn('[generator] No primary source documents available. Skipping.');
+    return { status: 'skipped', reason: 'no-sources' };
+  }
+  console.log(`[generator] ${docs.length} documents; using top ${Math.min(4, docs.length)}.`);
+
+  // Keep the prompt bounded: full documents are truncated, summaries are not.
+  const used = docs.slice(0, 4);
+  const newsContext = used.map((d, i) =>
+    `[${i + 1}] ${d.title}\n    Source: ${d.source}${d.date ? ` (${d.date})` : ''}\n    URL: ${d.url}\n    ${d.text.slice(0, d.hasFullText ? 4000 : 1200)}`
   ).join('\n\n');
 
   const types = [
@@ -354,7 +483,39 @@ async function generateArticle(env) {
   const articleType = types[Math.floor(Math.random() * types.length)];
 
   // Prompt text is byte-for-byte identical to localserver.js.
-  const prompt = `You are a senior foreign policy correspondent at POTUS Watch Daily. Write a ${articleType} on the ${region} portfolio. Minimum 600 words.\n\nHeadlines:\n${newsContext}\n\nStructure (use ## for section headings):\n## [Context heading]\n2 paragraphs: Powerful lede + background context. Each paragraph 3-4 sentences.\n\n## [Strategic heading]\n2 paragraphs: Strategic analysis and key dynamics. Each paragraph 3-4 sentences.\n\n## [Implications heading]\n2 paragraphs: Wider regional or global implications. Each paragraph 3-4 sentences.\n\n## Washington Angle\n2 paragraphs: White House and Congressional dimension. Each paragraph 2-3 sentences.\n\n## Outlook\n1 paragraph: 72-hour outlook and 3 specific signals to watch. 3-4 sentences.\n\nRules: Title maximum 8 words. No colons in title. Active voice. No rhetorical questions. Section headings must be short (3-5 words), descriptive, and unique. Focus on POLICY, DIPLOMACY, ECONOMICS and STRATEGY. Maintain an analytical tone. Use precise factual language. Never sensationalize or glorify violence. Write at least 600 words total.\n\nRespond ONLY with valid JSON no markdown:\n{"title":"max 8 word title","region":"${region}","excerpt":"one sentence max 25 words","meta_description":"max 155 chars","slug":"url-slug-no-years-no-dates","body":"## Heading One\\n\\nparagraph text\\n\\nparagraph text\\n\\n## Heading Two\\n\\nparagraph text\\n\\nparagraph text\\n\\n## Heading Three\\n\\nparagraph text\\n\\nparagraph text\\n\\n## Washington Angle\\n\\nparagraph text\\n\\nparagraph text\\n\\n## Outlook\\n\\nparagraph text"}`;
+  const prompt = `You are a senior foreign policy correspondent at POTUS Watch Daily writing a ${articleType} on the ${region} portfolio.
+
+Below are PRIMARY SOURCE DOCUMENTS — U.S. government actions, Federal Register filings, allied and UN statements. Some are reproduced in full. Your article must be an analysis OF THESE DOCUMENTS.
+
+${newsContext}
+
+Hard rules on accuracy:
+- Every factual claim must come from the documents above. Cite them inline by their bracket number, e.g. [1].
+- Name the specific actors, dates, dollar figures, entity names and legal authorities that appear in the documents. Specificity is the point of the piece.
+- If the documents do not establish something, write that it is not addressed in the record. Never invent a fact, a quote, a date or a number.
+- Analysis and implications are yours to draw, but must follow from what the documents say.
+
+Structure (use ## for section headings, 3-5 words each, descriptive and unique to this piece):
+## [Opening heading]
+2 paragraphs: what the documents actually do, and the background needed to read them. 3-4 sentences each.
+
+## [Analysis heading]
+2 paragraphs: the strategic logic and the dynamics in play. 3-4 sentences each.
+
+## [Implications heading]
+2 paragraphs: consequences for the region and for wider U.S. policy. 3-4 sentences each.
+
+## [Closing heading]
+1-2 paragraphs: what remains unresolved, and what would signal a change. Do not use a fixed template here.
+
+Style: active voice, analytical, no rhetorical questions, no sensationalism, never glorify violence. 700-1000 words.
+
+Headline rules: 5-9 words. It must name a SPECIFIC actor and a SPECIFIC action drawn from the documents — for example "Treasury Designates Three Iranian Shipping Firms", not "Iran Portfolio Faces Mounting Pressure". No colons. Abstract noun-stacks are rejected.
+
+Slug rules: derived from the headline, url-safe, specific enough to be unique, no years, no dates.
+
+Respond ONLY with valid JSON, no markdown:
+{"title":"specific 5-9 word headline","region":"${region}","excerpt":"one sentence max 25 words","meta_description":"max 155 chars","slug":"specific-url-slug","body":"## Heading One\\n\\nparagraph\\n\\nparagraph\\n\\n## Heading Two\\n\\nparagraph\\n\\nparagraph\\n\\n## Heading Three\\n\\nparagraph\\n\\nparagraph\\n\\n## Heading Four\\n\\nparagraph"}`;
 
   let raw = await generateText(env, prompt);
   raw = raw.replace(/[\x00-\x1F\x7F]/g,' ').replace(/```json|```/g,'').trim();
@@ -408,7 +569,8 @@ async function generateArticle(env) {
       published_at: now.toISOString(),
       date: now.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' }),
       time: now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', hourCycle:'h23' }),
-      sources: JSON.stringify(top5.slice(0,3).map(a => ({ title: a.title, url: a.url })))
+      // The documents actually placed in the prompt — these are real citations now.
+      sources: JSON.stringify(used.map(d => ({ title: d.title, url: d.url })))
     })
   });
 

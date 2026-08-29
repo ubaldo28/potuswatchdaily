@@ -140,13 +140,33 @@ railway run bash -c 'curl -s -o /dev/null -D - "$SUPABASE_URL/rest/v1/articles?s
 
 ---
 
+## 🚨 No new articles appearing
+
+The generator is a Cloudflare Worker (cron `0 * * * *`), not Railway.
+
+```bash
+curl -s https://potuswatch-generator.peakvending.workers.dev/health
+npx wrangler tail --config worker/wrangler.jsonc      # watch a live run
+curl -sS -X POST "https://potuswatch-generator.peakvending.workers.dev/run?token=$RUN_TOKEN"
+```
+
+`status: degraded` means the last article is over 3 hours old. The GitHub Actions
+"Generator health check" workflow polls this every 3 hours and emails on failure.
+
+Common causes:
+- **Daily free Neuron allocation spent** (error 3040/4006) — 10,000/day, resets 00:00 UTC. ~147 neurons per article, so 24/day should use ~35%. If it is exhausted, something is retrying in a loop.
+- **A source feed changed shape** — `[sources] <id> failed:` in the logs. The generator continues on the remaining feeds; it only skips the hour if ALL sources return nothing.
+- **Supabase insert rejected** — check the error in `wrangler tail`.
+
+---
+
 ## Credentials location
 
 | Secret | Where stored |
 |---|---|
 | SUPABASE_URL / SUPABASE_KEY | Cloudflare Pages dashboard (runtime env) |
 | ANTHROPIC_API_KEY | Railway dashboard |
-| NEWS_API_KEY | Railway dashboard |
+
 | UNSPLASH_ACCESS_KEY | Railway dashboard |
 | CLOUDFLARE_API_KEY | GitHub Secrets |
 | CLOUDFLARE_EMAIL | GitHub Secrets |
