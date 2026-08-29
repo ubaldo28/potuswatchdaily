@@ -74,6 +74,25 @@ await cf(`/zones/${zoneId}/rulesets/phases/http_request_cache_settings/entrypoin
 });
 
 console.log(`Cache Rule applied. ${rules.length} rule(s) in the cache phase.`);
-console.log(`\nCF_ZONE_ID=${zoneId}`);
-console.log('Set that as a Worker secret so purge-on-publish works:');
-console.log(`  echo -n "${zoneId}" | npx wrangler secret put CF_ZONE_ID --config worker/wrangler.jsonc`);
+
+// Push the purge credentials straight into the Worker so purge-on-publish is
+// live without a second manual step. Skipped in CI, where wrangler is not
+// authenticated.
+if (!process.env.GITHUB_ACTIONS) {
+  const { execFileSync } = await import('node:child_process');
+  const put = (name, value) => {
+    try {
+      execFileSync('npx', ['wrangler', 'secret', 'put', name, '--config', 'worker/wrangler.jsonc'],
+        { input: value, stdio: ['pipe', 'inherit', 'inherit'] });
+      console.log(`  set ${name}`);
+    } catch (e) {
+      console.warn(`  could not set ${name}: ${e.message}`);
+    }
+  };
+  console.log('\nSetting Worker secrets for purge-on-publish:');
+  put('CF_ZONE_ID', zoneId);
+  put('CF_EMAIL', EMAIL);
+  put('CF_API_KEY', KEY);
+} else {
+  console.log(`\nCF_ZONE_ID=${zoneId}`);
+}
