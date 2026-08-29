@@ -1,8 +1,9 @@
 name: Apply Cloudflare Cache Rule
 
-# Cloudflare will not cache HTML from the Pages Function on Cache-Control alone.
-# This applies the Cache Rule that makes it do so, using the credentials already
-# in GitHub Secrets. Idempotent — re-running replaces the rule, never stacks it.
+# Does the whole job from GitHub Secrets — no key ever has to be fetched or
+# pasted by hand. Applies the Cache Rule that makes Cloudflare actually cache
+# HTML from the Pages Function, then writes the purge credentials into the
+# generator Worker so purge-on-publish works. Idempotent.
 
 on:
   workflow_dispatch:
@@ -15,8 +16,27 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Apply cache rule
+
+      - name: Apply cache rule and capture zone id
+        id: rule
         env:
           CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
           CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
-        run: node scripts/setup-cache-rule.mjs
+        run: |
+          node scripts/setup-cache-rule.mjs | tee out.txt
+          ZONE=$(grep -o 'CF_ZONE_ID=[a-f0-9]*' out.txt | cut -d= -f2)
+          echo "zone_id=$ZONE" >> "$GITHUB_OUTPUT"
+          echo "Zone: $ZONE"
+
+      # wrangler authenticates from CLOUDFLARE_API_KEY + CLOUDFLARE_EMAIL, the
+      # same pair deploy.yml already uses, so no extra credential is needed.
+      - name: Set Worker purge secrets
+        env:
+          CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
+          CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
+        run: |
+          set -e
+          printf '%s' "${{ steps.rule.outputs.zone_id }}" | npx --yes wrangler@4 secret put CF_ZONE_ID  --config worker/wrangler.jsonc
+          printf '%s' "$CLOUDFLARE_EMAIL"                 | npx --yes wrangler@4 secret put CF_EMAIL   --config worker/wrangler.jsonc
+          printf '%s' "$CLOUDFLARE_API_KEY"               | npx --yes wrangler@4 secret put CF_API_KEY --config worker/wrangler.jsonc
+          echo "Purge secrets set."

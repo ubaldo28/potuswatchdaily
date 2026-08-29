@@ -93,6 +93,6 @@ if (!process.env.GITHUB_ACTIONS) {
   put('CF_ZONE_ID', zoneId);
   put('CF_EMAIL', EMAIL);
   put('CF_API_KEY', KEY);
-} else {
-  console.log(`\nCF_ZONE_ID=${zoneId}`);
 }
+
+console.log(`\nCF_ZONE_ID=${zoneId}`);
