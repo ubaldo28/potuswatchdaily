@@ -41,6 +41,15 @@ const [{ data: related = [] }, { data: prevA }, { data: nextA }] = await Promise
 const SITE_URL = 'https://www.potuswatchdaily.com';
 const canonicalUrl = `${SITE_URL}/article/${a.slug}`;
 const img = a.hero_image || a.image || `${SITE_URL}/og-default.jpg`;
+
+// The generator encodes the Unsplash photographer into the image URL (the
+// articles table has no column for it). Unsplash ignores the extra params.
+let photoCredit: { name: string; url: string } | null = null;
+try {
+  const q = new URL(img).searchParams;
+  const by = q.get('pw_by'), at = q.get('pw_at');
+  if (by && at) photoCredit = { name: by, url: at };
+} catch {}
 const region = a.region || 'Analysis';
 const regionSlug = region.toLowerCase() === 'middle east' ? 'mideast' : region.toLowerCase().replace(/\s+/g, '-');
 const dateIso = a.published_at || a.created_at || new Date().toISOString();
@@ -117,6 +126,13 @@ const breadcrumbLd = {
 
   {img && img !== `${SITE_URL}/og-default.jpg` && (
     <img class="hero-img" src={img} srcset={`${img.replace(/&w=\d+/, "&w=640")} 640w, ${img.replace(/&w=\d+/, "&w=1024")} 1024w, ${img} 1600w`} sizes="100vw" width="1600" height="640" alt={a.title} fetchpriority="high" decoding="async" />
+    {photoCredit && (
+      <p class="photo-credit">
+        Photo by <a href={`${photoCredit.url}?utm_source=potuswatch&utm_medium=referral`} target="_blank" rel="noopener nofollow">{photoCredit.name}</a>
+        {' '}on <a href="https://unsplash.com/?utm_source=potuswatch&utm_medium=referral" target="_blank" rel="noopener nofollow">Unsplash</a>
+        <span class="photo-credit-note"> — illustrative stock image, not a depiction of the events described.</span>
+      </p>
+    )}
   )}
 
   <div class="article-content">
@@ -195,6 +211,10 @@ const breadcrumbLd = {
 .hero-img { width: 100%; height: 480px; max-height: 480px; aspect-ratio: 5 / 2; object-fit: cover; display: block; }
 @media (max-width: 640px) { .hero-img { height: 220px; } }
 .article-content { max-width: 740px; margin: 0 auto; padding: 40px 24px 80px; }
+.photo-credit { font-family: Inter, Arial, sans-serif; font-size: 11px; color: #444; margin: 8px auto 0; max-width: 740px; padding: 0 24px; }
+.photo-credit a { color: #666; text-decoration: none; }
+.photo-credit a:hover { color: #cc0000; text-decoration: underline; }
+.photo-credit-note { color: #333; }
 .crumbs { font-family: Inter, Arial, sans-serif; font-size: 11px; color: #444; margin-bottom: 20px; display: flex; gap: 8px; align-items: center; }
 .crumbs a { color: #666; text-decoration: none; }
 .crumbs a:hover { color: #cc0000; }

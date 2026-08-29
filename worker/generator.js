@@ -77,10 +77,55 @@ async function sb(env, path, init = {}) {
 }
 
 // ── Unsplash image ────────────────────────────────────────────────────────────
-async function getImage(env, region, size) {
+// Words that carry no visual meaning, so they are stripped before the image
+// search. Without this the query is dominated by "President", "Department" etc.
+const IMAGE_STOPWORDS = new Set([
+  // grammar
+  'the','a','an','and','or','of','for','to','in','on','with','as','at','by','over','under','after',
+  'before','amid','ahead','into','from','against','across','toward','towards','via','its','his','her',
+  // counts and ordinals
+  'one','two','three','four','five','six','seven','eight','nine','ten','first','second','third','new',
+  // institutional filler
+  'president','administration','department','office','secretary','united','states','us','american',
+  'federal','notice','rule','licenses','license','general','further','act','order','plan','policy',
+  // verbs - none of these are photographable
+  'announces','announced','publishes','published','issues','issued','declares','declared','orders',
+  'ordered','directs','directed','designates','designated','expands','expanded','extends','extended',
+  'imposes','imposed','targets','targeted','restricts','restricted','tightens','tightened','approves',
+  'approved','agrees','agree','agreed','signs','signed','weaponizes','establishes','established',
+  'proclaims','proclaimed','secures','secured','faces','seeks','moves','sets'
+]);
+
+/**
+ * Build an image query from the article's own subject rather than a canned
+ * per-region list. A stock photo can never truly depict a Federal Register
+ * notice, but "iran sanctions" beats a random "persian gulf military" shot.
+ */
+function imageQueryFor(title, region) {
+  const words = String(title || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(w => w.length > 2 && !IMAGE_STOPWORDS.has(w));
+
+  // News headlines put the actor first and the object last, and the middle is
+  // usually the verb. Take the first word plus the final two.
+  const picked = [...new Set([words[0], ...words.slice(-2)].filter(Boolean))].slice(0, 3);
+  const fromTitle = picked.join(' ').trim();
+  if (fromTitle.length >= 6) return fromTitle;
+
+  const fallback = imageQueries[region] || ['politics world diplomacy'];
+  return fallback[Math.floor(Math.random() * fallback.length)];
+}
+
+/**
+ * Returns { url, credit } where credit is "Name|profileUrl", or '' on failure.
+ * Attribution and the download trigger are both REQUIRED by the Unsplash API
+ * Guidelines and were previously not done at all.
+ */
+async function getImage(env, region, size, title) {
   try {
-    const queries = imageQueries[region] || ['politics world diplomacy'];
-    const query = queries[Math.floor(Math.random() * queries.length)];
+    const query = imageQueryFor(title, region);
     const u = new URL('https://api.unsplash.com/photos/random');
     u.searchParams.set('query', query);
     u.searchParams.set('orientation', 'landscape');
@@ -92,11 +137,30 @@ async function getImage(env, region, size) {
     });
     if (!r.ok) throw new Error(`Unsplash ${r.status}: ${(await r.text()).slice(0, 200)}`);
     const data = await r.json();
+    console.log(`[image] query "${query}" -> ${data.user?.name || 'unknown'}`);
+
+    // Required by the API Guidelines whenever a photo is used. Fire and forget.
+    if (data.links?.download_location) {
+      fetch(data.links.download_location, {
+        headers: { Authorization: 'Client-ID ' + env.UNSPLASH_ACCESS_KEY }
+      }).catch(() => {});
+    }
 
     const raw = data.urls.raw;
-    if (size === 'thumb') return raw + '&w=600&q=75&fit=crop';
-    if (size === 'hero')  return raw + '&w=1200&q=85&fit=crop';
-    return data.urls.regular;
+    let url;
+    if (size === 'thumb') url = raw + '&w=600&q=75&fit=crop';
+    else if (size === 'hero') url = raw + '&w=1200&q=85&fit=crop';
+    else url = data.urls.regular;
+
+    // Attribution is carried in the URL because the articles table has no column
+    // for it. Unsplash ignores unrecognised query params, and the article page
+    // parses these back out to render the required credit line.
+    const name = data.user?.name;
+    const link = data.user?.links?.html;
+    if (name && link) {
+      url += `&pw_by=${encodeURIComponent(name)}&pw_at=${encodeURIComponent(link)}`;
+    }
+    return url;
   } catch (e) {
     console.warn('Image fetch failed:', e.message);
     return '';
@@ -679,8 +743,8 @@ Respond ONLY with valid JSON, no markdown:
   const cleanSlug = slug.replace(/\b(2024|2025|2026|2027)\b-?/g,'').replace(/-+/g,'-').replace(/^-|-$/g,'');
   const finalSlug = (existing && existing.length) ? cleanSlug + '-' + Date.now() : cleanSlug;
 
-  const heroImage = await getImage(env, region, 'hero');
-  const cardImage = await getImage(env, region, 'thumb');
+  const heroImage = await getImage(env, region, 'hero', parsed.title);
+  const cardImage = await getImage(env, region, 'thumb', parsed.title);
   if (!heroImage && !cardImage) console.warn('[generator] Both image fetches failed; publishing without images.');
 
   const now = new Date();
