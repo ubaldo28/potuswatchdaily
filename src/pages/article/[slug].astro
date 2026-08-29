@@ -9,7 +9,7 @@ const { slug } = Astro.params;
 
 const { data: a, error } = await supabase
   .from('articles')
-  .select('id,title,slug,excerpt,body,region,image,hero_image,meta_description,sources,date,time,published_at,created_at,updated_at')
+  .select('*')
   .eq('slug', slug)
   .limit(1)
   .single();

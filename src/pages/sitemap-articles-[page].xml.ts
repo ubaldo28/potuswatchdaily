@@ -16,17 +16,17 @@ export const GET: APIRoute = async ({ params, locals }) => {
 
   try {
     const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_KEY);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('articles')
-      .select('slug,title,hero_image,image,date,published_at,updated_at')
+      .select('slug,title,hero_image,image,date,published_at')
       .not('slug', 'is', null)
       .order('id', { ascending: false })
       .range(from, from + PAGE_SIZE - 1);
 
-    // lastmod is the only crawl-scheduling hint the major engines still act on,
-    // so prefer updated_at — otherwise a corrected article never gets recrawled.
+    if (error) throw error;   // never disguise a query failure as an empty page
+
+    // lastmod comes from published_at; the table has no updated_at column.
     const isoOf = (a: any) => {
-      if (a.updated_at) return new Date(a.updated_at).toISOString();
       if (a.published_at) return new Date(a.published_at).toISOString();
       if (a.date) { const d = new Date(a.date); if (!isNaN(d.getTime()) && d.getFullYear() >= 2024) return d.toISOString(); }
       return new Date().toISOString();
