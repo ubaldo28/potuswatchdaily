@@ -1,3 +1,4 @@
+import { env } from 'cloudflare:workers';
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
 
@@ -8,7 +9,7 @@ export const PAGE_SIZE = 2000;
 // so every article beyond the newest 1000 was absent from the only surface
 // Google uses to discover them.
 export const GET: APIRoute = async ({ locals }) => {
-  const { env } = locals.runtime;
+  // env comes from the Workers runtime module (Astro.locals.runtime was removed in adapter v14)
 
   try {
     const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_KEY);

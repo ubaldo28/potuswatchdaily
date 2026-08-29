@@ -1,4 +1,5 @@
 ---
+import { env } from 'cloudflare:workers';
 import { createClient } from '@supabase/supabase-js';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Masthead from '../../components/Masthead.astro';
@@ -22,7 +23,7 @@ const meta = REGIONS[key];
 
 let articles: any[] = [];
 if (meta) {
-  const { env } = Astro.locals.runtime;
+  // env comes from the Workers runtime module (Astro.locals.runtime was removed in adapter v14)
   const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_KEY);
   const { data } = await supabase
     .from('articles')

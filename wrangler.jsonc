@@ -1,9 +1,11 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "potuswatchdaily",
-  "pages_build_output_dir": "./dist",
   "compatibility_date": "2026-05-20",
   "compatibility_flags": [
     "nodejs_compat"
-  ]
+  ],
+  "observability": {
+    "enabled": true
+  }
 }

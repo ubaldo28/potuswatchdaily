@@ -1,4 +1,4 @@
-name: Build & Deploy to Cloudflare Pages
+name: Build & Deploy to Cloudflare Workers
 
 on:
   push:
@@ -28,20 +28,15 @@ jobs:
 
       - name: Build Astro site
         run: npm run build
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
 
-      - name: Disable Cloudflare auto-builds
-        run: |
-          curl -s -X PATCH "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/pages/projects/potuswatchdaily" \
-            -H "X-Auth-Email: ${{ secrets.CLOUDFLARE_EMAIL }}" \
-            -H "X-Auth-Key: ${{ secrets.CLOUDFLARE_API_KEY }}" \
-            -H "Content-Type: application/json" \
-            --data '{"source":{"type":"fallback"}}'
-
-      - name: Deploy to Cloudflare Pages
-        run: npx wrangler pages deploy dist --project-name=potuswatchdaily
+      # SUPABASE_URL / SUPABASE_KEY are Worker secrets, not build-time env:
+      # since @astrojs/cloudflare v14 the pages read them from the
+      # `cloudflare:workers` module at request time. Set them once with
+      #   npx wrangler secret put SUPABASE_URL
+      #   npx wrangler secret put SUPABASE_KEY
+      # They are NOT re-uploaded here, so a deploy can never clobber them.
+      - name: Deploy to Cloudflare Workers
+        run: npx wrangler deploy --config dist/server/wrangler.json
         env:
           CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
           CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}

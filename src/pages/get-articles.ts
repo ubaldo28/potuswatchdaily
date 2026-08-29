@@ -1,8 +1,9 @@
+import { env } from 'cloudflare:workers';
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
 
 export const GET: APIRoute = async ({ request, locals }) => {
-  const { env } = locals.runtime;
+  // env comes from the Workers runtime module (Astro.locals.runtime was removed in adapter v14)
   const url = new URL(request.url);
   // Clamp: an unvalidated parseInt lets ?offset=abc reach .range() as NaN,
   // and negatives or huge values go straight through to PostgREST.

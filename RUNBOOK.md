@@ -4,7 +4,7 @@
 
 ## 🚨 Site is down / not loading
 
-1. Check Cloudflare Pages: https://dash.cloudflare.com → Workers & Pages → potuswatchdaily
+1. Check the Worker: https://dash.cloudflare.com → Workers & Pages → potuswatchdaily
 2. Check latest deployment — is it green?
 3. If red: check GitHub Actions https://github.com/ubaldo28/potuswatch/actions
 4. If Actions red: expand the failed step and read the error
@@ -47,7 +47,7 @@ Common causes:
 - Global API Key: https://dash.cloudflare.com/profile/api-tokens → View next to "Global API Key"
 
 ### Error: `Authentication error [code: 10000]`
-- API token doesn't have Cloudflare Pages permission
+- API token doesn't have Workers Scripts permission
 - Use Global API Key instead of scoped token (always works)
 
 ### Error: `refusing to allow...workflow`
@@ -158,7 +158,7 @@ Common causes:
 
 | Secret | Where stored |
 |---|---|
-| SUPABASE_URL / SUPABASE_KEY | Cloudflare Pages env (site) + Worker secrets (generator) |
+| SUPABASE_URL / SUPABASE_KEY | Worker secrets on both the site Worker and the generator Worker (`npx wrangler secret put ...`) |
 | ANTHROPIC_API_KEY (optional) | Worker secret |
 
 | UNSPLASH_ACCESS_KEY | Worker secret |
@@ -167,3 +167,54 @@ Common causes:
 | CLOUDFLARE_ACCOUNT_ID | GitHub Secrets |
 | SUPABASE_URL / SUPABASE_KEY | GitHub Secrets (deploy + backup workflows) |
 | CF_ZONE_ID / CF_PURGE_TOKEN | Worker secrets — optional, enables purge-on-publish |
+
+---
+
+## Pages → Workers cutover (Aug 2026)
+
+Why: `@astrojs/cloudflare` v14 removed Cloudflare Pages support, and Astro 5 had
+no patched release for five runtime advisories — including a **high** Host-header
+SSRF (GHSA-2pvr-wf23-7pc7) and a **high** reflected XSS via unescaped slot name
+(GHSA-8hv8-536x-4wqp). Staying on Astro 5 meant shipping those. `npm audit` is
+now clean.
+
+The old Pages project is left in place as the rollback target. Nothing about the
+generator Worker changed.
+
+### Cutover, in order
+
+1. `npm ci && npm run build` — must succeed locally first.
+2. Set the site Worker's secrets (once):
+   ```
+   npx wrangler secret put SUPABASE_URL   --config dist/server/wrangler.json
+   npx wrangler secret put SUPABASE_KEY   --config dist/server/wrangler.json
+   ```
+   Use the Supabase **anon/publishable** key here, never `service_role`: this
+   Worker only reads, and its bundle is reachable by anyone.
+3. `npx wrangler deploy --config dist/server/wrangler.json`
+4. Verify on the `*.workers.dev` URL **before touching DNS** — the live site is
+   still served by Pages at this point:
+   `/`, `/article/<any-slug>`, `/archive/`, `/region/china`, `/sitemap.xml`,
+   `/news-sitemap.xml`, `/robots.txt`, `/feed.xml`.
+5. Only then, in the dashboard: Workers & Pages → potuswatchdaily → Settings →
+   Domains & Routes → add `www.potuswatchdaily.com` and `potuswatchdaily.com`.
+   Adding the custom domain to the Worker takes it off the Pages project.
+6. Re-verify on the real domain, including the apex → www 301.
+
+### Rollback
+
+Re-point the custom domain at the Pages project. The last Pages deployment is
+still there and still serves the pre-migration build.
+
+### What changed in code
+
+- `Astro.locals.runtime` is gone in adapter v14. Every route that needed Supabase
+  now does `import { env } from 'cloudflare:workers'` (10 files).
+- `wrangler.jsonc` lost `pages_build_output_dir`; the adapter generates the real
+  deploy config at `dist/server/wrangler.json`.
+- `session: false` and `imageService: 'passthrough'` in `astro.config.mjs`. Without
+  them the adapter provisions a KV namespace and a Cloudflare Images binding on
+  every deploy; this site uses neither.
+- `src/pages/index.astro` had `<main>` closed by `</div>` and a stray `</main>`
+  around the newsletter block. Astro 5 tolerated it; Astro 7's compiler rejects
+  it. The landmark had been wrapping the wrong content in production.

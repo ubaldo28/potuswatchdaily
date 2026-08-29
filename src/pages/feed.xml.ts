@@ -1,3 +1,4 @@
+import { env } from 'cloudflare:workers';
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
 
@@ -10,7 +11,7 @@ function esc(s: string | null | undefined) {
 }
 
 export const GET: APIRoute = async ({ locals }) => {
-  const { env } = locals.runtime;
+  // env comes from the Workers runtime module (Astro.locals.runtime was removed in adapter v14)
 
   try {
     const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_KEY);

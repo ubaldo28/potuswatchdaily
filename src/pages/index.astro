@@ -1,9 +1,10 @@
 ---
+import { env } from 'cloudflare:workers';
 import { createClient } from '@supabase/supabase-js';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Footer from '../components/Footer.astro';
 
-const { env } = Astro.locals.runtime;
+// env comes from the Workers runtime module (Astro.locals.runtime was removed in adapter v14)
 const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_KEY);
 
 const { data: articles = [] } = await supabase
@@ -176,7 +177,7 @@ const safeJsonLd = (o: unknown) => JSON.stringify(o)
     <div style="text-align:center;padding:32px 0 48px">
       <button id="load-more-btn" style="background:none;border:1px solid #2a2a2a;color:#555;padding:10px 32px;font-size:12px;font-family:'Inter',sans-serif;cursor:pointer;border-radius:3px;letter-spacing:0.5px;transition:all 0.15s" onmouseover="this.style.color='#fff';this.style.borderColor='#555'" onmouseout="this.style.color='#555';this.style.borderColor='#2a2a2a'">Load more dispatches</button>
     </div>
-  </div>
+  </main>
 
   <!-- Newsletter CTA -->
   <div style="background:#111;border-top:3px solid #cc0000;border-bottom:1px solid #1e1e1e;padding:40px 24px;text-align:center">
@@ -189,7 +190,7 @@ const safeJsonLd = (o: unknown) => JSON.stringify(o)
       <button type="submit" style="background:#cc0000;color:#fff;border:none;padding:12px 24px;border-radius:3px;font-size:13px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;letter-spacing:0.5px">Subscribe free</button>
     </form>
     <p id="sub-msg" style="font-size:12px;margin-top:10px;display:none"></p>
-  </main>
+  </div>
 
   <Footer />
 

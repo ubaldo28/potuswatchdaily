@@ -1,9 +1,10 @@
 ---
+import { env } from 'cloudflare:workers';
 import { createClient } from '@supabase/supabase-js';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Footer from '../../components/Footer.astro';
 
-const { env } = Astro.locals.runtime;
+// env comes from the Workers runtime module (Astro.locals.runtime was removed in adapter v14)
 const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_KEY);
 const { slug } = Astro.params;
 

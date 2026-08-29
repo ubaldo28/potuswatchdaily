@@ -17,7 +17,7 @@
 | Service | Purpose | URL |
 |---|---|---|
 | **Astro** | Site framework (SSR) | - |
-| **Cloudflare Pages** | Hosts the website | dash.cloudflare.com |
+| **Cloudflare Workers** | Hosts the website (static assets + SSR) | dash.cloudflare.com |
 | **Cloudflare Workers AI** | Writes the articles (free, 10k neurons/day) | dash.cloudflare.com |
 | **Supabase** | Stores articles in DB | supabase.com |
 | **GitHub** | Code + triggers deploys | github.com/ubaldo28/potuswatch |
@@ -29,7 +29,7 @@
 ## Deployment — HOW IT WORKS
 
 ```
-git push → GitHub Actions → npm run build → wrangler pages deploy dist → Cloudflare Pages live
+git push → GitHub Actions → npm run build → wrangler deploy → Cloudflare Workers live
 ```
 
 - **Just run `git push`** — everything else is automatic
@@ -98,7 +98,7 @@ potuswatch/
 ├── worker/generator.js             # Cloudflare Cron replacement — see MIGRATION.md
 ├── scripts/backup-articles.mjs     # Daily table dump
 ├── scripts/restore-articles.mjs    # Restore from a snapshot
-├── wrangler.jsonc                  # Cloudflare Pages config
+├── wrangler.jsonc                  # Cloudflare Workers config
 ├── astro.config.mjs                # Astro SSR + Cloudflare adapter
 └── .github/workflows/deploy.yml   # GitHub Actions auto-deploy
 ```
@@ -110,10 +110,10 @@ potuswatch/
 1. **`package.json` has `"type": "module"`** — always use `import/export`, never `require()`
 2. **ALL CSS lives in `BaseLayout.astro`** — never in `<style>` blocks in page files. `<style is:global>` outside a layout wrapper is unreliable in Astro SSR + Cloudflare and silently breaks in production while working in dev. Article page uses scoped `<style>` which is fine — only `is:global` in page files is the problem.
 3. **`dist/` is in `.gitignore`** — never commit it, GitHub Actions builds fresh
-5. **Cloudflare Pages env vars** (SUPABASE_URL, SUPABASE_KEY) are set in Cloudflare dashboard, not in code
-6. **Static files in `public/` don't work with Cloudflare SSR adapter** — serve them as Astro API routes (`.ts` files in `src/pages/`) like `ads.txt.ts`, `robots.txt.ts`, `favicon.svg.ts`
+5. **SUPABASE_URL / SUPABASE_KEY are Worker secrets**, set with `npx wrangler secret put`, never in code. Since adapter v14 the pages read them via `import { env } from 'cloudflare:workers'` — `Astro.locals.runtime` no longer exists
+6. **Static files in `public/` are unreliable with the Cloudflare SSR adapter** — serve them as Astro API routes (`.ts` files in `src/pages/`) like `ads.txt.ts`, `robots.txt.ts`, `favicon.svg.ts`
 7. **Filling a named slot uses `<Fragment slot="head">`, NEVER `<slot name="head">`.** A `<slot>` element in a page *defines* an outlet, it does not fill one — its children render as fallback into the layout's default slot, i.e. inside `<body>`. This silently put every JSON-LD block and `article:*` meta tag in the body for months.
-8. **`public/_headers` does NOT apply to SSR routes on Cloudflare Pages.** It only touches static assets. Cache and security headers for SSR pages live in `src/middleware.ts`.
+8. **`public/_headers` does NOT apply to SSR routes.** It only touches files served from the static asset store. Cache and security headers for SSR pages live in `src/middleware.ts`.
 9. **Never cap a discovery surface without pagination.** The sitemap `.limit(1000)`, archive `.limit(300)` and homepage `.limit(60)` left ~2400 articles with no crawlable path to them.
 10. **The Google News sitemap must contain only the last 48 hours.** That is `news-sitemap.xml`. Do not put `<news:news>` tags in the main article sitemaps.
 11. **`dist/` is gitignored but was also tracked** — files committed before an ignore rule is added stay tracked. Untracked as of Aug 2026; do not re-add.

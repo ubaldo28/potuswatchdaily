@@ -1,3 +1,4 @@
+import { env } from 'cloudflare:workers';
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
 
@@ -10,7 +11,7 @@ function esc(s: string | null | undefined) {
 }
 
 export const GET: APIRoute = async ({ params, locals }) => {
-  const { env } = locals.runtime;
+  // env comes from the Workers runtime module (Astro.locals.runtime was removed in adapter v14)
   const page = Math.max(1, parseInt(params.page || '1', 10));
   const from = (page - 1) * PAGE_SIZE;
 

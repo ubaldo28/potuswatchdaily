@@ -1,3 +1,4 @@
+import { env } from 'cloudflare:workers';
 import type { APIRoute } from 'astro';
 
 function buildWelcomeHtml(thuDate: string) {
@@ -88,7 +89,7 @@ export const OPTIONS: APIRoute = ({ request }) => {
 export const POST: APIRoute = async ({ request, locals }) => {
   const origin = request.headers.get('Origin') || '';
   const cors = corsHeaders(origin);
-  const { env } = locals.runtime;
+  // env comes from the Workers runtime module (Astro.locals.runtime was removed in adapter v14)
 
   try {
     const body = await request.json();

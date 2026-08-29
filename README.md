@@ -24,15 +24,15 @@ Cloudflare Worker ── fetch ──▶ whitehouse.gov RSS (full document text)
    ├── image: war.gov photo feed, else Unsplash
    └── INSERT ──▶ Supabase (Postgres)
                      ↓
-              Astro SSR on Cloudflare Pages
+             Astro SSR on Cloudflare Workers
                      ↓
               Edge cache · sitemap index · Google News feed
 ```
 
 | Concern | Choice | Why |
 |---|---|---|
-| Site | Astro 5, SSR, `@astrojs/cloudflare` | Articles publish hourly; a static build would need a deploy per article |
-| Hosting | Cloudflare Pages | Free tier, edge cache, same platform as the generator |
+| Site | Astro 7, SSR, `@astrojs/cloudflare` | Articles publish hourly; a static build would need a deploy per article |
+| Hosting | Cloudflare Workers (static assets) | Free tier, edge cache, same platform as the generator. Moved off Pages in Aug 2026: `@astrojs/cloudflare` v14 dropped Pages support, and the Astro 5 line had no patch for five runtime XSS/SSRF advisories |
 | Generation | Cloudflare Workers AI | 10,000 free Neurons/day; ~147 per article, so ~67/day of headroom against a 24/day cadence |
 | Scheduling | Workers Cron Trigger | Replaced a Railway service — same reliability, no bill |
 | Data | Supabase Postgres | Free tier, PostgREST over HTTP so the Worker needs no SDK |

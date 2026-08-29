@@ -2,9 +2,9 @@ import { defineMiddleware } from 'astro:middleware';
 
 const CANONICAL_HOST = 'www.potuswatchdaily.com';
 
-// public/_headers only applies to STATIC assets on Cloudflare Pages — it never
-// reaches responses produced by the Pages Function (dist/_worker.js). Every SSR
-// route was therefore shipping with no Cache-Control and no security headers.
+// public/_headers only applies to files served from the static asset store —
+// it never reaches a response the Worker rendered. Every SSR route was
+// therefore shipping with no Cache-Control and no security headers.
 const CACHE_RULES: [RegExp, string][] = [
   // Articles are effectively immutable once published. max-age=0 keeps browsers
   // revalidating (so a correction is never stuck client-side) while the edge
@@ -20,10 +20,10 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
   const url = ctx.url;
 
   // ── Canonical host ────────────────────────────────────────────────────────
-  // public/_redirects cannot do host-level rules on Cloudflare Pages: it matches
-  // PATHS only, so `https://potuswatchdaily.com/*` was parsed as a literal path
-  // beginning "/https:/". The apex therefore served 200s, doubling crawl cost on
-  // every URL. A 301 is a directive where a canonical tag is only a hint.
+  // public/_redirects cannot do host-level rules: it matches PATHS only, so
+  // `https://potuswatchdaily.com/*` was parsed as a literal path beginning
+  // "/https:/". The apex therefore served 200s, doubling crawl cost on every
+  // URL. A 301 is a directive where a canonical tag is only a hint.
   // Read the Host header rather than url.hostname: Astro builds Astro.url from
   // the configured `site` on some adapters, which would make the hostname always
   // read as the canonical one and this check never fire.

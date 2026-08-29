@@ -1,3 +1,4 @@
+import { env } from 'cloudflare:workers';
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
 
@@ -12,7 +13,7 @@ function esc(s: string | null | undefined) {
 // The old sitemap put <news:news> on all 1000 entries, the oldest ~50 days
 // old, which invalidates the file as a News discovery channel.
 export const GET: APIRoute = async ({ locals }) => {
-  const { env } = locals.runtime;
+  // env comes from the Workers runtime module (Astro.locals.runtime was removed in adapter v14)
   const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
 
   try {
