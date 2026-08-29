@@ -72,7 +72,7 @@ const safeJsonLd = (o: unknown) => JSON.stringify(o)
     <main id="main" class="page" tabindex="-1">
       <h1>Region not found</h1>
       <p class="page-sub">No such coverage area. <a href="/">Return to the feed</a>.</p>
-    </div>
+    </main>
     <Footer />
   </BaseLayout>
 ) : (
@@ -86,8 +86,8 @@ const safeJsonLd = (o: unknown) => JSON.stringify(o)
       <script type="application/ld+json" set:html={safeJsonLd(breadcrumbLd)} />
     </Fragment>
     <Masthead backLink="/" backLabel="← Back to feed" />
-    <div class="page">
-      <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> <span>›</span> <span>{meta.name}</span></nav>
+    <main id="main" class="page" tabindex="-1">
+      <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> <span aria-hidden="true">›</span> <span>{meta.name}</span></nav>
       <div class="eyebrow">Region</div>
       <h1>{meta.name}</h1>
       <p class="page-sub">{meta.blurb}</p>

@@ -107,7 +107,7 @@ const safeJsonLd = (o: unknown) => JSON.stringify(o)
           }
           <div class="overlay">
             <div class="tag">{list[0].region || 'World'}</div>
-            <div class="card-title">{list[0].title}</div>
+            <h3 class="card-title">{list[0].title}</h3>
             <div class="card-excerpt">{list[0].excerpt || ''}</div>
           </div>
         </a>
@@ -121,7 +121,7 @@ const safeJsonLd = (o: unknown) => JSON.stringify(o)
               }
               <div class="overlay">
                 <div class="tag">{a.region || 'World'}</div>
-                <div class="card-title">{a.title}</div>
+                <h3 class="card-title">{a.title}</h3>
               </div>
             </a>
           ))}
@@ -155,7 +155,7 @@ const safeJsonLd = (o: unknown) => JSON.stringify(o)
             }
             <div class="card-body">
               <div class="tag">{a.region || 'World'}</div>
-              <div class="card-title">{a.title}</div>
+              <h3 class="card-title">{a.title}</h3>
               <div class="card-excerpt">{a.excerpt || ''}</div>
               <div class="card-meta">{a.date || ''}{a.time ? ` · ${a.time}` : ''}</div>
             </div>
