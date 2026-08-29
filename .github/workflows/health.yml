@@ -10,13 +10,19 @@ on:
     - cron: '25 */3 * * *'   # every 3 hours, off the hour so it never races the generator
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
       - name: Poll the generator health endpoint
+        env:
+          GENERATOR_HEALTH_URL: ${{ secrets.GENERATOR_HEALTH_URL }}
         run: |
-          URL="https://potuswatch-generator.peakvending.workers.dev/health"
+          URL="$GENERATOR_HEALTH_URL"
+          if [ -z "$URL" ]; then echo "::error::Set the GENERATOR_HEALTH_URL repo secret"; exit 1; fi
           BODY=$(curl -sS --max-time 30 "$URL") || { echo "::error::Health endpoint unreachable at $URL"; exit 1; }
           echo "$BODY"
 

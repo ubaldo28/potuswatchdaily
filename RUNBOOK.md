@@ -12,33 +12,27 @@
 
 ---
 
-## 🚨 Railway crashed / no new articles
+## 🚨 Generator stopped (no new articles)
 
-**Check logs first:**
-Go to https://railway.com → potuswatch service → Deploy Logs
+The generator is a Cloudflare Worker on an hourly cron. Railway is gone.
 
-### Error: `require is not defined in ES module scope`
-- `package.json` has `"type": "module"` — must use `import` not `require`
-- Fix: convert all `require()` to `import` in `localserver.js`
-
-### Error: `Cannot find package 'express'`
-- Package missing from `package.json` dependencies
-- Fix: add to dependencies, run `npm install`, push
-
-### Error: `npm ci` lock file mismatch
-- `package-lock.json` out of sync
-- Fix: run `npm install --package-lock-only`, commit and push
-
-### Error: Healthcheck failure
-- Railway can't reach `/health` endpoint
-- Fix: make sure `localserver.js` listens on `process.env.PORT` not hardcoded 3000
-
-### General Railway fix:
 ```bash
-cd ~/potuswatch
-git commit --allow-empty -m "trigger Railway redeploy"
-git push
+curl -s https://potuswatch-generator.<your-subdomain>.workers.dev/health
+npx wrangler tail --config worker/wrangler.jsonc
 ```
+
+`status: degraded` means the newest article is over 3 hours old. The
+"Generator health check" workflow polls this every 3 hours and emails on failure.
+
+Common causes:
+- **Daily free Neuron allocation spent** (error 3040/4006) — 10,000/day, resets
+  00:00 UTC, ~147 per article. 24/day should use ~35%; if it is exhausted,
+  something is retrying in a loop.
+- **A source feed changed shape** — look for `[sources] <id> failed:`. The run
+  continues on the remaining feeds and only skips the hour if all return nothing.
+- **All documents already covered** — `no-fresh-sources` is correct behaviour,
+  not a fault. It refuses to write the same document twice within five days.
+- **Supabase insert rejected** — the error is in `wrangler tail`.
 
 ---
 
@@ -145,9 +139,9 @@ railway run bash -c 'curl -s -o /dev/null -D - "$SUPABASE_URL/rest/v1/articles?s
 The generator is a Cloudflare Worker (cron `0 * * * *`), not Railway.
 
 ```bash
-curl -s https://potuswatch-generator.peakvending.workers.dev/health
+curl -s https://potuswatch-generator.<your-subdomain>.workers.dev/health
 npx wrangler tail --config worker/wrangler.jsonc      # watch a live run
-curl -sS -X POST "https://potuswatch-generator.peakvending.workers.dev/run?token=$RUN_TOKEN"
+curl -sS -X POST "https://potuswatch-generator.<your-subdomain>.workers.dev/run?token=$RUN_TOKEN"
 ```
 
 `status: degraded` means the last article is over 3 hours old. The GitHub Actions
@@ -164,10 +158,10 @@ Common causes:
 
 | Secret | Where stored |
 |---|---|
-| SUPABASE_URL / SUPABASE_KEY | Cloudflare Pages dashboard (runtime env) |
-| ANTHROPIC_API_KEY | Railway dashboard |
+| SUPABASE_URL / SUPABASE_KEY | Cloudflare Pages env (site) + Worker secrets (generator) |
+| ANTHROPIC_API_KEY (optional) | Worker secret |
 
-| UNSPLASH_ACCESS_KEY | Railway dashboard |
+| UNSPLASH_ACCESS_KEY | Worker secret |
 | CLOUDFLARE_API_KEY | GitHub Secrets |
 | CLOUDFLARE_EMAIL | GitHub Secrets |
 | CLOUDFLARE_ACCOUNT_ID | GitHub Secrets |

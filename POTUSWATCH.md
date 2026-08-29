@@ -44,14 +44,14 @@ git push → GitHub Actions → npm run build → wrangler pages deploy dist →
 
 ---
 
-## Railway (Article Generator)
+## Article generator (Cloudflare Worker)
 
-- **File**: `localserver.js`
-- **Runs**: `node localserver.js`
+- **File**: `worker/generator.js`
+- **Runs**: Cloudflare Worker `potuswatch-generator`, cron `0 * * * *`
 - **Health check**: `GET /health` on `process.env.PORT`
 - **Schedule**: 1 article per hour via Cloudflare Workers AI + primary sources + Unsplash
-- **Config**: `railway.toml` — always-restart policy, healthcheck at /health
-- **Auto-deploys**: Yes, from GitHub pushes
+- **Config**: `worker/wrangler.jsonc` — cron trigger, Workers AI binding, observability on
+- **Deploy**: `npx wrangler deploy --config worker/wrangler.jsonc`
 
 ### Worker secrets (`wrangler secret put <NAME> --config worker/wrangler.jsonc`):
 - `UNSPLASH_ACCESS_KEY`, `SUPABASE_URL`, `SUPABASE_KEY` — required
@@ -95,11 +95,9 @@ potuswatch/
 │   ├── logo-v2.png                 # Current logo
 │   └── og-default.jpg              # OG fallback image
 ├── src/middleware.ts               # Cache-Control + security headers for SSR routes
-├── localserver.js                  # Railway article generator (being retired)
 ├── worker/generator.js             # Cloudflare Cron replacement — see MIGRATION.md
 ├── scripts/backup-articles.mjs     # Daily table dump
 ├── scripts/restore-articles.mjs    # Restore from a snapshot
-├── railway.toml                    # Railway config
 ├── wrangler.jsonc                  # Cloudflare Pages config
 ├── astro.config.mjs                # Astro SSR + Cloudflare adapter
 └── .github/workflows/deploy.yml   # GitHub Actions auto-deploy
@@ -112,7 +110,6 @@ potuswatch/
 1. **`package.json` has `"type": "module"`** — always use `import/export`, never `require()`
 2. **ALL CSS lives in `BaseLayout.astro`** — never in `<style>` blocks in page files. `<style is:global>` outside a layout wrapper is unreliable in Astro SSR + Cloudflare and silently breaks in production while working in dev. Article page uses scoped `<style>` which is fine — only `is:global` in page files is the problem.
 3. **`dist/` is in `.gitignore`** — never commit it, GitHub Actions builds fresh
-4. **Railway listens on `process.env.PORT`** — not hardcoded 3000
 5. **Cloudflare Pages env vars** (SUPABASE_URL, SUPABASE_KEY) are set in Cloudflare dashboard, not in code
 6. **Static files in `public/` don't work with Cloudflare SSR adapter** — serve them as Astro API routes (`.ts` files in `src/pages/`) like `ads.txt.ts`, `robots.txt.ts`, `favicon.svg.ts`
 7. **Filling a named slot uses `<Fragment slot="head">`, NEVER `<slot name="head">`.** A `<slot>` element in a page *defines* an outlet, it does not fill one — its children render as fallback into the layout's default slot, i.e. inside `<body>`. This silently put every JSON-LD block and `article:*` meta tag in the body for months.

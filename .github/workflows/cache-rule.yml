@@ -8,6 +8,9 @@ name: Apply Cloudflare Cache Rule
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   apply:
     runs-on: ubuntu-latest
@@ -34,9 +37,11 @@ jobs:
         env:
           CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
           CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
+          # Via env, never interpolated straight into the shell.
+          ZONE_ID: ${{ steps.rule.outputs.zone_id }}
         run: |
           set -e
-          printf '%s' "${{ steps.rule.outputs.zone_id }}" | npx --yes wrangler@4 secret put CF_ZONE_ID  --config worker/wrangler.jsonc
+          printf '%s' "$ZONE_ID" | npx --yes wrangler@4 secret put CF_ZONE_ID  --config worker/wrangler.jsonc
           printf '%s' "$CLOUDFLARE_EMAIL"                 | npx --yes wrangler@4 secret put CF_EMAIL   --config worker/wrangler.jsonc
           printf '%s' "$CLOUDFLARE_API_KEY"               | npx --yes wrangler@4 secret put CF_API_KEY --config worker/wrangler.jsonc
           echo "Purge secrets set."

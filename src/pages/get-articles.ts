@@ -4,7 +4,10 @@ import { createClient } from '@supabase/supabase-js';
 export const GET: APIRoute = async ({ request, locals }) => {
   const { env } = locals.runtime;
   const url = new URL(request.url);
-  const offset = parseInt(url.searchParams.get('offset') || '0');
+  // Clamp: an unvalidated parseInt lets ?offset=abc reach .range() as NaN,
+  // and negatives or huge values go straight through to PostgREST.
+  const rawOffset = parseInt(url.searchParams.get('offset') || '0', 10);
+  const offset = Math.max(0, Math.min(Number.isFinite(rawOffset) ? rawOffset : 0, 10000));
 
   try {
     const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_KEY);
@@ -24,7 +27,9 @@ export const GET: APIRoute = async ({ request, locals }) => {
       },
     });
   } catch (e: any) {
-    return new Response(JSON.stringify({ error: e.message }), {
+    // Never return the raw PostgREST body to an unauthenticated caller.
+    console.error('[get-articles]', e?.message);
+    return new Response(JSON.stringify({ error: 'Unable to load articles' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });

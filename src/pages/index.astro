@@ -14,6 +14,12 @@ const { data: articles = [] } = await supabase
 
 const list = articles ?? [];
 const tickerTitles = list.slice(0, 8).map(a => a.title);
+
+// JSON.stringify escapes quotes and backslashes but NOT '<', so a title
+// containing </script> closes the element and injects markup. Article titles
+// are LLM output derived from third-party feeds, so this is reachable.
+const safeJsonLd = (o: unknown) => JSON.stringify(o)
+  .replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
 ---
 <BaseLayout
   title="POTUS Watch Daily — Foreign Policy Intelligence"
@@ -50,8 +56,8 @@ const tickerTitles = list.slice(0, 8).map(a => a.title);
       <a href="/" style="display:flex;align-items:center;text-decoration:none;height:52px">
         <img src="/logo-v2.png" width="300" height="52" alt="POTUS Watch Daily" style="display:block">
       </a>
-      <nav class="nav" id="nav">
-        <a href="/" data-filter="all" class="nav-active">All</a>
+      <nav class="nav" id="nav" aria-label="Regions">
+        <a href="/" data-filter="all" class="nav-active" aria-current="page">All</a>
         <a href="/region/americas" data-filter="Americas">Americas</a>
         <a href="/region/china" data-filter="China">China</a>
         <a href="/region/nato" data-filter="NATO">NATO</a>
@@ -63,8 +69,9 @@ const tickerTitles = list.slice(0, 8).map(a => a.title);
       </nav>
       <div class="masthead-right">
         <div class="search-input-wrap">
-          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="search-input" placeholder="Search…">
+          <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <label for="search-input" class="visually-hidden">Search dispatches</label>
+          <input type="search" id="search-input" name="q" placeholder="Search…">
         </div>
         <a href="/newsletter" style="background:#cc0000;color:#fff;font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;padding:7px 14px;border-radius:3px;text-decoration:none;white-space:nowrap;flex-shrink:0">Subscribe</a>
         <div class="live-badge"><div class="dot"></div>Live</div>
@@ -95,7 +102,7 @@ const tickerTitles = list.slice(0, 8).map(a => a.title);
         <!-- Main featured article -->
         <a class="hero-main" href={`/article/${list[0].slug}`}>
           {list[0].image
-            ? <img class="hero-main-img" src={list[0].image} alt={list[0].title} fetchpriority="high" />
+            ? <img class="hero-main-img" src={list[0].image} alt="" fetchpriority="high" />
             : <div class="hero-placeholder" style="height:480px"><span class="hero-placeholder-text">{(list[0].region||'POTUS Watch').toUpperCase()}</span></div>
           }
           <div class="overlay">
@@ -109,7 +116,7 @@ const tickerTitles = list.slice(0, 8).map(a => a.title);
           {list.slice(1, 3).map(a => (
             <a class="hero-small" href={`/article/${a.slug}`}>
               {a.image
-                ? <img class="hero-small-img" src={a.image} alt={a.title} loading="eager" />
+                ? <img class="hero-small-img" src={a.image} alt="" loading="eager" />
                 : <div class="hero-placeholder" style="height:100%;min-height:200px"><span class="hero-placeholder-text" style="font-size:11px">{(a.region||'POTUS Watch').toUpperCase()}</span></div>
               }
               <div class="overlay">
@@ -124,7 +131,7 @@ const tickerTitles = list.slice(0, 8).map(a => a.title);
   )}
 
   <!-- Grid -->
-  <div class="grid-wrap">
+  <main id="main" class="grid-wrap" tabindex="-1">
     <h1 class="site-h1">Foreign Policy Intelligence, Updated Hourly</h1>
     <p class="site-h1-sub">Independent analysis of U.S. diplomacy, great-power competition, and global affairs.</p>
 
@@ -143,7 +150,7 @@ const tickerTitles = list.slice(0, 8).map(a => a.title);
             data-search={`${(a.title || '').toLowerCase()} ${(a.excerpt || '').toLowerCase()}`}
           >
             {a.image
-              ? <img class="card-img" src={a.image} alt={a.title} loading={i < 6 ? 'eager' : 'lazy'} />
+              ? <img class="card-img" src={a.image} alt="" loading={i < 6 ? 'eager' : 'lazy'} />
               : <div class="card-placeholder"><div class="card-placeholder-inner">{(a.region || 'POTUS Watch').toUpperCase()}</div></div>
             }
             <div class="card-body">
@@ -156,7 +163,7 @@ const tickerTitles = list.slice(0, 8).map(a => a.title);
           {i === 5 && (
             <div class="affiliate-banner" id="affiliate-banner" style="grid-column:1/-1;background:#0e0e0e;border:1px solid #1e1e1e;border-left:3px solid #cc0000;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
               <div>
-                <p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#cc0000;margin-bottom:4px;font-family:'Inter',sans-serif">Sponsored · Affiliate Disclosure</p>
+                <p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color: var(--accent-text);margin-bottom:4px;font-family:'Inter',sans-serif">Sponsored · Affiliate Disclosure</p>
                 <p style="font-size:13px;color:#aaa;font-family:'Inter',sans-serif;line-height:1.5;margin:0">With global instability rising, many readers are preparing. <a href="https://amzn.to/4cgkdM3" target="_blank" rel="noopener nofollow sponsored" style="color:#fff;text-decoration:underline;text-underline-offset:3px">View the #1 rated emergency survival kit →</a></p>
               </div>
             </div>
@@ -173,15 +180,16 @@ const tickerTitles = list.slice(0, 8).map(a => a.title);
 
   <!-- Newsletter CTA -->
   <div style="background:#111;border-top:3px solid #cc0000;border-bottom:1px solid #1e1e1e;padding:40px 24px;text-align:center">
-    <p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#cc0000;margin-bottom:12px;font-family:'Inter',sans-serif">Free Newsletter</p>
+    <p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color: var(--accent-text);margin-bottom:12px;font-family:'Inter',sans-serif">Free Newsletter</p>
     <h2 style="font-family:'Playfair Display',serif;font-size:26px;font-weight:900;color:#fff;margin-bottom:10px">Stay ahead of the world</h2>
     <p style="font-size:14px;color:#666;margin-bottom:24px;font-family:'Inter',sans-serif;line-height:1.6;max-width:460px;margin-left:auto;margin-right:auto">Weekly foreign policy intelligence. No spin, no agenda. Free.</p>
     <form id="subscribe-form" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;max-width:460px;margin:0 auto" onsubmit="handleSubscribe(event)">
-      <input type="email" id="sub-email" placeholder="your@email.com" required style="flex:1;min-width:200px;background:#111;border:1px solid #333;color:#fff;padding:12px 16px;border-radius:3px;font-size:13px;font-family:'Inter',sans-serif;outline:none">
+      <label for="sub-email" class="visually-hidden">Your email address</label>
+        <input type="email" id="sub-email" name="email" autocomplete="email" placeholder="your@email.com" required style="flex:1;min-width:200px;background:#111;border:1px solid #333;color:#fff;padding:12px 16px;border-radius:3px;font-size:13px;font-family:'Inter',sans-serif;outline:none">
       <button type="submit" style="background:#cc0000;color:#fff;border:none;padding:12px 24px;border-radius:3px;font-size:13px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;letter-spacing:0.5px">Subscribe free</button>
     </form>
     <p id="sub-msg" style="font-size:12px;margin-top:10px;display:none"></p>
-  </div>
+  </main>
 
   <Footer />
 
@@ -248,7 +256,9 @@ const tickerTitles = list.slice(0, 8).map(a => a.title);
         currentFilter = this.dataset.filter;
         visibleCount = 21;
         document.querySelectorAll('#nav a').forEach(function(n) { n.classList.remove('nav-active'); });
+        document.querySelectorAll('#nav a').forEach(function (n) { n.removeAttribute('aria-current'); });
         this.classList.add('nav-active');
+        this.setAttribute('aria-current', 'page');
         document.getElementById('search-input').value = '';
         applyFilters();
       });

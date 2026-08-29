@@ -90,19 +90,103 @@ const SITE = 'https://www.potuswatchdaily.com';
 
   <slot name="head" />
   <style is:global>
+    /* ── Design tokens ─────────────────────────────────────────────────────
+       Every --text-* value clears 4.5:1 against every --bg-* value, checked
+       against the lightest surface (#1a1a1a) so a token is safe anywhere.
+       #cc0000 is only 3.36:1 as ink, so it is a BACKGROUND colour only —
+       use --accent-text when red is the text colour.                      */
+    :root {
+      --bg:           #0a0a0a;
+      --bg-footer:    #0d0d0d;
+      --bg-card:      #0e0e0e;
+      --bg-raised:    #111111;
+      --bg-overlay:   #161616;
+      --bg-bar:       #1a1a1a;
+
+      --text:         #f2f2f2;  /* 15.55:1 */
+      --text-2:       #b3b3b3;  /*  8.30:1  body copy, excerpts, leads */
+      --text-3:       #8a8a8a;  /*  5.04:1  metadata, captions, labels */
+
+      --accent:       #cc0000;  /* background only */
+      --accent-text:  #ff5c5c;  /*  5.75:1 */
+      --success-text: #4caf50;  /*  6.26:1 */
+      --danger-text:  #ff6b6b;  /*  6.27:1 */
+
+      --border:       #2a2a2a;  /* decorative hairlines */
+      --border-ui:    #666666;  /*  3.03:1  control boundaries, WCAG 1.4.11 */
+      --focus:        #ffd400;  /* 12.16:1 */
+    }
+
+    /* 2.4.7 Focus Visible — a dark theme hides the UA ring, so restore it. */
+    a:focus-visible, button:focus-visible, input:focus-visible,
+    select:focus-visible, textarea:focus-visible, summary:focus-visible,
+    [tabindex]:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+      border-radius: 2px;
+    }
+
+    /* 2.4.1 Bypass Blocks — 12 tab stops precede the content on every page. */
+    .skip-link {
+      position: absolute; left: -9999px; top: 0; z-index: 10000;
+      background: var(--accent); color: #fff; padding: 12px 20px;
+      font-size: 14px; font-weight: 600; text-decoration: none;
+      border-radius: 0 0 3px 0;
+    }
+    .skip-link:focus { left: 0; }
+
+    .visually-hidden {
+      position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+      overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%);
+      white-space: nowrap; border: 0;
+    }
+
+    /* 2.3.3 Animation from Interactions */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
+    /* Shared list-page shell: archive, region hubs, static pages. Previously
+       duplicated in two files and entirely absent from the region hubs, which
+       therefore rendered unstyled with default-blue links at 2.11:1. */
+    .page { max-width: 900px; margin: 0 auto; padding: 56px 24px 100px; }
+    .eyebrow { font-size: 9px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--accent-text); margin-bottom: 12px; }
+    .page-sub { font-size: 14px; color: var(--text-2); margin-bottom: 48px; }
+    .crumbs { font-family: Inter, sans-serif; font-size: 11px; color: var(--text-3); margin-bottom: 20px; display: flex; gap: 8px; align-items: center; }
+    .crumbs a { color: var(--text-2); text-decoration: underline; text-underline-offset: 2px; }
+    .crumbs a:hover { color: var(--accent-text); }
+    .region-heading { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--text-3); padding-bottom: 12px; border-bottom: 1px solid var(--bg-bar); font-family: Inter, sans-serif; }
+    .region-section { margin-bottom: 48px; }
+    .archive-item { border-bottom: 1px solid #141414; padding: 16px 0; }
+    .archive-link { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; text-decoration: none; margin-bottom: 4px; }
+    .archive-title { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700; color: #e0e0e0; line-height: 1.35; transition: color 0.15s; flex: 1; }
+    .archive-link:hover .archive-title, .archive-link:focus-visible .archive-title { color: var(--accent-text); }
+    .archive-meta { font-size: 11px; color: var(--text-3); white-space: nowrap; flex-shrink: 0; font-family: Inter, sans-serif; }
+    .archive-excerpt { font-size: 13px; color: var(--text-3); line-height: 1.5; margin-top: 2px; font-family: Inter, sans-serif; }
+    .pager { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--bg-bar); font-family: Inter, sans-serif; font-size: 13px; }
+    .pager a { color: var(--accent-text); text-decoration: none; font-weight: 600; min-height: 24px; display: inline-flex; align-items: center; }
+    .pager a:hover { text-decoration: underline; }
+    .pager-count { color: var(--text-3); font-size: 12px; }
+    .page h1 { font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 900; color: var(--text); margin-bottom: 8px; }
+
     .masthead { background: #0a0a0a; border-bottom: 1px solid #1e1e1e; padding: 0 24px; }
     .masthead-inner { max-width: 1280px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 24px; }
     .nav { display: flex; align-items: center; }
-    .nav a { color: #666; font-size: 12px; font-weight: 500; text-decoration: none; padding: 4px 12px; letter-spacing: 0.5px; text-transform: uppercase; transition: color 0.15s; white-space: nowrap; }
+    .nav a { color: var(--text-3); font-size: 12px; font-weight: 500; text-decoration: none; padding: 4px 12px; letter-spacing: 0.5px; text-transform: uppercase; transition: color 0.15s; white-space: nowrap; }
     .nav a:hover { color: #fff; }
     .nav a.nav-active { color: #fff; border-bottom: 2px solid #cc0000; padding-bottom: 2px; }
     .masthead-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
     .search-input-wrap { position: relative; display: flex; align-items: center; }
     .search-input-wrap svg { position: absolute; left: 9px; width: 12px; height: 12px; fill: none; stroke: #666; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
-    .search-input-wrap input { background: #111; border: 1px solid #333; border-radius: 3px; padding: 5px 8px 5px 28px; font-size: 11px; color: #ccc; font-family: 'Inter', sans-serif; outline: none; width: 180px; transition: all 0.2s; }
-    .search-input-wrap input:focus { border-color: #444; background: #111; color: #fff; width: 200px; }
-    .search-input-wrap input::placeholder { color: #666; }
-    .live-badge { display: flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 600; letter-spacing: 1px; color: #cc0000; text-transform: uppercase; }
+    .search-input-wrap input { background: #111; border: 1px solid var(--border-ui); border-radius: 3px; padding: 5px 8px 5px 28px; font-size: 11px; color: #ccc; font-family: 'Inter', sans-serif; width: 180px; transition: all 0.2s; }
+    .search-input-wrap input:focus { border-color: var(--text-3); background: #111; color: #fff; width: 200px; }
+    .search-input-wrap input::placeholder { color: var(--text-3); }
+    .live-badge { display: flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 600; letter-spacing: 1px; color: var(--accent-text); text-transform: uppercase; }
     .dot { width: 5px; height: 5px; background: #cc0000; border-radius: 50%; animation: blink 1.2s ease-in-out infinite; }
     @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.2; } }
     .ticker-wrap { background: #111; border-bottom: 1px solid #1e1e1e; overflow: hidden; height: 32px; display: flex; align-items: center; }
@@ -111,11 +195,11 @@ const SITE = 'https://www.potuswatchdaily.com';
     .ticker-inner { display: flex; gap: 80px; animation: ticker-scroll 40s linear infinite; white-space: nowrap; }
     @keyframes ticker-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
     .ticker-inner span { font-size: 11px; color: #aaa; font-weight: 400; }
-    .ticker-inner span::before { content: '·'; margin-right: 80px; color: #444; }
+    .ticker-inner span::before { content: '·'; margin-right: 80px; color: var(--text-3); }
     .ticker-inner span:first-child::before { display: none; }
-    .tag { display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: 1.8px; text-transform: uppercase; color: #cc0000; margin-bottom: 7px; }
+    .tag { display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent-text); margin-bottom: 7px; }
     .section-header { display: flex; align-items: center; gap: 16px; padding: 28px 0 16px; border-top: 1px solid #1e1e1e; margin-top: 4px; }
-    .section-title { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #666; }
+    .section-title { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--text-3); }
     .section-line { flex: 1; height: 1px; background: #1e1e1e; }
     .hero-wrap { padding: 24px 24px 0; max-width: 1280px; margin: 0 auto; }
     .hero { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px; }
@@ -142,19 +226,20 @@ const SITE = 'https://www.potuswatchdaily.com';
     .card-placeholder-inner { font-family: 'Playfair Display', serif; font-size: 13px; font-weight: 700; color: #2a2a2a; letter-spacing: 3px; text-transform: uppercase; }
     .card-body { padding: 16px 0 4px; }
     .card-title { font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 700; line-height: 1.35; color: #e8e8e8; margin-bottom: 8px; }
-    .card-excerpt { font-size: 13px; color: #666; line-height: 1.6; }
-    .card-meta { font-size: 11px; color: #3d3d3d; margin-top: 10px; }
-    .cookie-banner { display: none; position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #161616; border: 1px solid #2a2a2a; border-radius: 6px; padding: 16px 20px; z-index: 9999; align-items: center; gap: 20px; max-width: 560px; width: calc(100% - 48px); box-shadow: 0 4px 40px rgba(0,0,0,0.6); }
-    .cookie-banner p { font-size: 12px; color: #777; margin: 0; flex: 1; line-height: 1.5; }
-    .cookie-banner a { color: #cc0000; }
+    .card-excerpt { font-size: 13px; color: var(--text-3); line-height: 1.6; }
+    .card-meta { font-size: 11px; color: var(--text-3); margin-top: 10px; }
+    .cookie-banner { display: none; position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #161616; border: 1px solid var(--border-ui); border-radius: 6px; padding: 16px 20px; z-index: 9999; align-items: center; gap: 20px; max-width: 560px; width: calc(100% - 48px); box-shadow: 0 4px 40px rgba(0,0,0,0.6); }
+    .cookie-banner p { font-size: 12px; color: var(--text-3); margin: 0; flex: 1; line-height: 1.5; }
+    .cookie-banner a { color: var(--accent-text); }
     .cookie-actions { display: flex; gap: 8px; flex-shrink: 0; }
     .btn-accept { background: #cc0000; color: #fff; border: none; padding: 7px 16px; border-radius: 3px; font-size: 11px; font-weight: 600; cursor: pointer; letter-spacing: 0.5px; }
-    .btn-decline { background: none; color: #555; border: 1px solid #2a2a2a; padding: 7px 14px; border-radius: 3px; font-size: 11px; cursor: pointer; }
+    .btn-decline { background: none; color: var(--text-3); border: 1px solid var(--border-ui); padding: 7px 14px; border-radius: 3px; font-size: 11px; cursor: pointer; }
     @media(max-width:900px) { .nav { display: none; } .hero { grid-template-columns: 1fr; } .hero-main-img { height: 360px; } .hero-side { grid-template-rows: auto auto; grid-template-columns: 1fr 1fr; } }
     @media(max-width:640px) { .search-input-wrap { display: none; } .grid { grid-template-columns: 1fr; gap: 16px; } .masthead-inner { height: 52px; } .hero-side { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
+  <a class="skip-link" href="#main">Skip to main content</a>
   <div class="top-bar"></div>
   <slot />
   <!-- Adsterra async ad scripts -->

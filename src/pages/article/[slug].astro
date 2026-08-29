@@ -16,7 +16,7 @@ const { data: a, error } = await supabase
 
 if (error || !a) {
   return new Response(
-    `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Not Found — POTUS Watch Daily</title><meta name="robots" content="noindex"><link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%230a0a0a'/><circle cx='16' cy='16' r='12' fill='none' stroke='%23cc0000' stroke-width='2.5'/><circle cx='16' cy='16' r='4' fill='%23cc0000'/></svg>"></head><body style="background:#0a0a0a;color:#fff;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px;text-align:center"><div style="height:3px;background:#cc0000;position:fixed;top:0;left:0;right:0"></div><h1 style="font-size:72px;font-weight:900;color:#cc0000;margin:0">404</h1><p style="font-size:18px;color:#666">Dispatch not found.</p><a href="/" style="color:#cc0000;font-size:13px;text-decoration:none;border:1px solid #cc0000;padding:8px 20px;border-radius:3px">← Back to the feed</a></body></html>`,
+    `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Not Found — POTUS Watch Daily</title><meta name="robots" content="noindex"><link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%230a0a0a'/><circle cx='16' cy='16' r='12' fill='none' stroke='%23cc0000' stroke-width='2.5'/><circle cx='16' cy='16' r='4' fill='%23cc0000'/></svg>"></head><body style="background:#0a0a0a;color:#fff;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px;text-align:center"><div style="height:3px;background:#cc0000;position:fixed;top:0;left:0;right:0"></div><h1 style="font-size:72px;font-weight:900;color: var(--accent-text);margin:0">404</h1><p style="font-size:18px;color:#666">Dispatch not found.</p><a href="/" style="color: var(--accent-text);font-size:13px;text-decoration:none;border:1px solid #cc0000;padding:8px 20px;border-radius:3px">← Back to the feed</a></body></html>`,
     { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
   );
 }
@@ -99,6 +99,22 @@ const breadcrumbLd = {
     { "@type": "ListItem", "position": 3, "name": a.title }
   ]
 };
+
+// JSON.stringify escapes quotes and backslashes but NOT '<', so a title
+// containing </script> closes the element and injects markup. Article titles
+// are LLM output derived from third-party feeds, so this is reachable.
+const safeJsonLd = (o: unknown) => JSON.stringify(o)
+  .replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
+
+// Source URLs and image URLs come from third-party feeds and LLM output.
+// Astro escapes the attribute value but does not validate the scheme, so
+// javascript: would survive into href. Allow http/https only.
+const safeUrl = (u: string | null | undefined) => {
+  try {
+    const parsed = new URL(String(u));
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.href : null;
+  } catch { return null; }
+};
 ---
 <BaseLayout
   title={a.title && a.title.length > 48 ? a.title : `${a.title} — POTUS Watch Daily`}
@@ -108,8 +124,8 @@ const breadcrumbLd = {
   ogType="article"
 >
   <Fragment slot="head">
-    <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
-    <script type="application/ld+json" set:html={JSON.stringify(breadcrumbLd)} />
+    <script type="application/ld+json" set:html={safeJsonLd(jsonLd)} />
+    <script type="application/ld+json" set:html={safeJsonLd(breadcrumbLd)} />
     <meta property="article:published_time" content={dateIso} />
     <meta property="article:modified_time" content={a.updated_at || dateIso} />
     <meta property="article:section" content={region} />
@@ -126,16 +142,16 @@ const breadcrumbLd = {
 
   {img && img !== `${SITE_URL}/og-default.jpg` && (
   <Fragment>
-    <img class="hero-img" src={img} srcset={`${img.replace(/&w=\d+/, "&w=640")} 640w, ${img.replace(/&w=\d+/, "&w=1024")} 1024w, ${img} 1600w`} sizes="100vw" width="1600" height="640" alt={a.title} fetchpriority="high" decoding="async" />
+    <img class="hero-img" src={img} srcset={`${img.replace(/&w=\d+/, "&w=640")} 640w, ${img.replace(/&w=\d+/, "&w=1024")} 1024w, ${img} 1600w`} sizes="100vw" width="1600" height="640" alt="" fetchpriority="high" decoding="async" />
     {photoCredit && photoCredit.src === 'gov' && (
       <p class="photo-credit">
-        Photo: <a href={photoCredit.url} target="_blank" rel="noopener">{photoCredit.name}</a>
+        Photo: <a href={safeUrl(photoCredit.url)} target="_blank" rel="noopener">{photoCredit.name}</a>
         <span class="photo-credit-note"> — public domain (17 U.S.C. § 105).</span>
       </p>
     )}
     {photoCredit && photoCredit.src !== 'gov' && (
       <p class="photo-credit">
-        Photo by <a href={`${photoCredit.url}?utm_source=potuswatch&utm_medium=referral`} target="_blank" rel="noopener nofollow">{photoCredit.name}</a>
+        Photo by <a href={`${safeUrl(photoCredit.url)}?utm_source=potuswatch&utm_medium=referral`} target="_blank" rel="noopener nofollow">{photoCredit.name}</a>
         {' '}on <a href="https://unsplash.com/?utm_source=potuswatch&utm_medium=referral" target="_blank" rel="noopener nofollow">Unsplash</a>
         <span class="photo-credit-note"> — illustrative stock image, not a depiction of the events described.</span>
       </p>
@@ -143,7 +159,7 @@ const breadcrumbLd = {
   </Fragment>
   )}
 
-  <div class="article-content">
+  <main id="main" class="article-content" tabindex="-1">
     <nav class="crumbs" aria-label="Breadcrumb">
       <a href="/">Home</a> <span aria-hidden="true">›</span> <a href={`/region/${regionSlug}`}>{region}</a>
     </nav>
@@ -166,7 +182,7 @@ const breadcrumbLd = {
       <div class="sources">
         <p class="sources-label">Sources</p>
         <p class="sources-note">Primary documents this dispatch was written from, cited by number in the text above.</p>
-        {sources.map(s => <a href={s.url} target="_blank" rel="noopener">{s.title}</a>)}
+        {sources.filter(s => safeUrl(s.url)).map(s => <a href={safeUrl(s.url)} target="_blank" rel="noopener">{s.title}</a>)}
       </div>
     )}
 
@@ -192,7 +208,7 @@ const breadcrumbLd = {
         <div class="related-grid">
           {related.map(r => (
             <a href={`/article/${r.slug}`} class="related-card">
-              {r.image && <img src={r.image} alt={r.title} class="related-img" loading="lazy" />}
+              {r.image && <img src={r.image} alt="" class="related-img" loading="lazy" />}
               <div class="related-region">{r.region || ''}</div>
               <div class="related-title-text">{r.title}</div>
               <div class="related-date">{r.date || ''}</div>
@@ -208,57 +224,57 @@ const breadcrumbLd = {
         {nextA ? <a class="seq-link seq-next" href={`/article/${nextA.slug}`}><span class="seq-dir">Next dispatch →</span><span class="seq-title">{nextA.title}</span></a> : <span></span>}
       </nav>
     )}
-  </div>
+  </main>
 
   <Footer />
 </BaseLayout>
 
 <style>
 .masthead { background: #0a0a0a; border-bottom: 1px solid #1a1a1a; padding: 12px 24px; display: flex; align-items: center; }
-.editorial-bar { background: #1a1a1a; border-bottom: 1px solid #cc0000; padding: 6px 24px; font-size: 10px; color: #666; letter-spacing: 1px; font-family: Inter, Arial, sans-serif; text-transform: uppercase; }
+.editorial-bar { background: #1a1a1a; border-bottom: 1px solid #cc0000; padding: 6px 24px; font-size: 10px; color: var(--text-3); letter-spacing: 1px; font-family: Inter, Arial, sans-serif; text-transform: uppercase; }
 .hero-img { width: 100%; height: 480px; max-height: 480px; aspect-ratio: 5 / 2; object-fit: cover; display: block; }
 @media (max-width: 640px) { .hero-img { height: 220px; } }
 .article-content { max-width: 740px; margin: 0 auto; padding: 40px 24px 80px; }
-.photo-credit { font-family: Inter, Arial, sans-serif; font-size: 11px; color: #444; margin: 8px auto 0; max-width: 740px; padding: 0 24px; }
-.photo-credit a { color: #666; text-decoration: none; }
-.photo-credit a:hover { color: #cc0000; text-decoration: underline; }
-.photo-credit-note { color: #333; }
-.crumbs { font-family: Inter, Arial, sans-serif; font-size: 11px; color: #444; margin-bottom: 20px; display: flex; gap: 8px; align-items: center; }
-.crumbs a { color: #666; text-decoration: none; }
-.crumbs a:hover { color: #cc0000; }
+.photo-credit { font-family: Inter, Arial, sans-serif; font-size: 11px; color: var(--text-3); margin: 8px auto 0; max-width: 740px; padding: 0 24px; }
+.photo-credit a { color: var(--text-3); text-decoration: none; }
+.photo-credit a:hover { color: var(--accent-text); text-decoration: underline; }
+.photo-credit-note { color: var(--text-3); }
+.crumbs { font-family: Inter, Arial, sans-serif; font-size: 11px; color: var(--text-3); margin-bottom: 20px; display: flex; gap: 8px; align-items: center; }
+.crumbs a { color: var(--text-3); text-decoration: none; }
+.crumbs a:hover { color: var(--accent-text); }
 .seq { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 48px; padding-top: 24px; border-top: 1px solid #1e1e1e; }
 .seq-link { display: flex; flex-direction: column; gap: 4px; text-decoration: none; padding: 12px 0; }
 .seq-next { text-align: right; }
-.seq-dir { font-family: Inter, Arial, sans-serif; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: #cc0000; }
+.seq-dir { font-family: Inter, Arial, sans-serif; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--accent-text); }
 .seq-title { font-family: 'Playfair Display', serif; font-size: 14px; color: #999; line-height: 1.35; }
 .seq-link:hover .seq-title { color: #e0e0e0; }
 @media (max-width: 640px) { .seq { grid-template-columns: 1fr; } .seq-next { text-align: left; } }
-.back { color: #cc0000; text-decoration: none; font-size: 12px; font-family: Inter, Arial, sans-serif; letter-spacing: 0.5px; display: inline-block; margin-bottom: 20px; }
-.eyebrow { margin: 16px 0 8px; font-size: 12px; font-family: Inter, Arial, sans-serif; color: #666; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.back { color: var(--accent-text); text-decoration: none; font-size: 12px; font-family: Inter, Arial, sans-serif; letter-spacing: 0.5px; display: inline-block; margin-bottom: 20px; }
+.eyebrow { margin: 16px 0 8px; font-size: 12px; font-family: Inter, Arial, sans-serif; color: var(--text-3); display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .tag { background: #cc0000; color: #fff; padding: 2px 8px; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; font-family: Inter, Arial, sans-serif; }
-.byline-meta a { color: #888; text-decoration: none; }
+.byline-meta a { color: var(--text-2); text-decoration: none; }
 h1 { font-size: clamp(22px,4vw,36px); color: #fff; line-height: 1.25; margin: 12px 0 20px; font-family: 'Playfair Display', Georgia, serif; }
 hr { border: none; border-top: 1px solid #1e1e1e; margin: 20px 0; }
 .article-body :global(p) { margin-bottom: 18px; font-size: 17px; color: #c8c8c8; font-family: Georgia, serif; line-height: 1.8; }
 .article-body :global(h2) { font-family: 'Playfair Display', Georgia, serif; font-size: 20px; color: #fff; margin: 32px 0 12px; font-weight: 700; }
 .support-box { margin-top: 48px; padding: 28px 32px; background: #111; border: 1px solid #1e1e1e; border-top: 3px solid #cc0000; border-radius: 3px; }
 .support-title { font-family: 'Playfair Display', Georgia, serif; font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 8px; }
-.support-sub { font-size: 13px; color: #666; line-height: 1.6; margin-bottom: 20px; font-family: Inter, sans-serif; }
+.support-sub { font-size: 13px; color: var(--text-3); line-height: 1.6; margin-bottom: 20px; font-family: Inter, sans-serif; }
 .btn-coffee { display: inline-flex; align-items: center; gap: 8px; background: #cc0000; color: #fff; text-decoration: none; padding: 10px 20px; border-radius: 3px; font-size: 12px; font-weight: 600; letter-spacing: 0.5px; font-family: Inter, sans-serif; }
 .sources { margin-top: 40px; padding-top: 20px; border-top: 1px solid #1e1e1e; }
-.sources-note { font-size: 11px; color: #444; line-height: 1.5; margin-bottom: 12px; font-family: Inter, Arial, sans-serif; }
-.sources-label { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: #555; font-family: Inter, Arial, sans-serif; margin-bottom: 10px; }
-.sources a { display: block; color: #666; font-size: 12px; text-decoration: none; margin-bottom: 6px; font-family: Inter, Arial, sans-serif; }
-.sources a:hover { color: #cc0000; }
+.sources-note { font-size: 11px; color: var(--text-3); line-height: 1.5; margin-bottom: 12px; font-family: Inter, Arial, sans-serif; }
+.sources-label { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-3); font-family: Inter, Arial, sans-serif; margin-bottom: 10px; }
+.sources a { display: block; color: var(--text-3); font-size: 12px; text-decoration: none; margin-bottom: 6px; font-family: Inter, Arial, sans-serif; }
+.sources a:hover { color: var(--accent-text); }
 .share-row { margin-top: 32px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.share-label { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: #555; font-family: Inter, Arial, sans-serif; margin-right: 4px; }
+.share-label { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-3); font-family: Inter, Arial, sans-serif; margin-right: 4px; }
 .icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: #111; border: 1px solid #222; text-decoration: none; }
 .related-section { margin-top: 56px; padding-top: 32px; border-top: 1px solid #1e1e1e; }
-.related-label { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #cc0000; margin-bottom: 24px; font-family: Inter, Arial, sans-serif; }
+.related-label { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--accent-text); margin-bottom: 24px; font-family: Inter, Arial, sans-serif; }
 .related-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
 .related-card { display: block; text-decoration: none; color: inherit; background: #0e0e0e; border: 1px solid #1e1e1e; border-top: 2px solid #cc0000; padding: 16px; }
 .related-img { width: 100%; height: 120px; object-fit: cover; display: block; margin-bottom: 12px; }
-.related-region { font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #cc0000; margin-bottom: 6px; font-family: Inter, Arial, sans-serif; }
+.related-region { font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--accent-text); margin-bottom: 6px; font-family: Inter, Arial, sans-serif; }
 .related-title-text { font-family: 'Playfair Display', Georgia, serif; font-size: 15px; font-weight: 700; color: #e0e0e0; line-height: 1.35; margin-bottom: 6px; }
-.related-date { font-size: 11px; color: #555; font-family: Inter, Arial, sans-serif; }
+.related-date { font-size: 11px; color: var(--text-3); font-family: Inter, Arial, sans-serif; }
 </style>

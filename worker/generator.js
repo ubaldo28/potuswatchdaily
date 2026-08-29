@@ -46,6 +46,16 @@ function slugify(t) {
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
+/** Constant-time string compare, so a token cannot be brute-forced byte by byte. */
+function timingSafeEqual(a, b) {
+  const A = new TextEncoder().encode(String(a));
+  const B = new TextEncoder().encode(String(b));
+  if (A.length !== B.length || A.length === 0) return false;
+  let diff = 0;
+  for (let i = 0; i < A.length; i++) diff |= A[i] ^ B[i];
+  return diff === 0;
+}
+
 /** Trim a trailing slash so we never build a URL with a double slash. */
 function sbBase(env) {
   return String(env.SUPABASE_URL || '').replace(/\/+$/, '');
@@ -925,18 +935,28 @@ export default {
         });
       } catch (e) {
         console.error('[health] Supabase query failed:', e.message);
-        return Response.json({ status: 'degraded', error: e.message }, { status: 503 });
+        return Response.json({ status: 'degraded' }, { status: 503 });
       }
     }
 
     if (url.pathname === '/run' && request.method === 'POST') {
-      if (!env.RUN_TOKEN) return new Response('Manual run disabled (RUN_TOKEN not set)', { status: 404 });
-      if (url.searchParams.get('token') !== env.RUN_TOKEN) return new Response('Forbidden', { status: 403 });
+      // Unset RUN_TOKEN in production to disable manual runs entirely.
+      if (!env.RUN_TOKEN) return new Response('Not found', { status: 404 });
+
+      // Bearer header, not a query param: query strings land in Workers Logs,
+      // shell history and proxy logs. Compared in constant time so the token
+      // cannot be recovered a byte at a time.
+      const auth = request.headers.get('authorization') || '';
+      const presented = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+      if (!timingSafeEqual(presented, env.RUN_TOKEN)) {
+        return new Response('Forbidden', { status: 403 });
+      }
       try {
         const result = await runGeneration(env, 'manual');
         return Response.json(result);
       } catch (e) {
-        return Response.json({ status: 'error', error: e.message }, { status: 500 });
+        console.error('[run] Manual generation failed:', e.message);
+        return Response.json({ status: 'error' }, { status: 500 });
       }
     }
 

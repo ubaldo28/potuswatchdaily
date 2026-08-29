@@ -11,21 +11,21 @@ import Footer from '../components/Footer.astro';
 >
   <Masthead backLink="/" backLabel="← Back to feed" />
 
-  <div class="page">
+  <main id="main" class="page" tabindex="-1">
     <div class="eyebrow">Free Weekly Email</div>
     <h1>One email. Every week. Worth reading.</h1>
     <p class="subtitle">A short weekly briefing on what's happening in U.S. foreign policy and global affairs. No spin, just what matters and why.</p>
 
     <div class="form-wrap">
       <label class="form-label" for="nl-email">Your email address</label>
-      <form id="nl-subscribe-form" onsubmit="handleNLSubscribe(event)">
+      <form id="nl-subscribe-form">
         <div class="form-row">
           <input type="email" id="nl-email" class="form-input" placeholder="you@example.com" required autocomplete="email">
           <button type="submit" class="form-btn" id="nl-btn">Subscribe Free</button>
         </div>
         <p class="form-note">Free. Weekly. Unsubscribe anytime — no questions asked.</p>
       </form>
-      <div id="sub-msg"></div>
+      <div id="sub-msg" role="status" aria-live="polite"></div>
     </div>
 
     <div class="features">
@@ -54,27 +54,27 @@ import Footer from '../components/Footer.astro';
         <div class="sample-excerpt" style="color:#666">Three to five additional stories you need to know — NATO, China, Iran, Russia, Trade, and more.</div>
       </div>
     </div>
-  </div>
+  </main>
 
   <Footer />
 </BaseLayout>
 
 <style>
 .page { max-width: 680px; margin: 0 auto; padding: 80px 24px 120px; }
-.eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: #cc0000; margin-bottom: 20px; }
+.eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: var(--accent-text); margin-bottom: 20px; }
 h1 { font-family: 'Playfair Display', serif; font-size: 48px; font-weight: 900; line-height: 1.1; color: #fff; margin-bottom: 20px; }
 @media (max-width: 600px) { h1 { font-size: 34px; } }
-.subtitle { font-size: 17px; color: #777; line-height: 1.7; margin-bottom: 48px; max-width: 520px; }
+.subtitle { font-size: 17px; color: var(--text-3); line-height: 1.7; margin-bottom: 48px; max-width: 520px; }
 .form-wrap { background: #111; border: 1px solid #1e1e1e; border-radius: 6px; padding: 36px; margin-bottom: 48px; }
-.form-label { font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #555; margin-bottom: 10px; display: block; }
+.form-label { font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--text-3); margin-bottom: 10px; display: block; }
 .form-row { display: flex; gap: 10px; flex-wrap: wrap; }
-.form-input { flex: 1; min-width: 200px; background: #0a0a0a; border: 1px solid #2a2a2a; color: #fff; padding: 14px 16px; border-radius: 3px; font-size: 14px; font-family: 'Inter', sans-serif; outline: none; transition: border-color 0.2s; }
-.form-input:focus { border-color: #444; }
-.form-input::placeholder { color: #444; }
+.form-input { flex: 1; min-width: 200px; background: #0a0a0a; border: 1px solid var(--border-ui); color: #fff; padding: 14px 16px; border-radius: 3px; font-size: 14px; font-family: 'Inter', sans-serif;  transition: border-color 0.2s; }
+.form-input:focus { border-color: var(--text-3); }
+.form-input::placeholder { color: var(--text-3); }
 .form-btn { background: #cc0000; color: #fff; border: none; padding: 14px 28px; border-radius: 3px; font-size: 13px; font-weight: 700; font-family: 'Inter', sans-serif; cursor: pointer; letter-spacing: 0.5px; text-transform: uppercase; transition: background 0.15s; }
 .form-btn:hover { background: #aa0000; }
 .form-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.form-note { font-size: 11px; color: #333; margin-top: 14px; }
+.form-note { font-size: 11px; color: var(--text-3); margin-top: 14px; }
 #sub-msg { font-size: 13px; margin-top: 16px; display: none; padding: 12px 16px; border-radius: 3px; }
 #sub-msg.success { background: rgba(76,175,80,0.1); border: 1px solid rgba(76,175,80,0.2); color: #4caf50; }
 #sub-msg.error { background: rgba(204,0,0,0.1); border: 1px solid rgba(204,0,0,0.2); color: #cc4444; }
@@ -82,21 +82,21 @@ h1 { font-family: 'Playfair Display', serif; font-size: 48px; font-weight: 900; 
 @media (max-width: 500px) { .features { grid-template-columns: 1fr; } }
 .feature { border-left: 2px solid #cc0000; padding-left: 16px; }
 .feature-title { font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 4px; }
-.feature-desc { font-size: 12px; color: #555; line-height: 1.6; }
+.feature-desc { font-size: 12px; color: var(--text-3); line-height: 1.6; }
 .divider { border: none; border-top: 1px solid #1a1a1a; margin: 48px 0; }
-.sample-label { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #444; margin-bottom: 20px; }
+.sample-label { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--text-3); margin-bottom: 20px; }
 .sample-issue { background: #111; border: 1px solid #1e1e1e; border-radius: 6px; overflow: hidden; }
 .sample-header { background: #cc0000; padding: 20px 24px; }
 .sample-header-title { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 900; color: #fff; }
 .sample-header-sub { font-size: 11px; color: rgba(255,255,255,0.7); margin-top: 4px; letter-spacing: 1px; text-transform: uppercase; }
 .sample-body { padding: 24px; }
-.sample-section-label { font-size: 9px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #cc0000; margin-bottom: 8px; }
+.sample-section-label { font-size: 9px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--accent-text); margin-bottom: 8px; }
 .sample-headline { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700; color: #e8e8e8; line-height: 1.4; margin-bottom: 6px; }
-.sample-excerpt { font-size: 12px; color: #555; line-height: 1.6; }
+.sample-excerpt { font-size: 12px; color: var(--text-3); line-height: 1.6; }
 .sample-divider { border: none; border-top: 1px solid #1e1e1e; margin: 16px 0; }
 </style>
 
-<script>
+<script is:inline>
 async function handleNLSubscribe(e) {
   e.preventDefault();
   const email = document.getElementById('nl-email').value;
@@ -119,4 +119,6 @@ async function handleNLSubscribe(e) {
     btn.textContent = 'Subscribe Free'; btn.disabled = false;
   }
 }
+
+document.getElementById('nl-subscribe-form').addEventListener('submit', handleNLSubscribe);
 </script>

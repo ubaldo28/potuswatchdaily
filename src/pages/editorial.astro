@@ -40,21 +40,21 @@ import Footer from '../components/Footer.astro';
     <p>This site displays third-party advertisements served by Google AdSense and other ad networks. Advertisers have no editorial influence over our content.</p>
     <h2>Contact the Editor</h2>
     <p>Questions about our editorial standards can be directed to <a href="mailto:potuswatchdaily@gmail.com">potuswatchdaily@gmail.com</a>.</p>
-    <p style="margin-top:40px"><a href="/about" style="color:#cc0000">Learn more about POTUS Watch Daily →</a></p>
+    <p style="margin-top:40px"><a href="/about" style="color: var(--accent-text)">Learn more about POTUS Watch Daily →</a></p>
   </div>
   <Footer />
 </BaseLayout>
 <style>
 .page { max-width: 740px; margin: 0 auto; padding: 56px 24px 100px; }
-.eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: #cc0000; margin-bottom: 16px; }
+.eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: var(--accent-text); margin-bottom: 16px; }
 h1 { font-family: 'Playfair Display', serif; font-size: 38px; font-weight: 900; color: #fff; margin-bottom: 20px; }
 h2 { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: #fff; margin: 36px 0 12px; }
 .rule { border: none; border-top: 1px solid #1e1e1e; margin: 24px 0; }
 .lead { font-size: 17px; color: #aaa; line-height: 1.7; margin-bottom: 28px; }
-p { font-size: 15px; color: #777; line-height: 1.8; margin-bottom: 16px; }
+p { font-size: 15px; color: var(--text-3); line-height: 1.8; margin-bottom: 16px; }
 ul { padding-left: 20px; margin-bottom: 20px; }
-li { font-size: 14px; color: #666; line-height: 1.8; margin-bottom: 6px; }
-a { color: #cc0000; }
+li { font-size: 14px; color: var(--text-3); line-height: 1.8; margin-bottom: 6px; }
+a { color: var(--accent-text); }
 .policy-block { background: #111; border-left: 3px solid #cc0000; padding: 20px 24px; margin: 16px 0 24px; border-radius: 0 3px 3px 0; }
-.policy-block p { color: #888; margin: 0; }
+.policy-block p { color: var(--text-2); margin: 0; }
 </style>

@@ -14,3 +14,6 @@ public/index.html.bak.*
 .dev.vars*
 !.dev.vars.example
 !.env.example
+
+# Astro generated types
+.astro/

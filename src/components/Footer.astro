@@ -19,7 +19,7 @@ const { maxWidth = '1280px' } = Astro.props;
       <a href="/region/trade">Trade</a>
       <a href="/region/analysis">Analysis</a>
     </nav>
-    <nav class="footer-links">
+    <nav class="footer-links" aria-label="Site">
       <a href="/">Home</a>
       <a href="/archive">Archive</a>
       <a href="/explainers/">Explainers</a>
@@ -37,7 +37,7 @@ const { maxWidth = '1280px' } = Astro.props;
 
 <style>
 .footer-regions { margin-bottom: 4px; }
-.footer-regions a { color: #777 !important; }
+.footer-regions a { color: var(--text-3) !important; }
 .footer {
   background: #0d0d0d;
   border-top: 1px solid #1a1a1a;
@@ -56,12 +56,12 @@ const { maxWidth = '1280px' } = Astro.props;
   flex-wrap: wrap;
   gap: 8px 20px;
 }
-.footer-links a {
-  color: #555;
+.footer-links a { display: inline-flex; align-items: center; min-height: 24px; /* WCAG 2.5.8 */
+  color: var(--text-3);
   font-size: 12px;
   text-decoration: none;
   transition: color 0.15s;
 }
 .footer-links a:hover { color: #fff; }
-.footer-copy { font-size: 11px; color: #444; }
+.footer-copy { font-size: 11px; color: var(--text-3); }
 </style>

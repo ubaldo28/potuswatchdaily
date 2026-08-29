@@ -35,14 +35,14 @@ export const GET: APIRoute = async ({ locals }) => {
         + `<p><a href="${url}">Continue reading at POTUS Watch Daily &rarr;</a></p>`;
       const heroImg = a.hero_image ? `<img src="${esc(a.hero_image)}" alt="${esc(a.title)}"/>` : '';
       return `<item>
-  <title><![CDATA[${a.title}]]></title>
+  <title>${esc(a.title)}</title>
   <link>${url}</link>
   <guid isPermaLink="true">${url}</guid>
   <pubDate>${pubDate}</pubDate>
   <dc:creator><![CDATA[POTUS Watch Editorial]]></dc:creator>
   <category>${esc(a.region || 'World')}</category>
-  <description><![CDATA[${a.excerpt || ''}]]></description>
-  <content:encoded><![CDATA[${heroImg}${paragraphs}]]></content:encoded>
+  <description>${esc(a.excerpt || '')}</description>
+  <content:encoded>${esc(heroImg + paragraphs)}</content:encoded>
 </item>`;
     }).join('\n');
 

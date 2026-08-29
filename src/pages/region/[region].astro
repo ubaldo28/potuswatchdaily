@@ -59,11 +59,17 @@ const breadcrumbLd = meta ? {
     { '@type': 'ListItem', position: 2, name: meta.name },
   ],
 } : null;
+
+// JSON.stringify escapes quotes and backslashes but NOT '<', so a title
+// containing </script> closes the element and injects markup. Article titles
+// are LLM output derived from third-party feeds, so this is reachable.
+const safeJsonLd = (o: unknown) => JSON.stringify(o)
+  .replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
 ---
 {!meta ? (
   <BaseLayout title="Not found — POTUS Watch Daily" noIndex={true}>
     <Masthead backLink="/" backLabel="← Back to feed" />
-    <div class="page">
+    <main id="main" class="page" tabindex="-1">
       <h1>Region not found</h1>
       <p class="page-sub">No such coverage area. <a href="/">Return to the feed</a>.</p>
     </div>
@@ -76,8 +82,8 @@ const breadcrumbLd = meta ? {
     canonical={canonical}
   >
     <Fragment slot="head">
-      <script type="application/ld+json" set:html={JSON.stringify(collectionLd)} />
-      <script type="application/ld+json" set:html={JSON.stringify(breadcrumbLd)} />
+      <script type="application/ld+json" set:html={safeJsonLd(collectionLd)} />
+      <script type="application/ld+json" set:html={safeJsonLd(breadcrumbLd)} />
     </Fragment>
     <Masthead backLink="/" backLabel="← Back to feed" />
     <div class="page">
@@ -99,7 +105,7 @@ const breadcrumbLd = meta ? {
       ))}
 
       <p class="page-sub" style="margin-top:32px"><a href="/archive">Browse the full archive →</a></p>
-    </div>
+    </main>
     <Footer />
   </BaseLayout>
 )}
