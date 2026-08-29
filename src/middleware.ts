@@ -27,7 +27,17 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
   // Read the Host header rather than url.hostname: Astro builds Astro.url from
   // the configured `site` on some adapters, which would make the hostname always
   // read as the canonical one and this check never fire.
-  const requestHost = (ctx.request.headers.get('host') || url.hostname || '').split(':')[0].toLowerCase();
+  //
+  // Guarded because prerendered pages are rendered at BUILD time, where there is
+  // no request and touching headers logs a warning for every static route.
+  let requestHost = '';
+  if (!(ctx as any).isPrerendered) {
+    try {
+      requestHost = (ctx.request.headers.get('host') || url.hostname || '').split(':')[0].toLowerCase();
+    } catch {
+      requestHost = (url.hostname || '').toLowerCase();
+    }
+  }
 
   if (requestHost && requestHost !== CANONICAL_HOST && requestHost.endsWith('potuswatchdaily.com')) {
     return new Response(null, {
