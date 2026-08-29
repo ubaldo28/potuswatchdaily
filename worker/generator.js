@@ -104,6 +104,29 @@ async function getImage(env, region, size) {
 }
 
 // ── Title similarity check ────────────────────────────────────────────────────
+/**
+ * URLs of the primary documents used in the last 5 days, so the same executive
+ * order is not written up twice. Title similarity alone does not catch this:
+ * two articles about one EO can easily differ by four words.
+ */
+async function recentlyUsedSourceUrls(env) {
+  try {
+    const since = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
+    const rows = await sb(env, `articles?select=sources&published_at=gte.${encodeURIComponent(since)}&limit=${SIMILARITY_ROW_CAP}`);
+    const used = new Set();
+    for (const r of rows || []) {
+      try {
+        for (const src of JSON.parse(r.sources || '[]')) if (src?.url) used.add(src.url);
+      } catch { /* a malformed sources cell must not stop generation */ }
+    }
+    console.log(`[sources] ${used.size} documents already covered in the last 5 days.`);
+    return used;
+  } catch (e) {
+    console.warn('[sources] Could not load recent source URLs:', e.message);
+    return new Set();
+  }
+}
+
 async function isTooSimilar(env, newTitle) {
   try {
     const since = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
@@ -462,18 +485,38 @@ async function generateArticle(env) {
   const region = await getNextRegion(env);
   console.log(`[generator] Region selected: ${region}`);
 
-  const docs = await fetchPrimarySources(region);
-  if (!docs.length) {
+  const allDocs = await fetchPrimarySources(region);
+  if (!allDocs.length) {
     console.warn('[generator] No primary source documents available. Skipping.');
     return { status: 'skipped', reason: 'no-sources' };
   }
-  console.log(`[generator] ${docs.length} documents; using top ${Math.min(4, docs.length)}.`);
 
-  // Keep the prompt bounded: full documents are truncated, summaries are not.
-  const used = docs.slice(0, 4);
-  const newsContext = used.map((d, i) =>
-    `[${i + 1}] ${d.title}\n    Source: ${d.source}${d.date ? ` (${d.date})` : ''}\n    URL: ${d.url}\n    ${d.text.slice(0, d.hasFullText ? 4000 : 1200)}`
-  ).join('\n\n');
+  // One article, one subject. Blending four unrelated documents produced pieces
+  // headlined on one thing and opening on another, which reads badly and matches
+  // no actual search query. The lead document is the subject; the rest are
+  // context the model may reference but must not lead on.
+  const alreadyCovered = await recentlyUsedSourceUrls(env);
+  const fresh = allDocs.filter(d => !alreadyCovered.has(d.url));
+
+  if (!fresh.length) {
+    console.warn(`[generator] All ${allDocs.length} ${region} documents already covered in the last 5 days. Skipping rather than repeating one.`);
+    return { status: 'skipped', reason: 'no-fresh-sources' };
+  }
+
+  const lead = fresh[0];
+  const context = allDocs.filter(d => d.url !== lead.url).slice(0, 3);
+  const used = [lead, ...context];
+  console.log(`[generator] Lead: "${lead.title}" (${lead.source}); ${context.length} supporting documents.`);
+
+  const leadBlock = `[1] LEAD DOCUMENT — this article is about this document\n    ${lead.title}\n    Source: ${lead.source}${lead.date ? ` (${lead.date})` : ''}\n    URL: ${lead.url}\n    ${lead.text.slice(0, lead.hasFullText ? 6000 : 1500)}`;
+
+  const contextBlock = context.length
+    ? '\n\n' + context.map((d, i) =>
+        `[${i + 2}] SUPPORTING CONTEXT — reference only where relevant\n    ${d.title}\n    Source: ${d.source}${d.date ? ` (${d.date})` : ''}\n    URL: ${d.url}\n    ${d.text.slice(0, 900)}`
+      ).join('\n\n')
+    : '';
+
+  const newsContext = leadBlock + contextBlock;
 
   const types = [
     'breaking news analysis','strategic intelligence briefing',
@@ -485,19 +528,24 @@ async function generateArticle(env) {
   // Prompt text is byte-for-byte identical to localserver.js.
   const prompt = `You are a senior foreign policy correspondent at POTUS Watch Daily writing a ${articleType} on the ${region} portfolio.
 
-Below are PRIMARY SOURCE DOCUMENTS — U.S. government actions, Federal Register filings, allied and UN statements. Some are reproduced in full. Your article must be an analysis OF THESE DOCUMENTS.
+Below are PRIMARY SOURCE DOCUMENTS. Document [1] is the LEAD — this article is about that document and nothing else. The others are supporting context you may reference where genuinely relevant, but they must not drive the headline, the opening, or the structure.
 
 ${newsContext}
 
 Hard rules on accuracy:
-- Every factual claim must come from the documents above. Cite them inline by their bracket number, e.g. [1].
+- Every factual claim must come from the documents above. Cite them inline by bracket number, e.g. [1].
 - Name the specific actors, dates, dollar figures, entity names and legal authorities that appear in the documents. Specificity is the point of the piece.
 - If the documents do not establish something, write that it is not addressed in the record. Never invent a fact, a quote, a date or a number.
 - Analysis and implications are yours to draw, but must follow from what the documents say.
 
+Focus rules:
+- The headline, the opening sentence and the closing must all be about document [1].
+- Do not summarise the supporting documents in turn. This is one argument about one action, not a roundup.
+- If a supporting document is not relevant to the lead, ignore it entirely.
+
 Structure (use ## for section headings, 3-5 words each, descriptive and unique to this piece):
 ## [Opening heading]
-2 paragraphs: what the documents actually do, and the background needed to read them. 3-4 sentences each.
+2 paragraphs: what document [1] actually does, and the background needed to read it. 3-4 sentences each.
 
 ## [Analysis heading]
 2 paragraphs: the strategic logic and the dynamics in play. 3-4 sentences each.
@@ -510,12 +558,12 @@ Structure (use ## for section headings, 3-5 words each, descriptive and unique t
 
 Style: active voice, analytical, no rhetorical questions, no sensationalism, never glorify violence. 700-1000 words.
 
-Headline rules: 5-9 words. It must name a SPECIFIC actor and a SPECIFIC action drawn from the documents — for example "Treasury Designates Three Iranian Shipping Firms", not "Iran Portfolio Faces Mounting Pressure". No colons. Abstract noun-stacks are rejected.
+Headline rules: 5-9 words, drawn from document [1]. It must name a SPECIFIC actor and a SPECIFIC action — for example "Treasury Designates Three Iranian Shipping Firms", not "Iran Portfolio Faces Mounting Pressure". No colons. Abstract noun-stacks are rejected.
 
 Slug rules: derived from the headline, url-safe, specific enough to be unique, no years, no dates.
 
 Respond ONLY with valid JSON, no markdown:
-{"title":"specific 5-9 word headline","region":"${region}","excerpt":"one sentence max 25 words","meta_description":"max 155 chars","slug":"specific-url-slug","body":"## Heading One\\n\\nparagraph\\n\\nparagraph\\n\\n## Heading Two\\n\\nparagraph\\n\\nparagraph\\n\\n## Heading Three\\n\\nparagraph\\n\\nparagraph\\n\\n## Heading Four\\n\\nparagraph"}`;
+{"title":"specific 5-9 word headline about document [1]","region":"${region}","excerpt":"one sentence max 25 words","meta_description":"max 155 chars","slug":"specific-url-slug","body":"## Heading One\\n\\nparagraph\\n\\nparagraph\\n\\n## Heading Two\\n\\nparagraph\\n\\nparagraph\\n\\n## Heading Three\\n\\nparagraph\\n\\nparagraph\\n\\n## Heading Four\\n\\nparagraph"}`;
 
   let raw = await generateText(env, prompt);
   raw = raw.replace(/[\x00-\x1F\x7F]/g,' ').replace(/```json|```/g,'').trim();
