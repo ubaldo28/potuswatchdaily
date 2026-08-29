@@ -140,8 +140,8 @@ const breadcrumbLd = {
 
     {sources.length > 0 && (
       <div class="sources">
-        <p class="sources-label">Headlines in today's news cycle</p>
-        <p class="sources-note">Wire headlines from this reporting cycle that this dispatch was written against. They are context for the analysis above, not citations for specific claims within it.</p>
+        <p class="sources-label">Sources</p>
+        <p class="sources-note">Primary documents this dispatch was written from, cited by number in the text above.</p>
         {sources.map(s => <a href={s.url} target="_blank" rel="noopener">{s.title}</a>)}
       </div>
     )}
