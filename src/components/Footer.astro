@@ -9,6 +9,16 @@ const { maxWidth = '1280px' } = Astro.props;
     <a href="/" class="footer-logo">
       <img src="/logo-v2.png" width="200" height="35" alt="POTUS Watch Daily" style="display:block">
     </a>
+    <nav class="footer-links footer-regions" aria-label="Coverage areas">
+      <a href="/region/americas">Americas</a>
+      <a href="/region/china">China</a>
+      <a href="/region/nato">NATO</a>
+      <a href="/region/iran">Iran</a>
+      <a href="/region/mideast">Middle East</a>
+      <a href="/region/russia">Russia</a>
+      <a href="/region/trade">Trade</a>
+      <a href="/region/analysis">Analysis</a>
+    </nav>
     <nav class="footer-links">
       <a href="/">Home</a>
       <a href="/archive">Archive</a>
@@ -26,6 +36,8 @@ const { maxWidth = '1280px' } = Astro.props;
 </footer>
 
 <style>
+.footer-regions { margin-bottom: 4px; }
+.footer-regions a { color: #777 !important; }
 .footer {
   background: #0d0d0d;
   border-top: 1px solid #1a1a1a;

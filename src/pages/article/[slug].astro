@@ -7,13 +7,12 @@ const { env } = Astro.locals.runtime;
 const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_KEY);
 const { slug } = Astro.params;
 
-const { data: a, error } = await supabase.from('articles').select('*').eq('slug', slug).limit(1).single();
-const { data: related = [] } = await supabase.from('articles')
-  .select('title,slug,excerpt,region,image,date')
-  .eq('region', a?.region ?? '')
-  .neq('slug', slug ?? '')
-  .order('id', { ascending: false })
-  .limit(3);
+const { data: a, error } = await supabase
+  .from('articles')
+  .select('id,title,slug,excerpt,body,region,image,hero_image,meta_description,sources,date,time,published_at,created_at,updated_at')
+  .eq('slug', slug)
+  .limit(1)
+  .single();
 
 if (error || !a) {
   return new Response(
@@ -22,10 +21,28 @@ if (error || !a) {
   );
 }
 
+const REGION_ALIASES: Record<string, string[]> = { 'Mideast': ['Mideast', 'Middle East'], 'Middle East': ['Mideast', 'Middle East'] };
+const aliases = a.region ? (REGION_ALIASES[a.region] ?? [a.region]) : null;
+
+const relatedQuery = supabase
+  .from('articles')
+  .select('title,slug,region,image,date')
+  .neq('slug', slug ?? '')
+  .order('id', { ascending: false })
+  .limit(6);
+if (aliases) relatedQuery.in('region', aliases);
+
+const [{ data: related = [] }, { data: prevA }, { data: nextA }] = await Promise.all([
+  relatedQuery,
+  supabase.from('articles').select('title,slug').lt('id', a.id).order('id', { ascending: false }).limit(1).maybeSingle(),
+  supabase.from('articles').select('title,slug').gt('id', a.id).order('id', { ascending: true }).limit(1).maybeSingle(),
+]);
+
 const SITE_URL = 'https://www.potuswatchdaily.com';
 const canonicalUrl = `${SITE_URL}/article/${a.slug}`;
 const img = a.hero_image || a.image || `${SITE_URL}/og-default.jpg`;
 const region = a.region || 'Analysis';
+const regionSlug = region.toLowerCase() === 'middle east' ? 'mideast' : region.toLowerCase().replace(/\s+/g, '-');
 const dateIso = a.published_at || a.created_at || new Date().toISOString();
 const words = (a.body || '').split(/\s+/).length;
 const readTime = Math.max(1, Math.round(words / 200)) + ' min read';
@@ -50,12 +67,12 @@ const encodedTitle = encodeURIComponent(a.title || '');
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "NewsArticle",
-  "headline": a.title,
+  "headline": String(a.title || "").slice(0, 110),
   "description": a.meta_description || a.excerpt,
-  "image": [{ "@type": "ImageObject", "url": img, "width": 1200, "height": 630 }],
+  "image": [img],
   "datePublished": dateIso,
   "dateModified": a.updated_at || dateIso,
-  "author": [{ "@type": "Organization", "name": "POTUS Watch Daily", "url": `${SITE_URL}/about` }],
+  "author": [{ "@type": "Person", "name": "POTUS Watch Daily Editorial Staff", "url": `${SITE_URL}/about`, "jobTitle": "Editor", "worksFor": { "@type": "NewsMediaOrganization", "name": "POTUS Watch Daily", "url": SITE_URL } }],
   "publisher": { "@type": "NewsMediaOrganization", "name": "POTUS Watch Daily", "url": SITE_URL, "logo": { "@type": "ImageObject", "url": `${SITE_URL}/logo-v2.png`, "width": 300, "height": 52 } },
   "mainEntityOfPage": { "@type": "WebPage", "@id": canonicalUrl },
   "articleSection": region,
@@ -69,13 +86,13 @@ const breadcrumbLd = {
   "@type": "BreadcrumbList",
   "itemListElement": [
     { "@type": "ListItem", "position": 1, "name": "Home", "item": SITE_URL },
-    { "@type": "ListItem", "position": 2, "name": region, "item": `${SITE_URL}/archive` },
-    { "@type": "ListItem", "position": 3, "name": a.title, "item": canonicalUrl }
+    { "@type": "ListItem", "position": 2, "name": region, "item": `${SITE_URL}/region/${regionSlug}` },
+    { "@type": "ListItem", "position": 3, "name": a.title }
   ]
 };
 ---
 <BaseLayout
-  title={`${a.title} — POTUS Watch Daily`}
+  title={a.title && a.title.length > 48 ? a.title : `${a.title} — POTUS Watch Daily`}
   description={a.meta_description || a.excerpt || ''}
   canonical={canonicalUrl}
   ogImage={img}
@@ -103,7 +120,9 @@ const breadcrumbLd = {
   )}
 
   <div class="article-content">
-    <a class="back" href="/">← Back to feed</a>
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <a href="/">Home</a> <span aria-hidden="true">›</span> <a href={`/region/${regionSlug}`}>{region}</a>
+    </nav>
     <div class="eyebrow">
       <span class="tag">{region}</span>
       <span style="color:#333">·</span>
@@ -158,6 +177,13 @@ const breadcrumbLd = {
         </div>
       </div>
     )}
+
+    {(prevA || nextA) && (
+      <nav class="seq" aria-label="More dispatches">
+        {prevA ? <a class="seq-link" href={`/article/${prevA.slug}`}><span class="seq-dir">← Previous dispatch</span><span class="seq-title">{prevA.title}</span></a> : <span></span>}
+        {nextA ? <a class="seq-link seq-next" href={`/article/${nextA.slug}`}><span class="seq-dir">Next dispatch →</span><span class="seq-title">{nextA.title}</span></a> : <span></span>}
+      </nav>
+    )}
   </div>
 
   <Footer />
@@ -169,6 +195,16 @@ const breadcrumbLd = {
 .hero-img { width: 100%; height: 480px; max-height: 480px; aspect-ratio: 5 / 2; object-fit: cover; display: block; }
 @media (max-width: 640px) { .hero-img { height: 220px; } }
 .article-content { max-width: 740px; margin: 0 auto; padding: 40px 24px 80px; }
+.crumbs { font-family: Inter, Arial, sans-serif; font-size: 11px; color: #444; margin-bottom: 20px; display: flex; gap: 8px; align-items: center; }
+.crumbs a { color: #666; text-decoration: none; }
+.crumbs a:hover { color: #cc0000; }
+.seq { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 48px; padding-top: 24px; border-top: 1px solid #1e1e1e; }
+.seq-link { display: flex; flex-direction: column; gap: 4px; text-decoration: none; padding: 12px 0; }
+.seq-next { text-align: right; }
+.seq-dir { font-family: Inter, Arial, sans-serif; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: #cc0000; }
+.seq-title { font-family: 'Playfair Display', serif; font-size: 14px; color: #999; line-height: 1.35; }
+.seq-link:hover .seq-title { color: #e0e0e0; }
+@media (max-width: 640px) { .seq { grid-template-columns: 1fr; } .seq-next { text-align: left; } }
 .back { color: #cc0000; text-decoration: none; font-size: 12px; font-family: Inter, Arial, sans-serif; letter-spacing: 0.5px; display: inline-block; margin-bottom: 20px; }
 .eyebrow { margin: 16px 0 8px; font-size: 12px; font-family: Inter, Arial, sans-serif; color: #666; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .tag { background: #cc0000; color: #fff; padding: 2px 8px; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; font-family: Inter, Arial, sans-serif; }
