@@ -28,7 +28,12 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
   // PATHS only, so `https://potuswatchdaily.com/*` was parsed as a literal path
   // beginning "/https:/". The apex therefore served 200s, doubling crawl cost on
   // every URL. A 301 is a directive where a canonical tag is only a hint.
-  if (url.hostname && url.hostname !== CANONICAL_HOST && url.hostname.endsWith('potuswatchdaily.com')) {
+  // Read the Host header rather than url.hostname: Astro builds Astro.url from
+  // the configured `site` on some adapters, which would make the hostname always
+  // read as the canonical one and this check never fire.
+  const requestHost = (ctx.request.headers.get('host') || url.hostname || '').split(':')[0].toLowerCase();
+
+  if (requestHost && requestHost !== CANONICAL_HOST && requestHost.endsWith('potuswatchdaily.com')) {
     return new Response(null, {
       status: 301,
       headers: {
