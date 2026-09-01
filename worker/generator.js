@@ -67,11 +67,19 @@ function sbBase(env) {
  */
 async function sb(env, path, init = {}) {
   const url = `${sbBase(env)}/rest/v1/${path}`;
+  const key = String(env.SUPABASE_KEY || '');
+  // Supabase has two key formats. A legacy key is a JWT and PostgREST reads the
+  // role out of it, so it has to arrive as a Bearer token. A new-style key
+  // (sb_secret_… / sb_publishable_…) is an opaque string: sending it as a Bearer
+  // token makes PostgREST try to parse it as a JWT and reject the request, so it
+  // goes in `apikey` alone. Detect by shape rather than prefix — a JWT is three
+  // dot-separated base64 segments.
+  const isJwt = key.split('.').length === 3;
   const res = await fetch(url, {
     ...init,
     headers: {
-      apikey: env.SUPABASE_KEY,
-      Authorization: `Bearer ${env.SUPABASE_KEY}`,
+      apikey: key,
+      ...(isJwt ? { Authorization: `Bearer ${key}` } : {}),
       'Content-Type': 'application/json',
       ...(init.headers || {})
     },
