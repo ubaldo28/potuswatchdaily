@@ -561,6 +561,58 @@ function extractWorkersAIText(result) {
   return null;
 }
 
+/**
+ * Close a JSON object that was cut off mid-generation.
+ *
+ * A truncated response is almost always a complete `title`/`excerpt`/`slug`
+ * with the `body` string severed part-way. Rather than throw the whole
+ * generation away — a wasted model call and an hour with no article — trim back
+ * to the last complete paragraph and close the structure. Returns null when
+ * there is nothing worth salvaging, so the caller can still retry.
+ */
+function salvageTruncatedJson(text) {
+  if (typeof text !== 'string') return null;
+  const start = text.indexOf('{');
+  if (start === -1) return null;
+  let s = text.slice(start);
+
+  // Walk the string tracking whether we are inside a quoted value, so we know
+  // where it is safe to cut.
+  let inStr = false, esc = false, depth = 0, lastSafe = -1;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (esc) { esc = false; continue; }
+    if (c === '\\') { esc = true; continue; }
+    if (c === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (c === '{') depth++;
+    else if (c === '}') { depth--; if (depth === 0) return null; }  // not truncated
+    else if (c === ',' && depth === 1) lastSafe = i;
+  }
+
+  if (inStr) {
+    // Cut the severed string back to its last paragraph break so the article
+    // does not end mid-sentence, then close the quote.
+    const brk = s.lastIndexOf('\\n\\n');
+    if (brk > 0) s = s.slice(0, brk);
+    // The cut can land inside a two-character escape ("\\n", "\\u00e9"). A
+    // dangling backslash would escape the quote we are about to add, so drop
+    // any trailing partial escape first.
+    s = s.replace(/\\{1,2}$/, '').replace(/\\u[0-9a-fA-F]{0,3}$/, '');
+    s += '"';
+  } else if (lastSafe > 0) {
+    s = s.slice(0, lastSafe);
+  }
+  s += '}'.repeat(Math.max(depth, 1));
+
+  try {
+    const parsed = JSON.parse(s);
+    return (parsed && parsed.title && parsed.body) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 async function callWorkersAI(env, prompt) {
   if (!env.AI) throw new Error('Workers AI binding "AI" is not configured. Add {"ai":{"binding":"AI"}} to wrangler.jsonc and redeploy.');
 
@@ -568,13 +620,16 @@ async function callWorkersAI(env, prompt) {
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       // max_tokens defaults to 256 on Workers AI. Without this the article is
-      // truncated mid-JSON and the parse fails.
+      // truncated mid-JSON and the parse fails. 2500 was still too small: a
+      // four-heading article plus the JSON envelope runs past it, the response
+      // stops mid-string, and every run dies on "Unexpected end of JSON input".
+      // This is a ceiling, not a spend — the model stops when it is done.
       const result = await env.AI.run(WORKERS_AI_MODEL, {
         messages: [
           { role: 'system', content: 'You are a senior foreign policy correspondent. Respond with a single valid JSON object and nothing else - no prose before or after, no markdown code fences.' },
           { role: 'user', content: prompt }
         ],
-        max_tokens: 2500,
+        max_tokens: 8000,
         temperature: 0.7
       });
 
@@ -631,7 +686,7 @@ async function callAnthropic(env, prompt) {
         },
         body: JSON.stringify({
           model: 'claude-haiku-4-5-20251001',
-          max_tokens: 2500,
+          max_tokens: 8000,
           messages: [{ role: 'user', content: prompt }]
         }),
         // Wall-clock waiting on fetch() does not count toward Workers CPU time,
@@ -796,8 +851,14 @@ Respond ONLY with valid JSON, no markdown:
   try {
     parsed = JSON.parse(raw.slice(js, je));
   } catch (e) {
-    console.error('[generator] Failed to parse model JSON. First 600 chars of payload:', raw.slice(0, 600));
-    throw new Error(`Model returned unparseable JSON: ${e.message}`);
+    // A cut-off response still contains a usable article most of the time.
+    parsed = salvageTruncatedJson(raw);
+    if (parsed) {
+      console.warn(`[generator] Model output was truncated; salvaged ${parsed.body.length} chars of body.`);
+    } else {
+      console.error('[generator] Failed to parse model JSON. First 600 chars of payload:', raw.slice(0, 600));
+      throw new Error(`Model returned unparseable JSON: ${e.message}`);
+    }
   }
   if (!parsed.title || !parsed.body) {
     throw new Error(`Model JSON missing title or body. Keys: ${Object.keys(parsed).join(',')}`);
