@@ -7,7 +7,8 @@ name: Generator health check
 
 on:
   schedule:
-    - cron: '25 */3 * * *'   # every 3 hours, off the hour so it never races the generator
+    - cron: '25 * * * *'   # hourly, off the hour so it never races the generator.
+                          # Was every 3h; that is 3h of silent downtime per miss.
   workflow_dispatch:
 
 permissions:
@@ -17,12 +18,14 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
+      # The URL is hardcoded on purpose. It was a repo secret, the secret was
+      # never set, and every run of this workflow failed on that instead of on
+      # the thing it was built to watch -- so the generator sat broken for hours
+      # with a monitor that looked like it was running. /health exposes no
+      # secrets: a status string and the age of the newest article.
       - name: Poll the generator health endpoint
-        env:
-          GENERATOR_HEALTH_URL: ${{ secrets.GENERATOR_HEALTH_URL }}
         run: |
-          URL="$GENERATOR_HEALTH_URL"
-          if [ -z "$URL" ]; then echo "::error::Set the GENERATOR_HEALTH_URL repo secret"; exit 1; fi
+          URL="https://potuswatch-generator.peakvending.workers.dev/health"
           BODY=$(curl -sS --max-time 30 "$URL") || { echo "::error::Health endpoint unreachable at $URL"; exit 1; }
           echo "$BODY"
 
