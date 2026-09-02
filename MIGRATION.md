@@ -130,8 +130,6 @@ From the repository root. Each command prompts for the value on stdin — nothin
 is written to disk or shell history.
 
 ```bash
-npx wrangler secret put ANTHROPIC_API_KEY   --config worker/wrangler.jsonc
-npx wrangler secret put NEWS_API_KEY        --config worker/wrangler.jsonc
 npx wrangler secret put UNSPLASH_ACCESS_KEY --config worker/wrangler.jsonc
 npx wrangler secret put SUPABASE_URL        --config worker/wrangler.jsonc
 npx wrangler secret put SUPABASE_KEY        --config worker/wrangler.jsonc

@@ -10,8 +10,6 @@
  *
  * Secrets come from Worker env bindings:
  *   UNSPLASH_ACCESS_KEY, SUPABASE_URL, SUPABASE_KEY
- *   ANTHROPIC_API_KEY is OPTIONAL - set it only if you want paid Haiku prose
- *   instead of the free Workers AI model.
  * Optional:
  *   RUN_TOKEN  — if set, enables POST /run?token=... to fire a generation by hand.
  */
@@ -654,65 +652,13 @@ async function callWorkersAI(env, prompt) {
 }
 
 /**
- * Anthropic writes better prose but costs money, so it is strictly optional:
- * used only when ANTHROPIC_API_KEY is set, and any failure falls through to the
- * free Workers AI path rather than losing the slot.
+ * All generation goes through Workers AI. There was an optional Anthropic path
+ * here -- better prose, paid -- but it was dead weight: it needed a key nobody
+ * was going to keep funded, and a silent fallback meant two possible code paths
+ * behind every article with no way to tell which one wrote it.
  */
 async function generateText(env, prompt) {
-  if (env.ANTHROPIC_API_KEY) {
-    try {
-      const r = await callAnthropic(env, prompt);
-      const t = r?.content?.[0]?.text;
-      if (typeof t === 'string' && t.trim()) return t;
-      console.warn('[generator] Anthropic returned an unexpected shape; falling back to Workers AI.');
-    } catch (e) {
-      console.warn(`[generator] Anthropic failed (${e.message}); falling back to Workers AI.`);
-    }
-  }
   return callWorkersAI(env, prompt);
-}
-
-// ── Anthropic ─────────────────────────────────────────────────────────────────
-async function callAnthropic(env, prompt) {
-  let lastErr;
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'x-api-key': env.ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 8000,
-          messages: [{ role: 'user', content: prompt }]
-        }),
-        // Wall-clock waiting on fetch() does not count toward Workers CPU time,
-        // and the cron duration ceiling is 15 minutes, so 30s is safe.
-        signal: AbortSignal.timeout(30000)
-      });
-
-      if (!res.ok) {
-        const body = await res.text().catch(() => '<unreadable>');
-        const err = new Error(`Anthropic ${res.status}: ${body.slice(0, 500)}`);
-        // 4xx other than 429 will not fix themselves — fail fast.
-        if (res.status < 500 && res.status !== 429) throw Object.assign(err, { fatal: true });
-        throw err;
-      }
-      return await res.json();
-    } catch (e) {
-      lastErr = e;
-      if (e.fatal) {
-        console.error(`[anthropic] Non-retryable error: ${e.message}`);
-        throw e;
-      }
-      console.warn(`[anthropic] Attempt ${attempt}/3 failed: ${e.message}`);
-      if (attempt < 3) await sleep(3000 * attempt);
-    }
-  }
-  throw lastErr;
 }
 
 // ── Main generation routine ───────────────────────────────────────────────────

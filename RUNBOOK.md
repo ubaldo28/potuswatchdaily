@@ -159,7 +159,6 @@ Common causes:
 | Secret | Where stored |
 |---|---|
 | SUPABASE_URL / SUPABASE_KEY | Worker secrets on both the site Worker and the generator Worker (`npx wrangler secret put ...`) |
-| ANTHROPIC_API_KEY (optional) | Worker secret |
 
 | UNSPLASH_ACCESS_KEY | Worker secret |
 | CLOUDFLARE_API_TOKEN | GitHub Secrets (scoped token, Edit Cloudflare Workers) |

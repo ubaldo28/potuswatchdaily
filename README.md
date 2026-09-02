@@ -182,9 +182,8 @@ npx wrangler dev --config worker/wrangler.jsonc
 ```
 
 Worker secrets — `SUPABASE_URL`, `SUPABASE_KEY`, `UNSPLASH_ACCESS_KEY`.
-Optional: `ANTHROPIC_API_KEY` (better prose, paid — falls back to Workers AI),
-`CF_ZONE_ID` + `CF_PURGE_TOKEN` (purge the edge cache on publish), `RUN_TOKEN`
-(enables `POST /run` to generate on demand).
+Optional: `CF_ZONE_ID` + `CF_PURGE_TOKEN` (purge the edge cache on publish),
+`RUN_TOKEN` (enables `POST /run` to generate on demand).
 
 ## Operations
 

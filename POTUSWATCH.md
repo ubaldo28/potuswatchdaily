@@ -56,8 +56,6 @@ git push → GitHub Actions → npm run build → wrangler deploy → Cloudflare
 ### Worker secrets (`wrangler secret put <NAME> --config worker/wrangler.jsonc`):
 - `UNSPLASH_ACCESS_KEY`, `SUPABASE_URL`, `SUPABASE_KEY` — required
 - `RUN_TOKEN` — optional, enables `POST /run` for manual triggering
-- `ANTHROPIC_API_KEY` — OPTIONAL. Costs money. Set it only to get Haiku prose
-  instead of the free model; failures fall back to Workers AI automatically.
 - `CF_ZONE_ID` / `CF_PURGE_TOKEN` — optional, purges the edge cache on publish
 
 **No NEWS_API_KEY.** NewsAPI's free plan forbids production use; the generator
