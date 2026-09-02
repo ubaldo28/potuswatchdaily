@@ -30,11 +30,9 @@ jobs:
       - name: Check deploy credentials
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           missing=
           [ -z "$CLOUDFLARE_API_TOKEN" ]  && missing="$missing CLOUDFLARE_API_TOKEN"
-          [ -z "$CLOUDFLARE_ACCOUNT_ID" ] && missing="$missing CLOUDFLARE_ACCOUNT_ID"
           if [ -n "$missing" ]; then
             echo "::error::Missing repository secret(s):$missing — add them under Settings → Secrets and variables → Actions."
             exit 1
@@ -80,7 +78,6 @@ jobs:
           # A scoped token, not the Global API Key: it is limited to editing
           # Workers on one account, and Cloudflare no longer surfaces the
           # Global Key in the dashboard at all. Revoking it costs nothing.
+          # The account is pinned in wrangler.jsonc, not passed here, so CI and
+          # a local deploy cannot disagree about where this Worker goes.
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          # Explicit: a token may be scoped to more than one account, and
-          # wrangler errors out rather than guessing which one to deploy to.
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

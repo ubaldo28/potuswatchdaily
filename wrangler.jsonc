@@ -4,6 +4,13 @@
   // Pages project, which stays up as the rollback target until the custom
   // domain is moved onto this Worker.
   "name": "potuswatchdaily-site",
+
+  // Pinned on purpose. Without it, `wrangler deploy` targets whichever account
+  // your global `wrangler login` happens to be on -- and if you work on more
+  // than one project that is a coin flip. A wrong login now fails immediately
+  // with "not a member of this account" instead of authenticating fine and
+  // erroring deep inside the API, or worse, deploying somewhere unintended.
+  "account_id": "7ded3077a7ce39644f81502fc5e09647",
   "compatibility_date": "2026-05-20",
   "compatibility_flags": [
     "nodejs_compat"
