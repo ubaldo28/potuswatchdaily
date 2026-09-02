@@ -17,19 +17,39 @@ jobs:
         with:
           node-version: 22
 
+      # A fork, or this repo before its secrets are configured, cannot reach the
+      # database. That is not a backup failure and should not look like one: the
+      # first version of this workflow failed red every morning for four days
+      # because the secrets were never set, which trains you to ignore the red.
+      # Missing config is a warning and a clean exit; a backup that runs and goes
+      # wrong is still a hard failure.
+      - name: Check configuration
+        id: cfg
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_KEY" ]; then
+            echo "::warning::SUPABASE_URL / SUPABASE_KEY are not set on this repository — skipping the backup. Add them under Settings → Secrets and variables → Actions. The read-only publishable key is sufficient."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Dump articles table
+        if: steps.cfg.outputs.ready == 'true'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: node scripts/backup-articles.mjs
 
       - name: Keep the 14 most recent daily snapshots
+        if: steps.cfg.outputs.ready == 'true'
         run: |
-          cd backups
-          ls -1 articles-*.json | sort | head -n -14 | xargs -r rm --
-          cd ..
+          ls -1 backups/articles-*.json 2>/dev/null | sort | head -n -14 | xargs -r rm --
 
       - name: Commit snapshot
+        if: steps.cfg.outputs.ready == 'true'
         run: |
           git config user.name  "potuswatch-backup"
           git config user.email "actions@github.com"

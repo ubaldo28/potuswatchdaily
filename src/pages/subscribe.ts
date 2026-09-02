@@ -60,6 +60,45 @@ function corsHeaders(origin: string) {
   };
 }
 
+// CORS is a browser-side courtesy: it does not stop a script POSTing directly.
+// This endpoint spends money (Resend quota) and sends mail to whatever address
+// it is handed, so it needs a server-side check too. A same-origin browser POST
+// always carries one of these; curl carries neither.
+function isFromOurSite(request: Request) {
+  const origin = request.headers.get('Origin');
+  if (origin) return ALLOWED_ORIGINS.includes(origin);
+  const referer = request.headers.get('Referer');
+  if (referer) return ALLOWED_ORIGINS.some(o => referer.startsWith(o + '/') || referer === o);
+  return false;
+}
+
+// Best-effort throttle. There is no KV binding on this Worker, so the counter
+// lives in the datacenter-local edge cache: an attacker spread across PoPs gets
+// one bucket per PoP rather than one globally. That is a real limit, not a
+// perfect one -- it exists to stop the cheap case (a loop from one host mailing
+// the same victim repeatedly), and the address-already-subscribed check below
+// is what actually caps mail per address.
+const RATE_WINDOW_SECONDS = 60;
+const RATE_MAX_PER_WINDOW = 3;
+
+async function overRateLimit(request: Request): Promise<boolean> {
+  const ip = request.headers.get('cf-connecting-ip') || '';
+  if (!ip) return false;
+  const key = new Request(`https://rate-limit.internal/subscribe/${encodeURIComponent(ip)}`);
+  try {
+    const cache = (caches as any).default;
+    const hit = await cache.match(key);
+    const count = hit ? Number(await hit.text()) || 0 : 0;
+    if (count >= RATE_MAX_PER_WINDOW) return true;
+    await cache.put(key, new Response(String(count + 1), {
+      headers: { 'Cache-Control': `max-age=${RATE_WINDOW_SECONDS}` }
+    }));
+    return false;
+  } catch {
+    return false;   // never fail a real signup because the cache misbehaved
+  }
+}
+
 function isValidEmail(email: string) {
   return typeof email === 'string' &&
     email.length <= 320 &&
@@ -86,38 +125,67 @@ export const OPTIONS: APIRoute = ({ request }) => {
   return new Response(null, { headers: corsHeaders(origin) });
 };
 
-export const POST: APIRoute = async ({ request, locals }) => {
+const MAX_BODY_BYTES = 1024;
+
+export const POST: APIRoute = async ({ request }) => {
   const origin = request.headers.get('Origin') || '';
   const cors = corsHeaders(origin);
-  // env comes from the Workers runtime module (Astro.locals.runtime was removed in adapter v14)
+  const json = (payload: unknown, status = 200) =>
+    new Response(JSON.stringify(payload), {
+      status,
+      headers: { 'Content-Type': 'application/json', ...cors },
+    });
+
+  if (!isFromOurSite(request)) return json({ error: 'Not allowed.' }, 403);
+
+  const declared = Number(request.headers.get('content-length') || 0);
+  if (declared > MAX_BODY_BYTES) return json({ error: 'Request too large.' }, 413);
 
   try {
-    const body = await request.json();
-    const email = (body.email || '').trim().toLowerCase();
+    const raw = await request.text();
+    if (raw.length > MAX_BODY_BYTES) return json({ error: 'Request too large.' }, 413);
+
+    let body: any;
+    try { body = JSON.parse(raw); } catch { return json({ error: 'Please enter a valid email address.' }, 400); }
+
+    const email = String(body?.email || '').trim().toLowerCase();
     if (!isValidEmail(email)) {
-      return new Response(JSON.stringify({ error: 'Please enter a valid email address.' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json', ...cors },
-      });
+      return json({ error: 'Please enter a valid email address.' }, 400);
     }
+
+    if (await overRateLimit(request)) {
+      return json({ error: 'Too many requests. Please try again in a minute.' }, 429);
+    }
+
+    const auth = {
+      'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    };
+    const audience = `https://api.resend.com/audiences/${env.RESEND_AUDIENCE_ID}/contacts`;
+
+    // Resend upserts on POST, so without this check anyone could re-post a
+    // stranger's address in a loop and this endpoint would mail them each time.
+    // Already subscribed is reported as success and sends nothing: it is the
+    // truth from the visitor's side, and it does not disclose who is on the list.
+    const existing = await fetch(`${audience}/${encodeURIComponent(email)}`, { headers: auth });
+    if (existing.ok) return json({ success: true });
+
     const thuDate = nextThursdayStr();
 
-    const audienceResp = await fetch(
-      `https://api.resend.com/audiences/${env.RESEND_AUDIENCE_ID}/contacts`,
-      {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, unsubscribed: false }),
-      }
-    );
+    const audienceResp = await fetch(audience, {
+      method: 'POST',
+      headers: auth,
+      body: JSON.stringify({ email, unsubscribed: false }),
+    });
     if (!audienceResp.ok) {
-      const err = await audienceResp.json().catch(() => ({})) as any;
-      throw new Error(err.message || 'Subscription failed');
+      const detail = await audienceResp.text().catch(() => '');
+      console.error(`[subscribe] Resend contact create failed (${audienceResp.status}): ${detail.slice(0, 300)}`);
+      return json({ error: 'Subscription failed. Please try again.' }, 502);
     }
 
-    await fetch('https://api.resend.com/emails', {
+    const mailResp = await fetch('https://api.resend.com/emails', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      headers: auth,
       body: JSON.stringify({
         from: env.RESEND_FROM_EMAIL || 'POTUS Watch Daily <onboarding@resend.dev>',
         to: email,
@@ -125,14 +193,18 @@ export const POST: APIRoute = async ({ request, locals }) => {
         html: buildWelcomeHtml(thuDate),
       }),
     });
+    // The subscription is the thing that matters; a failed welcome email is
+    // logged but not surfaced, since the address is already on the list.
+    if (!mailResp.ok) {
+      const detail = await mailResp.text().catch(() => '');
+      console.error(`[subscribe] Welcome email failed (${mailResp.status}): ${detail.slice(0, 300)}`);
+    }
 
-    return new Response(JSON.stringify({ success: true }), {
-      headers: { 'Content-Type': 'application/json', ...cors },
-    });
+    return json({ success: true });
   } catch (e: any) {
-    return new Response(JSON.stringify({ error: e.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json', ...cors },
-    });
+    // Never echo the upstream error to the client: it is written by Resend, not
+    // by us, and has no business being rendered in someone's browser.
+    console.error('[subscribe] Unhandled failure:', e?.message || e);
+    return json({ error: 'Subscription failed. Please try again.' }, 500);
   }
 };
