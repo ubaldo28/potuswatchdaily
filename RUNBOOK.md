@@ -43,11 +43,11 @@ Common causes:
 ### Error: `Not logged in`
 - `CLOUDFLARE_API_KEY` or `CLOUDFLARE_EMAIL` secret is wrong/missing
 - Go to: https://github.com/ubaldo28/potuswatch/settings/secrets/actions
-- Delete and re-add: `CLOUDFLARE_API_KEY` (Global API Key from Cloudflare)
-- Global API Key: https://dash.cloudflare.com/profile/api-tokens → View next to "Global API Key"
+- Delete and re-add: `CLOUDFLARE_API_TOKEN` (Cloudflare → Manage account → Account API tokens → Create Token → "Edit Cloudflare Workers")
+- Tokens live at: Cloudflare dashboard → Manage account → Account API tokens
 
 ### Error: `Authentication error [code: 10000]`
-- API token doesn't have Workers Scripts permission
+- The token is missing the Workers Scripts:Edit permission, or is scoped to the wrong account
 - Use Global API Key instead of scoped token (always works)
 
 ### Error: `refusing to allow...workflow`
@@ -162,7 +162,7 @@ Common causes:
 | ANTHROPIC_API_KEY (optional) | Worker secret |
 
 | UNSPLASH_ACCESS_KEY | Worker secret |
-| CLOUDFLARE_API_KEY | GitHub Secrets |
+| CLOUDFLARE_API_TOKEN | GitHub Secrets (scoped token, Edit Cloudflare Workers) |
 | CLOUDFLARE_EMAIL | GitHub Secrets |
 | CLOUDFLARE_ACCOUNT_ID | GitHub Secrets |
 | SUPABASE_URL / SUPABASE_KEY | GitHub Secrets (deploy + backup workflows) |

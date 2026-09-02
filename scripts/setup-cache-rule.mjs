@@ -7,20 +7,19 @@
 // per-datacenter and therefore NOT globally purgeable. The real edge cache is,
 // which is what lets purge-on-publish in worker/generator.js do its job.
 //
-// Auth: uses the CLOUDFLARE_EMAIL + CLOUDFLARE_API_KEY (Global API Key) already
+// Auth: uses CLOUDFLARE_API_TOKEN (a scoped token) already
 // in GitHub Secrets. Resolves the zone id from the domain, so nothing extra is
 // needed. Idempotent — safe to re-run.
 
-const EMAIL = process.env.CLOUDFLARE_EMAIL;
-const KEY   = process.env.CLOUDFLARE_API_KEY;
+const TOKEN = process.env.CLOUDFLARE_API_TOKEN;
 const DOMAIN = process.env.CF_DOMAIN || 'potuswatchdaily.com';
 
-if (!EMAIL || !KEY) {
-  console.error('Missing CLOUDFLARE_EMAIL / CLOUDFLARE_API_KEY');
+if (!TOKEN) {
+  console.error('Missing CLOUDFLARE_API_TOKEN');
   process.exit(1);
 }
 
-const H = { 'X-Auth-Email': EMAIL, 'X-Auth-Key': KEY, 'Content-Type': 'application/json' };
+const H = { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' };
 const API = 'https://api.cloudflare.com/client/v4';
 
 async function cf(path, init = {}) {
@@ -91,8 +90,7 @@ if (!process.env.GITHUB_ACTIONS) {
   };
   console.log('\nSetting Worker secrets for purge-on-publish:');
   put('CF_ZONE_ID', zoneId);
-  put('CF_EMAIL', EMAIL);
-  put('CF_API_KEY', KEY);
+  put('CF_API_TOKEN', TOKEN);
 }
 
 console.log(`\nCF_ZONE_ID=${zoneId}`);

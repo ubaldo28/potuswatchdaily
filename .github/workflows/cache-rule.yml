@@ -23,25 +23,23 @@ jobs:
       - name: Apply cache rule and capture zone id
         id: rule
         env:
-          CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
-          CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           node scripts/setup-cache-rule.mjs | tee out.txt
           ZONE=$(grep -o 'CF_ZONE_ID=[a-f0-9]*' out.txt | cut -d= -f2)
           echo "zone_id=$ZONE" >> "$GITHUB_OUTPUT"
           echo "Zone: $ZONE"
 
-      # wrangler authenticates from CLOUDFLARE_API_KEY + CLOUDFLARE_EMAIL, the
-      # same pair deploy.yml already uses, so no extra credential is needed.
+      # wrangler authenticates from CLOUDFLARE_API_TOKEN, the same token
+      # deploy.yml uses, so no extra credential is needed.
       - name: Set Worker purge secrets
         env:
-          CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
-          CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           # Via env, never interpolated straight into the shell.
           ZONE_ID: ${{ steps.rule.outputs.zone_id }}
         run: |
           set -e
-          printf '%s' "$ZONE_ID" | npx --yes wrangler@4 secret put CF_ZONE_ID  --config worker/wrangler.jsonc
-          printf '%s' "$CLOUDFLARE_EMAIL"                 | npx --yes wrangler@4 secret put CF_EMAIL   --config worker/wrangler.jsonc
-          printf '%s' "$CLOUDFLARE_API_KEY"               | npx --yes wrangler@4 secret put CF_API_KEY --config worker/wrangler.jsonc
+          printf '%s' "$ZONE_ID"              | npx --yes wrangler@4 secret put CF_ZONE_ID     --config worker/wrangler.jsonc
+          printf '%s' "$CLOUDFLARE_API_TOKEN" | npx --yes wrangler@4 secret put CF_PURGE_TOKEN --config worker/wrangler.jsonc
           echo "Purge secrets set."
