@@ -40,6 +40,12 @@ jobs:
             exit 1
           fi
 
+          # Length first, and unconditionally: it is the one diagnostic that
+          # distinguishes a truncated paste from a wrong value, and printing it
+          # only on success meant the failing case -- the case that matters --
+          # never showed it. The value itself is never printed.
+          echo "token length: ${#CLOUDFLARE_API_TOKEN} characters (a Cloudflare token is ~40)"
+
           # Verify the token before spending a build on it. Cloudflare's own
           # verify endpoint answers in one call, and a bad paste (truncated,
           # wrong value, stray whitespace) is indistinguishable from a
@@ -55,10 +61,6 @@ jobs:
             exit 1
           fi
           echo "Token is valid."
-
-          # Length is printed, never the value: a truncated paste is the single
-          # most common cause and shows up here immediately.
-          echo "token length: ${#CLOUDFLARE_API_TOKEN} characters (expected ~40)"
 
       - name: Install dependencies
         run: npm ci
