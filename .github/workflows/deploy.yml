@@ -40,6 +40,26 @@ jobs:
             exit 1
           fi
 
+          # Verify the token before spending a build on it. Cloudflare's own
+          # verify endpoint answers in one call, and a bad paste (truncated,
+          # wrong value, stray whitespace) is indistinguishable from a
+          # permissions problem once wrangler is involved -- it reports both as
+          # an authentication error deep in a deploy log. Only the status and
+          # Cloudflare's message are printed; the token itself never is.
+          code=$(curl -s -o /tmp/cf-verify.json -w '%{http_code}' \
+            https://api.cloudflare.com/client/v4/user/tokens/verify \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
+          echo "token verify -> HTTP $code"
+          if [ "$code" != "200" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN was rejected by Cloudflare (HTTP $code): $(sed -n 's/.*\"message\":\"\([^\"]*\)\".*/\1/p' /tmp/cf-verify.json | head -1). The secret is not a usable token — re-copy it and update the secret."
+            exit 1
+          fi
+          echo "Token is valid."
+
+          # Length is printed, never the value: a truncated paste is the single
+          # most common cause and shows up here immediately.
+          echo "token length: ${#CLOUDFLARE_API_TOKEN} characters (expected ~40)"
+
       - name: Install dependencies
         run: npm ci
 
