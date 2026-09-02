@@ -23,6 +23,25 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
+      # A deploy that cannot authenticate should say so in one line, not bury it
+      # in a wrangler stack trace. Unlike the backup job this still fails hard:
+      # the live site depends on it, so a skipped deploy must never look like a
+      # successful one.
+      - name: Check deploy credentials
+        env:
+          CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
+          CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          missing=
+          [ -z "$CLOUDFLARE_API_KEY" ]    && missing="$missing CLOUDFLARE_API_KEY"
+          [ -z "$CLOUDFLARE_EMAIL" ]      && missing="$missing CLOUDFLARE_EMAIL"
+          [ -z "$CLOUDFLARE_ACCOUNT_ID" ] && missing="$missing CLOUDFLARE_ACCOUNT_ID"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secret(s):$missing — add them under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+
       - name: Install dependencies
         run: npm ci
 
