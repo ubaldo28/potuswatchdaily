@@ -219,3 +219,32 @@ still there and still serves the pre-migration build.
 - `src/pages/index.astro` had `<main>` closed by `</div>` and a stray `</main>`
   around the newsletter block. Astro 5 tolerated it; Astro 7's compiler rejects
   it. The landmark had been wrapping the wrong content in production.
+
+
+---
+
+## Which Cloudflare account owns what
+
+Three accounts are reachable from this Google login, and `wrangler deploy`
+picks whichever one the machine happens to be logged into. That produced
+three copies of `potuswatch-generator` in three accounts before the account
+IDs were pinned in config.
+
+| Worker | Account | Account ID | Live? |
+|---|---|---|---|
+| `potuswatchdaily-site` | POTUS Watch Daily | `7ded3077a7ce39644f81502fc5e09647` | yes — serves the site |
+| `potuswatch-generator` | Peakvending | `3a1a5a2d895090c6142fad3b7cbb2a40` | yes — owns the hourly cron |
+| `potuswatch-generator` | POTUS Watch Daily | `7ded3077…` | no — dormant copy, secrets set, **no cron** |
+| `potuswatch-generator` | (slotfill subdomain) | — | no — accidental deploy, cron but no secrets |
+
+Both live Workers now pin `account_id` in their wrangler config, so a deploy
+from the wrong login fails instead of quietly creating another copy.
+
+The two dead copies should be deleted. Deleting the dormant POTUS Watch Daily
+one is safe (no cron, nothing invokes it). Deleting the slotfill one stops an
+hourly run that fails for lack of secrets.
+
+Consolidating both Workers into one account is worth doing — it removes the
+login juggling entirely — but it means re-setting the generator's three
+secrets in the destination account and moving the cron, so it is a deliberate
+task, not something to do while chasing an outage.
