@@ -24,13 +24,13 @@ jobs:
       # with a monitor that looked like it was running. /health exposes no
       # secrets: a status string and the age of the newest article.
       #
-      # It must be THIS account's Worker. An earlier version pointed at a
-      # same-named copy in an unrelated account, so the check was green or red
-      # about a Worker nobody deploys to -- worse than no monitor, because it
-      # looked like one.
+      # This is the hostname of the Worker that actually holds the cron and
+      # writes articles. Same-named copies exist elsewhere; pointing the monitor
+      # at one of those makes it report on something nobody deploys to, which is
+      # worse than no monitor because it looks like one.
       - name: Poll the generator health endpoint
         run: |
-          URL="https://potuswatch-generator.potuswatchdaily.workers.dev/health"
+          URL="https://potuswatch-generator.peakvending.workers.dev/health"
           BODY=$(curl -sS --max-time 30 "$URL") || { echo "::error::Health endpoint unreachable at $URL"; exit 1; }
           echo "$BODY"
 

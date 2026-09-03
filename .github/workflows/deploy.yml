@@ -81,14 +81,3 @@ jobs:
           # The account is pinned in wrangler.jsonc, not passed here, so CI and
           # a local deploy cannot disagree about where this Worker goes.
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-
-      # The generator deploys from CI for the same reason the site does. It used
-      # to be pushed by hand, which meant it landed in whichever Cloudflare
-      # account the laptop happened to be logged into -- it ended up duplicated
-      # across unrelated accounts that way, and a fix could sit undeployed while
-      # the copy running the cron kept the old code. One token, one account,
-      # nothing left to get wrong.
-      - name: Deploy the generator Worker
-        run: npx wrangler deploy --config worker/wrangler.jsonc
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

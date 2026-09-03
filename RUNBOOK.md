@@ -223,28 +223,27 @@ still there and still serves the pre-migration build.
 
 ---
 
-## Cloudflare account
+## Cloudflare accounts
 
-Everything for this project lives in **POTUS Watch Daily**,
-account `7ded3077a7ce39644f81502fc5e09647` — the site Worker, the generator
-Worker, and the domain.
+This project spans two Cloudflare accounts. That is not a design choice, it is
+where things ended up, and getting it wrong is what caused a long outage.
 
-| Worker | URL | Purpose |
-|---|---|---|
-| `potuswatchdaily-site` | `potuswatchdaily-site.potuswatchdaily.workers.dev` | serves the site |
-| `potuswatch-generator` | `potuswatch-generator.potuswatchdaily.workers.dev` | hourly cron, writes articles |
+| Worker | Hostname | Account | Role |
+|---|---|---|---|
+| `potuswatchdaily-site` | `potuswatchdaily-site.potuswatchdaily.workers.dev` | POTUS Watch Daily `7ded3077…` | serves the site, deployed by CI |
+| `potuswatch-generator` | `potuswatch-generator.peakvending.workers.dev` | `3a1a5a2d…` | holds the hourly cron, writes every article |
 
-Same-named copies of the generator exist in other Cloudflare accounts this
-machine can log into. They are not this project. If `/health` is being checked
-or a deploy is being made, the hostname must be `*.potuswatchdaily.workers.dev`
-— any other subdomain is a different account's copy.
+There is also an empty `potuswatch-generator` in POTUS Watch Daily. It holds
+only `CF_API_KEY` / `CF_EMAIL` / `CF_ZONE_ID` (cache-purge credentials written
+there by `cache-rule.yml`), has no Supabase credentials, and has never written
+an article. Do not mistake it for the generator: the name is identical in the
+dashboard. **The hostname is the only reliable way to tell them apart.**
 
-Both wrangler configs pin `account_id`. This matters because the same machine
-is logged into other Cloudflare accounts for other projects: without the pin,
-`wrangler deploy` silently creates a copy of the Worker in whichever account
-happens to be active, and the copy looks identical in the dashboard while not
-being the one running the cron. With the pin, a deploy from the wrong login
-fails and says so.
+Consequences to respect:
 
-If a deploy reports an account mismatch, the fix is `npx wrangler login` as the
-POTUS Watch Daily account — not changing the config.
+- The generator is deployed by hand, from a login on its own account. CI cannot
+  deploy it — the CI token is scoped to POTUS Watch Daily only.
+- Both wrangler configs pin `account_id`, so a deploy from the wrong login fails
+  loudly instead of silently creating yet another copy.
+- `health.yml` must poll the `peakvending` hostname. Pointing it anywhere else
+  makes it report on a Worker nobody deploys to.
