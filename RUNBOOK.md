@@ -229,10 +229,15 @@ Everything for this project lives in **POTUS Watch Daily**,
 account `7ded3077a7ce39644f81502fc5e09647` — the site Worker, the generator
 Worker, and the domain.
 
-| Worker | Purpose |
-|---|---|
-| `potuswatchdaily-site` | serves the site |
-| `potuswatch-generator` | hourly cron, writes articles |
+| Worker | URL | Purpose |
+|---|---|---|
+| `potuswatchdaily-site` | `potuswatchdaily-site.potuswatchdaily.workers.dev` | serves the site |
+| `potuswatch-generator` | `potuswatch-generator.potuswatchdaily.workers.dev` | hourly cron, writes articles |
+
+Same-named copies of the generator exist in other Cloudflare accounts this
+machine can log into. They are not this project. If `/health` is being checked
+or a deploy is being made, the hostname must be `*.potuswatchdaily.workers.dev`
+— any other subdomain is a different account's copy.
 
 Both wrangler configs pin `account_id`. This matters because the same machine
 is logged into other Cloudflare accounts for other projects: without the pin,
