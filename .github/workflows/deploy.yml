@@ -81,3 +81,52 @@ jobs:
           # The account is pinned in wrangler.jsonc, not passed here, so CI and
           # a local deploy cannot disagree about where this Worker goes.
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      # Everything the generator needs to run lives in this repository or in
+      # GitHub Secrets -- nothing lives only on a laptop. A wiped or recreated
+      # Worker is fully restored by one push: code, cron trigger, and the three
+      # secrets below. This exists because the generator previously depended on
+      # state that existed nowhere but one machine and one Cloudflare account,
+      # and when that went away there was no way to rebuild it.
+      - name: Deploy the generator Worker
+        run: npx wrangler deploy --config worker/wrangler.jsonc
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      # Pushed on every deploy, not once by hand. `wrangler secret put` is
+      # idempotent, so re-running costs nothing and a Worker can never drift
+      # into the half-configured state that looks alive and writes nothing.
+      - name: Provision the generator's secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_WRITE_KEY: ${{ secrets.SUPABASE_WRITE_KEY }}
+          UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
+        run: |
+          set -e
+          if [ -z "$SUPABASE_WRITE_KEY" ]; then
+            echo "::error::SUPABASE_WRITE_KEY is not set on this repository. The generator writes to Supabase, so it needs the service_role key -- the read-only publishable key cannot insert rows. Add it under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          printf '%s' "$SUPABASE_URL"        | npx wrangler secret put SUPABASE_URL        --config worker/wrangler.jsonc
+          printf '%s' "$SUPABASE_WRITE_KEY"  | npx wrangler secret put SUPABASE_KEY        --config worker/wrangler.jsonc
+          if [ -n "$UNSPLASH_ACCESS_KEY" ]; then
+            printf '%s' "$UNSPLASH_ACCESS_KEY" | npx wrangler secret put UNSPLASH_ACCESS_KEY --config worker/wrangler.jsonc
+          else
+            echo "::warning::UNSPLASH_ACCESS_KEY not set — the generator will fall back to government photo feeds only."
+          fi
+          echo "Generator secrets provisioned."
+
+      # Proves the deploy produced a working generator instead of assuming it.
+      # A Worker that answers /health with real data is reachable, authenticated
+      # against Supabase, and running current code; anything less fails here
+      # rather than at 3am.
+      - name: Verify the generator answers
+        run: |
+          sleep 5
+          BODY=$(curl -sS --max-time 30 https://potuswatch-generator.potuswatchdaily.workers.dev/health || true)
+          echo "$BODY"
+          case "$BODY" in
+            *last_article_minutes_ago*) echo "Generator is reachable and can read the database." ;;
+            *) echo "::error::Generator deployed but /health returned no article data: $BODY"; exit 1 ;;
+          esac

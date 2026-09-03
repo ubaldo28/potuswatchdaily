@@ -24,13 +24,13 @@ jobs:
       # with a monitor that looked like it was running. /health exposes no
       # secrets: a status string and the age of the newest article.
       #
-      # This is the hostname of the Worker that actually holds the cron and
-      # writes articles. Same-named copies exist elsewhere; pointing the monitor
-      # at one of those makes it report on something nobody deploys to, which is
-      # worse than no monitor because it looks like one.
+      # This hostname is the one CI deploys to, and it is the only generator
+      # there is. Both facts are enforced by config rather than remembered:
+      # worker/wrangler.jsonc pins the account, deploy.yml deploys and verifies
+      # this exact URL. If those three ever disagree, the deploy fails.
       - name: Poll the generator health endpoint
         run: |
-          URL="https://potuswatch-generator.peakvending.workers.dev/health"
+          URL="https://potuswatch-generator.potuswatchdaily.workers.dev/health"
           BODY=$(curl -sS --max-time 30 "$URL") || { echo "::error::Health endpoint unreachable at $URL"; exit 1; }
           echo "$BODY"
 

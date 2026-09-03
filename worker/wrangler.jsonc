@@ -5,12 +5,12 @@
   // Deploy with:  npx wrangler deploy --config worker/wrangler.jsonc
   "name": "potuswatch-generator",
 
-  // Pinned to the account that actually runs this Worker's cron. Without the
-  // pin, `wrangler deploy` targets whichever account the machine's global login
-  // happens to be on, and this Worker ended up copied into unrelated accounts
-  // that way -- copies that look identical in the dashboard but write nothing.
-  // A deploy from the wrong login now fails instead of creating another.
-  "account_id": "3a1a5a2d895090c6142fad3b7cbb2a40",
+  // The project's own account -- the same one that holds the site and the
+  // domain. Pinned so `wrangler deploy` can never follow whatever account the
+  // machine's global login happens to be on. This Worker was previously copied
+  // into three unrelated accounts that way: identical names in the dashboard,
+  // only one of them doing anything, and no way to tell which from the name.
+  "account_id": "7ded3077a7ce39644f81502fc5e09647",
   "main": "generator.js",
   "compatibility_date": "2026-05-20",
 

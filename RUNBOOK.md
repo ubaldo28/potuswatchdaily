@@ -223,27 +223,47 @@ still there and still serves the pre-migration build.
 
 ---
 
-## Cloudflare accounts
+## The generator, and why it is set up this way
 
-This project spans two Cloudflare accounts. That is not a design choice, it is
-where things ended up, and getting it wrong is what caused a long outage.
+Everything lives in one Cloudflare account: **POTUS Watch Daily**,
+`7ded3077a7ce39644f81502fc5e09647`. The site Worker, the generator Worker and
+the domain are all there, and both wrangler configs pin that account id.
 
-| Worker | Hostname | Account | Role |
-|---|---|---|---|
-| `potuswatchdaily-site` | `potuswatchdaily-site.potuswatchdaily.workers.dev` | POTUS Watch Daily `7ded3077…` | serves the site, deployed by CI |
-| `potuswatch-generator` | `potuswatch-generator.peakvending.workers.dev` | `3a1a5a2d…` | holds the hourly cron, writes every article |
+| Worker | Hostname |
+|---|---|
+| `potuswatchdaily-site` | `potuswatchdaily-site.potuswatchdaily.workers.dev` |
+| `potuswatch-generator` | `potuswatch-generator.potuswatchdaily.workers.dev` |
 
-There is also an empty `potuswatch-generator` in POTUS Watch Daily. It holds
-only `CF_API_KEY` / `CF_EMAIL` / `CF_ZONE_ID` (cache-purge credentials written
-there by `cache-rule.yml`), has no Supabase credentials, and has never written
-an article. Do not mistake it for the generator: the name is identical in the
-dashboard. **The hostname is the only reliable way to tell them apart.**
+**Nothing is configured by hand.** A push to `main` deploys both Workers,
+pushes the generator's three secrets from GitHub Secrets, and then calls
+`/health` and fails the run if the generator cannot reach the database. Delete
+the generator entirely and one push rebuilds it — code, cron trigger, secrets.
 
-Consequences to respect:
+This is deliberate. The generator used to be deployed by hand from a laptop,
+which meant:
 
-- The generator is deployed by hand, from a login on its own account. CI cannot
-  deploy it — the CI token is scoped to POTUS Watch Daily only.
-- Both wrangler configs pin `account_id`, so a deploy from the wrong login fails
-  loudly instead of silently creating yet another copy.
-- `health.yml` must poll the `peakvending` hostname. Pointing it anywhere else
-  makes it report on a Worker nobody deploys to.
+- it landed in whichever Cloudflare account that laptop was logged into, and
+  ended up copied into three of them, identical in name, only one doing work;
+- its credentials existed only on that one Worker, so nothing in the repository
+  could rebuild it;
+- a fix could sit committed and undeployed for a day while the copy holding the
+  cron kept running old code;
+- and the monitor was pointed at a hostname someone had written down, which
+  turned out to be a different copy — so it reported healthy while the real one
+  was dead.
+
+Every one of those failures came from state that lived somewhere other than
+this repository. So now none of it does.
+
+### Required GitHub Secrets
+
+| Secret | What it is |
+|---|---|
+| `CLOUDFLARE_API_TOKEN` | User API token, "Edit Cloudflare Workers" template, scoped to this account |
+| `SUPABASE_URL` | `https://wvuydfupjpjmanqccdax.supabase.co` |
+| `SUPABASE_WRITE_KEY` | Supabase **service_role** key — the generator inserts rows, and RLS blocks the publishable key from writing |
+| `UNSPLASH_ACCESS_KEY` | Optional; without it images come from government photo feeds only |
+
+The site Worker reads with the publishable key (`SUPABASE_KEY`); only the
+generator needs the write key. Keeping them as separate secrets means the
+read-only key cannot be mistaken for the write one.
