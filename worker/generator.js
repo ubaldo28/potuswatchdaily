@@ -618,16 +618,22 @@ async function callWorkersAI(env, prompt) {
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       // max_tokens defaults to 256 on Workers AI. Without this the article is
-      // truncated mid-JSON and the parse fails. 2500 was still too small: a
-      // four-heading article plus the JSON envelope runs past it, the response
-      // stops mid-string, and every run dies on "Unexpected end of JSON input".
-      // This is a ceiling, not a spend — the model stops when it is done.
+      // truncated mid-JSON and the parse fails. 2500 was too small -- a
+      // four-heading article plus the JSON envelope runs past it -- but 8000
+      // was too generous: Workers AI meters Neurons by tokens generated, the
+      // free allowance is 10,000/day, and at 24 articles a day a ceiling that
+      // high can spend the day's budget before the day is over. The generator
+      // then goes quiet until 00:00 UTC, which reads like a crash and is not.
+      // 4000 clears any article this prompt produces, and a response that
+      // still overruns is salvaged rather than lost (see salvageTruncatedJson),
+      // so the downside of the lower ceiling is a slightly shorter piece, not
+      // a missed hour.
       const result = await env.AI.run(WORKERS_AI_MODEL, {
         messages: [
           { role: 'system', content: 'You are a senior foreign policy correspondent. Respond with a single valid JSON object and nothing else - no prose before or after, no markdown code fences.' },
           { role: 'user', content: prompt }
         ],
-        max_tokens: 8000,
+        max_tokens: 4000,
         temperature: 0.7
       });
 
