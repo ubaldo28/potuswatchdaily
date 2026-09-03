@@ -8,7 +8,8 @@
     "preview": "astro preview",
     "astro": "astro",
     "check:config": "node scripts/check-config.mjs",
-    "doctor": "node scripts/doctor.mjs"
+    "doctor": "node scripts/doctor.mjs",
+    "secrets": "node scripts/set-secrets.mjs"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.2.5",
