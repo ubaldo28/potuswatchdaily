@@ -27,10 +27,14 @@ jobs:
         id: cfg
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          # Reading is all this job does, so it prefers the read-only key and
+          # only falls back to the write key when no read key is configured.
+          SUPABASE_READ_KEY: ${{ secrets.SUPABASE_READ_KEY }}
+          SUPABASE_WRITE_KEY: ${{ secrets.SUPABASE_WRITE_KEY }}
         run: |
-          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_KEY" ]; then
-            echo "::warning::SUPABASE_URL / SUPABASE_KEY are not set on this repository — skipping the backup. Add them under Settings → Secrets and variables → Actions. The read-only publishable key is sufficient."
+          KEY="${SUPABASE_READ_KEY:-$SUPABASE_WRITE_KEY}"
+          if [ -z "$SUPABASE_URL" ] || [ -z "$KEY" ]; then
+            echo "::warning::SUPABASE_URL and a Supabase key are not both set on this repository — skipping the backup. Add them under Settings → Secrets and variables → Actions. The read-only publishable key is sufficient."
             echo "ready=false" >> "$GITHUB_OUTPUT"
           else
             echo "ready=true" >> "$GITHUB_OUTPUT"
@@ -40,7 +44,7 @@ jobs:
         if: steps.cfg.outputs.ready == 'true'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_READ_KEY || secrets.SUPABASE_WRITE_KEY }}
         run: node scripts/backup-articles.mjs
 
       - name: Keep the 14 most recent daily snapshots

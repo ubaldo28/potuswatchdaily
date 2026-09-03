@@ -6,7 +6,9 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "check:config": "node scripts/check-config.mjs",
+    "doctor": "node scripts/doctor.mjs"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.2.5",

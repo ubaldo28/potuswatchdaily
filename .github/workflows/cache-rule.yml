@@ -35,7 +35,13 @@ jobs:
       - name: Set Worker purge secrets
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # No CLOUDFLARE_ACCOUNT_ID here on purpose. When it was a repository
+          # secret it held a stale value, wrangler preferred it over the account
+          # pinned in worker/wrangler.jsonc, and every run failed with a generic
+          # "Authentication error [code: 10000]" that pointed at the token
+          # instead of at the account. The account now lives in exactly one
+          # place -- the wrangler config -- and scripts/check-config.mjs fails
+          # the build if any file disagrees with it.
           # Via env, never interpolated straight into the shell.
           ZONE_ID: ${{ steps.rule.outputs.zone_id }}
         run: |

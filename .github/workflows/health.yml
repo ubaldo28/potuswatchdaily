@@ -1,45 +1,121 @@
 name: Generator health check
 
-# The generator died silently at 00:41 UTC on 2026-08-29 (revoked API key) and
-# nobody noticed for four hours. The Worker exposes /health; nothing polled it.
-# This does. A failed run emails the repo owner via GitHub's normal
-# workflow-failure notification.
+# The generator died silently at 00:41 UTC on 2026-08-29 and nobody noticed for
+# four hours. The Worker exposes /health; nothing polled it. This does.
+#
+# Two things this workflow deliberately does NOT do:
+#   - it does not hardcode the URL. It reads project.config.json, the same file
+#     deploy.yml deploys against and scripts/check-config.mjs enforces, so the
+#     monitor cannot end up watching a Worker in some other account.
+#   - it does not rely on the run turning red to get anyone's attention. A red
+#     run in a list of runs is easy to stop seeing, and this one did get stopped
+#     seeing. On failure it opens a GitHub issue -- which emails, shows a badge,
+#     and stays open until the thing is actually fixed -- and closes it again on
+#     the first healthy run.
 
 on:
   schedule:
-    - cron: '25 * * * *'   # hourly, off the hour so it never races the generator.
-                          # Was every 3h; that is 3h of silent downtime per miss.
+    - cron: '25 * * * *'   # hourly, off the hour so it never races the generator
   workflow_dispatch:
 
 permissions:
   contents: read
+  issues: write
+
+concurrency:
+  group: generator-health
+  cancel-in-progress: false
 
 jobs:
   check:
     runs-on: ubuntu-latest
+    outputs:
+      detail: ${{ steps.poll.outputs.detail }}
     steps:
-      # The URL is hardcoded on purpose. It was a repo secret, the secret was
-      # never set, and every run of this workflow failed on that instead of on
-      # the thing it was built to watch -- so the generator sat broken for hours
-      # with a monitor that looked like it was running. /health exposes no
-      # secrets: a status string and the age of the newest article.
-      #
-      # This hostname is the one CI deploys to, and it is the only generator
-      # there is. Both facts are enforced by config rather than remembered:
-      # worker/wrangler.jsonc pins the account, deploy.yml deploys and verifies
-      # this exact URL. If those three ever disagree, the deploy fails.
+      - uses: actions/checkout@v4
+
       - name: Poll the generator health endpoint
+        id: poll
         run: |
-          URL="https://potuswatch-generator.potuswatchdaily.workers.dev/health"
-          BODY=$(curl -sS --max-time 30 "$URL") || { echo "::error::Health endpoint unreachable at $URL"; exit 1; }
+          URL=$(node -p "require('./project.config.json').workers.generator.healthUrl")
+          echo "Polling $URL"
+
+          if ! BODY=$(curl -sS --max-time 30 "$URL"); then
+            echo "detail=Health endpoint unreachable at $URL. The Worker is not deployed, or the hostname changed." >> "$GITHUB_OUTPUT"
+            echo "::error::Health endpoint unreachable at $URL"
+            exit 1
+          fi
           echo "$BODY"
 
           STATUS=$(echo "$BODY" | sed -n 's/.*"status":"\([^"]*\)".*/\1/p')
           MINS=$(echo "$BODY"   | sed -n 's/.*"last_article_minutes_ago":\([0-9]*\).*/\1/p')
 
+          if [ -z "$MINS" ]; then
+            echo "detail=The Worker answered ($BODY) but could not read the database. That is missing or wrong SUPABASE_URL / SUPABASE_KEY on the Worker; deploy.yml uploads both from GitHub Secrets on every push." >> "$GITHUB_OUTPUT"
+            echo "::error::Generator cannot reach Supabase"
+            exit 1
+          fi
+
           if [ "$STATUS" != "ok" ]; then
-            echo "::error::Generator is $STATUS — last article ${MINS:-unknown} minutes ago. Check: npx wrangler tail --config worker/wrangler.jsonc"
+            echo "detail=Generator reports \"$STATUS\" — the newest article is $MINS minutes old. Inspect with: npx wrangler tail --config worker/wrangler.jsonc" >> "$GITHUB_OUTPUT"
+            echo "::error::Generator is $STATUS — last article $MINS minutes ago"
             exit 1
           fi
 
           echo "Healthy — last article ${MINS} minutes ago."
+
+      # A failing cron job that only turns a list entry red gets ignored. An
+      # open issue does not: it emails, it shows on the repo, and it cannot be
+      # closed by the next run succeeding by accident -- only by a real one.
+      - name: Open an issue if the generator is down
+        if: failure()
+        uses: actions/github-script@v7
+        env:
+          DETAIL: ${{ steps.poll.outputs.detail }}
+        with:
+          script: |
+            const title = 'Generator is not publishing';
+            const detail = process.env.DETAIL || 'The hourly health check failed; see the run log.';
+            const body = [
+              detail,
+              '',
+              `Detected by the hourly health check at ${new Date().toISOString()}.`,
+              `[Failing run](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`,
+              '',
+              'Run `npm run doctor` locally for a component-by-component diagnosis.',
+              '',
+              'This issue closes itself on the next healthy check.',
+            ].join('\n');
+
+            const { data: open } = await github.rest.issues.listForRepo({
+              ...context.repo, state: 'open', labels: 'generator-down',
+            });
+
+            if (open.length) {
+              await github.rest.issues.createComment({
+                ...context.repo, issue_number: open[0].number,
+                body: `Still failing.\n\n${body}`,
+              });
+            } else {
+              await github.rest.issues.create({
+                ...context.repo, title, body, labels: ['generator-down'],
+              });
+            }
+
+      - name: Close the issue once it recovers
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: open } = await github.rest.issues.listForRepo({
+              ...context.repo, state: 'open', labels: 'generator-down',
+            });
+            for (const issue of open) {
+              await github.rest.issues.createComment({
+                ...context.repo, issue_number: issue.number,
+                body: 'Recovered — the health check is green again. Closing.',
+              });
+              await github.rest.issues.update({
+                ...context.repo, issue_number: issue.number, state: 'closed',
+              });
+            }

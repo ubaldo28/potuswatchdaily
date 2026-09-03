@@ -1,0 +1,47 @@
+{
+  "$comment": [
+    "Single source of truth for every identifier that has to agree across this",
+    "repository. It exists because the same class of bug kept recurring: a",
+    "Cloudflare account id, a Worker name or a workers.dev hostname was typed by",
+    "hand into one file, drifted from what was actually deployed, and nothing",
+    "noticed until the site had been dead for hours.",
+    "",
+    "Nothing reads these values at runtime. scripts/check-config.mjs asserts that",
+    "wrangler.jsonc, worker/wrangler.jsonc and the workflows under .github/",
+    "still match them, and CI runs that check before it is allowed to deploy.",
+    "Change a name here and the check tells you every file that has to follow."
+  ],
+
+  "cloudflare": {
+    "accountId": "7ded3077a7ce39644f81502fc5e09647",
+    "workersDevSubdomain": "potuswatchdaily"
+  },
+
+  "workers": {
+    "site": {
+      "name": "potuswatchdaily-site",
+      "config": "wrangler.jsonc"
+    },
+    "generator": {
+      "name": "potuswatch-generator",
+      "config": "worker/wrangler.jsonc",
+      "healthUrl": "https://potuswatch-generator.potuswatchdaily.workers.dev/health"
+    }
+  },
+
+  "site": {
+    "domain": "potuswatchdaily.com"
+  },
+
+  "requiredSecrets": {
+    "CLOUDFLARE_API_TOKEN": "Scoped Workers-edit token for the account above. Deploys nothing without it.",
+    "SUPABASE_URL": "Project REST URL, https://<ref>.supabase.co",
+    "SUPABASE_WRITE_KEY": "service_role key. The generator inserts rows; the publishable key cannot."
+  },
+
+  "optionalSecrets": {
+    "SUPABASE_READ_KEY": "Publishable read-only key. Jobs that only read prefer it; without it they fall back to SUPABASE_WRITE_KEY.",
+    "UNSPLASH_ACCESS_KEY": "Article imagery. Without it the generator falls back to government photo feeds.",
+    "RESEND_API_KEY": "Newsletter delivery. Without it /subscribe stores the address and sends nothing."
+  }
+}

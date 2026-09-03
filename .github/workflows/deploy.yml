@@ -23,6 +23,15 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
+      # Runs before anything is installed, built or deployed, because it is the
+      # cheapest check in the pipeline and it catches the failure that has cost
+      # the most time on this project: an identifier -- a Cloudflare account, a
+      # Worker name, a workers.dev hostname -- that is written in two files and
+      # only correct in one. Those never fail loudly. They deploy fine, into the
+      # wrong place, and the monitor keeps reporting green.
+      - name: Check that the repository agrees with itself
+        run: node scripts/check-config.mjs
+
       # A deploy that cannot authenticate should say so in one line, not bury it
       # in a wrangler stack trace. Unlike the backup job this still fails hard:
       # the live site depends on it, so a skipped deploy must never look like a
@@ -124,7 +133,8 @@ jobs:
       - name: Verify the generator answers
         run: |
           sleep 5
-          BODY=$(curl -sS --max-time 30 https://potuswatch-generator.potuswatchdaily.workers.dev/health || true)
+          URL=$(node -p "require('./project.config.json').workers.generator.healthUrl")
+          BODY=$(curl -sS --max-time 30 "$URL" || true)
           echo "$BODY"
           case "$BODY" in
             *last_article_minutes_ago*) echo "Generator is reachable and can read the database." ;;

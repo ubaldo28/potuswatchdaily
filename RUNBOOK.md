@@ -1,5 +1,37 @@
 # POTUS Watch Daily — Disaster Runbook
 
+## Start here
+
+```bash
+npm run doctor
+```
+
+Checks the three things in order and names which one is broken: whether the
+repository's own identifiers agree, whether the generator Worker answers and can
+read the database, and whether the public site serves real articles. Everything
+below is for when `doctor` has already told you *what* is wrong and you need to
+know *why*.
+
+`npm run check:config` is the first half on its own — it needs no network and
+runs in under a second. CI runs it before every deploy.
+
+### One place for names
+
+`project.config.json` holds the Cloudflare account id, both Worker names, the
+workers.dev subdomain and the health URL. Nothing reads it at runtime;
+`scripts/check-config.mjs` asserts that `wrangler.jsonc`,
+`worker/wrangler.jsonc` and every workflow still agree with it, and the deploy
+refuses to run if they don't.
+
+This exists because the same failure kept repeating in three different costumes:
+an account id pinned in one wrangler config but not the other put the generator
+into an unrelated account; a stale `CLOUDFLARE_ACCOUNT_ID` repository secret
+overrode the pinned account and reported it as an authentication error; a
+hostname copied off a dashboard pointed the health check at a Worker belonging to
+a different project, so the monitor stayed green while the site went stale. None
+of those failed loudly. Each one deployed cleanly into the wrong place. A
+one-second grep-level check catches all three.
+
 ---
 
 ## 🚨 Site is down / not loading
