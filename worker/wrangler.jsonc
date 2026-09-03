@@ -5,13 +5,13 @@
   // Deploy with:  npx wrangler deploy --config worker/wrangler.jsonc
   "name": "potuswatch-generator",
 
-  // Pinned, for the same reason the site's config is. Without it `wrangler
-  // deploy` targets whichever account the machine's global login happens to be
-  // on, and this Worker has already been deployed into three different accounts
-  // by accident -- leaving copies that look identical in the dashboard but are
-  // not the one running the cron. The live generator is here; a deploy from the
-  // wrong login now fails instead of silently creating a fourth.
-  "account_id": "3a1a5a2d895090c6142fad3b7cbb2a40",
+  // Pinned to POTUS Watch Daily -- the same account as the site and the domain.
+  // Without this, `wrangler deploy` targets whichever account the machine's
+  // global login happens to be on, and this Worker has already landed in
+  // unrelated accounts by accident, leaving copies that look identical in the
+  // dashboard but are not the one running the cron. A deploy from the wrong
+  // login now fails instead of silently creating another.
+  "account_id": "7ded3077a7ce39644f81502fc5e09647",
   "main": "generator.js",
   "compatibility_date": "2026-05-20",
 

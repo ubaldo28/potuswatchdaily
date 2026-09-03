@@ -223,28 +223,23 @@ still there and still serves the pre-migration build.
 
 ---
 
-## Which Cloudflare account owns what
+## Cloudflare account
 
-Three accounts are reachable from this Google login, and `wrangler deploy`
-picks whichever one the machine happens to be logged into. That produced
-three copies of `potuswatch-generator` in three accounts before the account
-IDs were pinned in config.
+Everything for this project lives in **POTUS Watch Daily**,
+account `7ded3077a7ce39644f81502fc5e09647` — the site Worker, the generator
+Worker, and the domain.
 
-| Worker | Account | Account ID | Live? |
-|---|---|---|---|
-| `potuswatchdaily-site` | POTUS Watch Daily | `7ded3077a7ce39644f81502fc5e09647` | yes — serves the site |
-| `potuswatch-generator` | Peakvending | `3a1a5a2d895090c6142fad3b7cbb2a40` | yes — owns the hourly cron |
-| `potuswatch-generator` | POTUS Watch Daily | `7ded3077…` | no — dormant copy, secrets set, **no cron** |
-| `potuswatch-generator` | (slotfill subdomain) | — | no — accidental deploy, cron but no secrets |
+| Worker | Purpose |
+|---|---|
+| `potuswatchdaily-site` | serves the site |
+| `potuswatch-generator` | hourly cron, writes articles |
 
-Both live Workers now pin `account_id` in their wrangler config, so a deploy
-from the wrong login fails instead of quietly creating another copy.
+Both wrangler configs pin `account_id`. This matters because the same machine
+is logged into other Cloudflare accounts for other projects: without the pin,
+`wrangler deploy` silently creates a copy of the Worker in whichever account
+happens to be active, and the copy looks identical in the dashboard while not
+being the one running the cron. With the pin, a deploy from the wrong login
+fails and says so.
 
-The two dead copies should be deleted. Deleting the dormant POTUS Watch Daily
-one is safe (no cron, nothing invokes it). Deleting the slotfill one stops an
-hourly run that fails for lack of secrets.
-
-Consolidating both Workers into one account is worth doing — it removes the
-login juggling entirely — but it means re-setting the generator's three
-secrets in the destination account and moving the cron, so it is a deliberate
-task, not something to do while chasing an outage.
+If a deploy reports an account mismatch, the fix is `npx wrangler login` as the
+POTUS Watch Daily account — not changing the config.
