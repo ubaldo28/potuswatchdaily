@@ -1,7 +1,15 @@
-name: Generator health check
+name: Health check
 
 # The generator died silently at 00:41 UTC on 2026-08-29 and nobody noticed for
 # four hours. The Worker exposes /health; nothing polled it. This does.
+#
+# It watches two separate things, because they can fail independently and did:
+#   1. the live site readers actually load, and
+#   2. the generator that writes the articles.
+# On 2026-09-04 the generator was healthy and publishing every hour while the
+# live site served an empty front page for over an hour. Only the generator was
+# being watched, so nothing reported it. A monitor that watches the machinery
+# but not the product is not a monitor.
 #
 # Two things this workflow deliberately does NOT do:
 #   - it does not hardcode the URL. It reads project.config.json, the same file
@@ -30,9 +38,36 @@ jobs:
   check:
     runs-on: ubuntu-latest
     outputs:
-      detail: ${{ steps.poll.outputs.detail }}
+      detail: ${{ steps.site.outputs.detail || steps.poll.outputs.detail }}
     steps:
       - uses: actions/checkout@v4
+
+      # First, because it is the thing readers see. A generator publishing
+      # perfectly into a database nobody can read from is still an outage.
+      - name: Check the live site
+        id: site
+        run: |
+          DOMAIN=$(node -p "require('./project.config.json').site.domain")
+          echo "Loading https://$DOMAIN/"
+
+          if ! BODY=$(curl -sSL --max-time 30 "https://$DOMAIN/"); then
+            echo "detail=https://$DOMAIN/ did not respond at all." >> "$GITHUB_OUTPUT"
+            echo "::error::The site is unreachable"
+            exit 1
+          fi
+
+          # An empty front page still returns 200 and still renders its header,
+          # so a status code proves nothing. Count article links instead.
+          COUNT=$(printf '%s' "$BODY" | grep -o 'href="/article/' | wc -l | tr -d ' ')
+          echo "front page: ${#BODY} bytes, $COUNT article links"
+
+          if [ "$COUNT" -lt 3 ]; then
+            echo "detail=https://$DOMAIN/ loads but shows $COUNT articles. The page renders and returns 200, so this is the database read failing, not the site being down — check the Supabase key the live site is using. Note that the live site is the Pages project, not the Worker CI deploys; see RUNBOOK.md." >> "$GITHUB_OUTPUT"
+            echo "::error::Front page is empty — $COUNT article links"
+            exit 1
+          fi
+
+          echo "Front page is serving $COUNT articles."
 
       - name: Poll the generator health endpoint
         id: poll
@@ -67,14 +102,14 @@ jobs:
       # A failing cron job that only turns a list entry red gets ignored. An
       # open issue does not: it emails, it shows on the repo, and it cannot be
       # closed by the next run succeeding by accident -- only by a real one.
-      - name: Open an issue if the generator is down
+      - name: Open an issue if anything is down
         if: failure()
         uses: actions/github-script@v7
         env:
           DETAIL: ${{ steps.poll.outputs.detail }}
         with:
           script: |
-            const title = 'Generator is not publishing';
+            const title = 'POTUS Watch Daily is not healthy';
             const detail = process.env.DETAIL || 'The hourly health check failed; see the run log.';
             const body = [
               detail,
