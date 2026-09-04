@@ -105,9 +105,37 @@ for (const s of wanted) {
 }
 console.log('');
 
-const todo = wanted.filter((s) => !existing.has(s.name) && s.required);
+// Named on the command line -> re-set those, whether or not they exist.
+// Nothing named -> fill in whatever required secret is missing.
+const named = process.argv.slice(2).filter((a) => !a.startsWith('-'));
+// A name that is not one of ours is almost always a key pasted onto the end of
+// the recalled command line instead of at the prompt. Left unchecked that PUTs
+// to a secret named "SUPABASE_WRITE_KEY<the entire key>" and GitHub answers 422
+// with nothing that explains why.
+const unknown = named.filter((n) => !wanted.some((s) => s.name === n));
+if (unknown.length) {
+  console.error('Not a secret this project uses:\n');
+  for (const n of unknown) {
+    const base = wanted.find((s) => n.startsWith(s.name));
+    console.error(
+      base
+        ? `  ${n.slice(0, base.name.length)}... (${n.length} characters)\n` +
+          `    The key was pasted onto the command line rather than at the prompt.\n` +
+          `    Run  npm run secrets -- ${base.name}  and paste only when it asks.\n`
+        : `  ${n.slice(0, 40)}\n`
+    );
+  }
+  console.error('Known names: ' + wanted.map((s) => s.name).join(', ') + '\n');
+  process.exit(1);
+}
+
+const todo = named.length
+  ? named.map((n) => wanted.find((s) => s.name === n))
+  : wanted.filter((s) => !existing.has(s.name) && s.required);
+
 if (todo.length === 0) {
-  console.log('Every required secret is already set. Nothing to do.\n');
+  console.log('Every required secret is already set.');
+  console.log('To replace one anyway:  npm run secrets -- SUPABASE_WRITE_KEY\n');
   process.exit(0);
 }
 
@@ -137,9 +165,17 @@ function askHidden(question) {
         if (ch === '\r' || ch === '\n') return done(buf.trim());
         if (ch === '\u0003') { process.stdout.write('\n'); process.exit(130); }   // Ctrl-C
         if (ch === '\u0004') return done(buf.trim());                           // Ctrl-D
-        if (ch === '\u007f' || ch === '\b') { buf = buf.slice(0, -1); continue; }
+        if (ch === '\u007f' || ch === '\b') {
+          if (buf.length) { buf = buf.slice(0, -1); process.stdout.write('\b \b'); }
+          continue;
+        }
         if (ch < ' ') continue;                                                  // other control chars
         buf += ch;
+        // One dot per character. Hiding the value is the point; hiding whether
+        // anything arrived at all is not -- a prompt that looks identical
+        // before and after a paste is indistinguishable from a dead terminal,
+        // and that is exactly how an empty clipboard got submitted here.
+        process.stdout.write('*');
       }
     };
     stdin.on('data', onData);
@@ -152,15 +188,43 @@ for (const s of todo) {
   const v = await askHidden('  paste it here (hidden), or press Enter to skip: ');
   if (!v) { console.log('  skipped\n'); continue; }
 
-  if (s.name === 'SUPABASE_WRITE_KEY') {
-    const isJwt = v.split('.').length === 3;
-    const isSecret = v.startsWith('sb_secret_');
-    if (v.startsWith('sb_publishable_') || (!isJwt && !isSecret)) {
+  if (s.name === 'SUPABASE_WRITE_KEY' || s.name === 'SUPABASE_READ_KEY') {
+    const isJwt = v.split('.').length === 3 && v.length > 100;
+    const isSecret = /^sb_(secret|publishable)_/.test(v);
+    const wantsWrite = s.name === 'SUPABASE_WRITE_KEY';
+
+    if (wantsWrite && v.startsWith('sb_publishable_')) {
+      console.log('  That is the publishable key. The generator inserts rows, which it cannot do. Not setting it.\n');
+      continue;
+    }
+    if (!isJwt && !isSecret) {
+      const looksLikeCommand = /\s/.test(v) || v.startsWith('cd ') || v.includes('npm ');
       console.log(
-        '  That does not look like a key that can write. The generator inserts rows, so it\n' +
-        '  needs the service_role key (a long three-part token) or an sb_secret_ key --\n' +
-        '  not the publishable one. Not setting it.\n'
+        `  ${v.length} characters, starting "${v.slice(0, 4).replace(/[^\x20-\x7e]/g, '?')}...". ` +
+        'That is not a Supabase key.\n' +
+        (looksLikeCommand
+          ? '  It looks like a shell command -- the clipboard was overwritten after you copied\n' +
+            '  the key. Copy the key again as the LAST thing before pasting.\n'
+          : '  A Supabase key starts with sb_secret_, sb_publishable_, or is a long three-part\n' +
+            '  token separated by dots.\n')
       );
+      continue;
+    }
+    // A dashboard "copy" button that copies the masked, on-screen value instead
+    // of the real one is not hypothetical -- it is how this secret was set to a
+    // 15-character stub that deployed cleanly and wrote nothing. Length is the
+    // check that catches it, and it is the only one that would have.
+    if (isSecret && v.length < 30) {
+      console.log(
+        `  Only ${v.length} characters. That is the shortened value the dashboard shows on\n` +
+        '  screen, not the key -- the copy button grabbed the truncated text. Reveal the key\n' +
+        '  first (the eye icon), click into the field, select all, copy, and try again.\n' +
+        '  Not setting it.\n'
+      );
+      continue;
+    }
+    if (/[^\x21-\x7e]/.test(v)) {
+      console.log('  Contains spaces or non-ASCII characters, so the copy picked up the masking dots or stray whitespace. Not setting it.\n');
       continue;
     }
   }
