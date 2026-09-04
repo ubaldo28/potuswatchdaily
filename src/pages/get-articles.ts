@@ -30,7 +30,31 @@ export const GET: APIRoute = async ({ request, locals }) => {
   } catch (e: any) {
     // Never return the raw PostgREST body to an unauthenticated caller.
     console.error('[get-articles]', e?.message);
-    return new Response(JSON.stringify({ error: 'Unable to load articles' }), {
+
+    // When the page is empty, the one question worth answering is whether this
+    // Worker was handed a usable database URL and key at all -- and that took
+    // an hour to answer last time, because the only honest reply the site could
+    // give was "Unable to load articles". So a failure now also reports the
+    // shape of what it was configured with. No secret is exposed: the host of a
+    // public REST endpoint, the length of the key, and the prefix of a key that
+    // is only ever the publishable one, which Supabase ships in browser code.
+    const key = env.SUPABASE_KEY || '';
+    let host = '(unset)';
+    try { host = new URL(env.SUPABASE_URL).host; } catch { host = env.SUPABASE_URL ? '(unparseable)' : '(unset)'; }
+
+    return new Response(JSON.stringify({
+      error: 'Unable to load articles',
+      reason: e?.message || String(e),
+      config: {
+        supabase_host: host,
+        key_length: key.length,
+        key_kind: key.startsWith('sb_publishable_') ? 'publishable'
+                : key.startsWith('sb_secret_')      ? 'secret'
+                : key.split('.').length === 3       ? 'legacy JWT'
+                : key                                ? 'unrecognised'
+                                                     : '(unset)',
+      },
+    }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
