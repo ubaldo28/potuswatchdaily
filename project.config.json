@@ -30,7 +30,19 @@
   },
 
   "site": {
-    "domain": "potuswatchdaily.com"
+    "domain": "potuswatchdaily.com",
+
+    "$servedBy": [
+      "potuswatchdaily.com is served by the Cloudflare PAGES project named",
+      "'potuswatchdaily', not by the 'potuswatchdaily-site' Worker that CI",
+      "deploys. The Worker is current and correct at its workers.dev address,",
+      "but the hostname is attached to Pages, and a hostname can only be",
+      "attached to one at a time.",
+      "",
+      "So: a secret changed on the site Worker does not affect the live site,",
+      "and the Pages project still runs on a legacy Supabase anon key. See",
+      "RUNBOOK.md, 'What actually serves potuswatchdaily.com'."
+    ]
   },
 
   "supabase": {

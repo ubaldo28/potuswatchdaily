@@ -15,6 +15,30 @@ know *why*.
 `npm run check:config` is the first half on its own — it needs no network and
 runs in under a second. CI runs it before every deploy.
 
+### What actually serves potuswatchdaily.com
+
+**A Cloudflare Pages project named `potuswatchdaily` — not the Worker.**
+
+This is the single most expensive thing to get wrong in this repository, so it
+is written down here rather than remembered. CI deploys a Worker called
+`potuswatchdaily-site`, and that Worker is correct, current, and reachable at
+`potuswatchdaily-site.potuswatchdaily.workers.dev`. It is **not** what readers
+hit. The hostname `potuswatchdaily.com` is attached to the Pages project, and a
+hostname can only be attached to one of them at a time.
+
+Consequences, all learned the hard way:
+
+- Changing a secret on the site Worker changes nothing about the live site.
+- The Pages project's GitHub repository no longer exists, so it cannot be
+  rebuilt or reconfigured. It runs on the environment variables it already has,
+  including a **legacy Supabase anon key**. Disabling legacy JWT keys in
+  Supabase takes the live site down instantly and completely.
+- Before concluding anything from a change to the site Worker, check the live
+  domain, not the Worker. `npm run doctor` checks the live domain.
+
+Moving the hostname onto the Worker is the right end state and is a deliberate
+migration, not a fix to reach for while something is broken.
+
 ### One place for names
 
 `project.config.json` holds the Cloudflare account id, both Worker names, the
