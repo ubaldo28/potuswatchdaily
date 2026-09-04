@@ -40,7 +40,7 @@ jobs:
     outputs:
       detail: ${{ steps.site.outputs.detail || steps.poll.outputs.detail }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # First, because it is the thing readers see. A generator publishing
       # perfectly into a database nobody can read from is still an outage.
