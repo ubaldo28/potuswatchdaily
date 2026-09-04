@@ -686,26 +686,61 @@ async function generateArticle(env) {
     console.warn('[generator] No UNSPLASH_ACCESS_KEY — images will come from government photo feeds only.');
   }
 
-  let region = await getNextRegion(env);
-  console.log(`[generator] Region selected: ${region}`);
+  // The round-robin region is a PREFERENCE, not a constraint.
+  //
+  // It used to be a constraint, and that is what put the gaps in the feed. Each
+  // run picked the next region, fetched only the feeds tagged for that region,
+  // and gave up for the hour if everything there had already been written up --
+  // while seven other regions sat on fresh, uncovered documents. On 2026-09-04
+  // that produced a thirteen-hour hole in a site whose masthead says "Updated
+  // Hourly": 07:02, then nothing until 20:01.
+  //
+  // Now the preferred region is tried first, and if it has nothing usable the
+  // remaining regions are tried in order. The hour is only skipped when EVERY
+  // region is exhausted, which is the only honest reason to skip one.
+  const preferred = await getNextRegion(env);
+  const order = [preferred, ...regions.filter(r => r !== preferred)];
+  console.log(`[generator] Preferred region: ${preferred}`);
 
-  const allDocs = await fetchPrimarySources(region);
-  if (!allDocs.length) {
-    console.warn('[generator] No primary source documents available. Skipping.');
-    return { status: 'skipped', reason: 'no-sources' };
+  const alreadyCovered = await recentlyUsedSourceUrls(env);
+
+  let region = preferred;
+  let allDocs = [];
+  let fresh = [];
+  const tried = [];
+
+  for (const candidate of order) {
+    const docs = await fetchPrimarySources(candidate);
+    const unused = docs.filter(d => !alreadyCovered.has(d.url));
+    // Require something that also scores as foreign-policy relevant, otherwise
+    // this just defers the same skip a few lines further down.
+    const usable = unused.some(d => scoreDocument(d, candidate) > 0);
+
+    tried.push(`${candidate}:${docs.length}/${unused.length}${usable ? '' : ' (none relevant)'}`);
+
+    if (usable) {
+      region = candidate;
+      allDocs = docs;
+      fresh = unused;
+      break;
+    }
+  }
+
+  console.log(`[generator] Regions tried (total/uncovered): ${tried.join(', ')}`);
+
+  if (!fresh.length) {
+    console.warn('[generator] Every region is exhausted — all documents already covered in the last 5 days. Skipping rather than repeating one.');
+    return { status: 'skipped', reason: 'all-regions-exhausted', tried };
+  }
+
+  if (region !== preferred) {
+    console.log(`[generator] ${preferred} had nothing uncovered; writing ${region} instead.`);
   }
 
   // One article, one subject. Blending four unrelated documents produced pieces
   // headlined on one thing and opening on another, which reads badly and matches
   // no actual search query. The lead document is the subject; the rest are
   // context the model may reference but must not lead on.
-  const alreadyCovered = await recentlyUsedSourceUrls(env);
-  const fresh = allDocs.filter(d => !alreadyCovered.has(d.url));
-
-  if (!fresh.length) {
-    console.warn(`[generator] All ${allDocs.length} ${region} documents already covered in the last 5 days. Skipping rather than repeating one.`);
-    return { status: 'skipped', reason: 'no-fresh-sources' };
-  }
 
   // Score every fresh document against the chosen region. Anything ceremonial
   // or with no foreign-policy content at all scores -1 and is dropped outright.
