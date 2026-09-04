@@ -515,11 +515,24 @@ async function fetchFederalRegister(region) {
  * Gather primary documents relevant to a region. Returns newest-first, with
  * full-text items promoted ahead of summary-only ones.
  */
-async function fetchPrimarySources(region) {
+/**
+ * `cache` is a Map shared across one run. It matters: a Worker may make at most
+ * 50 subrequests per invocation, and the generator now walks up to eight
+ * regions looking for uncovered material. Without this, the same White House
+ * feed would be fetched eight times and the run would hit the ceiling and
+ * throw, which reads in the logs as the generator failing rather than as a
+ * quota being spent on the same eight documents.
+ */
+async function fetchPrimarySources(region, cache = new Map()) {
+  const once = (key, fn) => {
+    if (!cache.has(key)) cache.set(key, fn());
+    return cache.get(key);
+  };
+
   const feeds = RSS_SOURCES.filter(s => s.regions.includes(region));
   const results = await Promise.all([
-    ...feeds.map(fetchFeed),
-    fetchFederalRegister(region)
+    ...feeds.map(s => once('feed:' + s.id, () => fetchFeed(s))),
+    once('fr:' + region, () => fetchFederalRegister(region))
   ]);
 
   const all = results.flat().filter(i => i.title && i.text && i.text.length > 120);
@@ -709,8 +722,10 @@ async function generateArticle(env) {
   let fresh = [];
   const tried = [];
 
+  const sourceCache = new Map();
+
   for (const candidate of order) {
-    const docs = await fetchPrimarySources(candidate);
+    const docs = await fetchPrimarySources(candidate, sourceCache);
     const unused = docs.filter(d => !alreadyCovered.has(d.url));
     // Require something that also scores as foreign-policy relevant, otherwise
     // this just defers the same skip a few lines further down.
@@ -1011,9 +1026,12 @@ export default {
       // Bearer header, not a query param: query strings land in Workers Logs,
       // shell history and proxy logs. Compared in constant time so the token
       // cannot be recovered a byte at a time.
+      // Both sides trimmed. A token that travels through a file, a shell and
+      // an HTTP header picks up trailing whitespace at several points, and a
+      // one-character difference here is indistinguishable from a wrong token.
       const auth = request.headers.get('authorization') || '';
-      const presented = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-      if (!timingSafeEqual(presented, env.RUN_TOKEN)) {
+      const presented = (auth.startsWith('Bearer ') ? auth.slice(7) : '').trim();
+      if (!timingSafeEqual(presented, String(env.RUN_TOKEN).trim())) {
         return new Response('Forbidden', { status: 403 });
       }
       try {

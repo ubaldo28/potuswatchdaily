@@ -127,7 +127,11 @@ jobs:
           # A fresh random token on every deploy, used once by the step below
           # and never stored anywhere else. It exists so a deploy can prove the
           # generator actually generates, rather than only proving it answers.
-          openssl rand -hex 32 > /tmp/run-token
+          # printf, not `openssl > file`: openssl appends a newline, wrangler
+          # stores it, and the curl below reads the file through $( ) which
+          # strips it -- so the two differ by one invisible character and the
+          # Worker answers "Forbidden" with nothing to suggest why.
+          printf '%s' "$(openssl rand -hex 32)" > /tmp/run-token
           npx wrangler secret put RUN_TOKEN --config worker/wrangler.jsonc < /tmp/run-token
           echo "Generator secrets provisioned."
 
@@ -177,9 +181,20 @@ jobs:
       - name: Make the generator actually generate
         run: |
           URL=$(node -p "require('./project.config.json').workers.generator.healthUrl" | sed 's#/health$#/run#')
-          BODY=$(curl -sS -X POST --max-time 120 "$URL" \
-                   -H "Authorization: Bearer $(cat /tmp/run-token)" || true)
+          TOKEN=$(cat /tmp/run-token)
           rm -f /tmp/run-token
+
+          # Setting a secret rolls out a new Worker version, and for a few
+          # seconds the old one is still answering -- with the previous run's
+          # token, which reads as Forbidden. Give it a moment and try again
+          # before calling it a failure.
+          for attempt in 1 2 3; do
+            BODY=$(curl -sS -X POST --max-time 120 "$URL" -H "Authorization: Bearer $TOKEN" || true)
+            case "$BODY" in
+              Forbidden|"Not found") echo "attempt $attempt: $BODY — waiting for the new version"; sleep 10 ;;
+              *) break ;;
+            esac
+          done
           echo "$BODY"
           case "$BODY" in
             *'"status":"ok"'*|*'"status":"published"'*)
