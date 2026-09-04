@@ -132,23 +132,19 @@ jobs:
       # cannot expose or change anything the public should not see, and it lets
       # the legacy service_role JWT be switched off entirely.
       #
-      # Only provisioned when SUPABASE_READ_KEY is actually set, so a repository
-      # that has not configured it keeps whatever the site Worker already has
-      # rather than having its working secret replaced with an empty string.
+      # The key comes from project.config.json rather than a GitHub Secret,
+      # because it is not one -- see the note in that file. A clone of this
+      # repository can therefore stand the site up with no manual step.
       - name: Provision the site's read key
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_READ_KEY: ${{ secrets.SUPABASE_READ_KEY }}
         run: |
           set -e
-          if [ -z "$SUPABASE_READ_KEY" ]; then
-            echo "::warning::SUPABASE_READ_KEY is not set — leaving the site Worker's existing Supabase secrets alone."
-            exit 0
-          fi
-          printf '%s' "$SUPABASE_URL"      | npx wrangler secret put SUPABASE_URL --config dist/server/wrangler.json
-          printf '%s' "$SUPABASE_READ_KEY" | npx wrangler secret put SUPABASE_KEY --config dist/server/wrangler.json
-          echo "Site read key provisioned."
+          READ_KEY=$(node -p "require('./project.config.json').supabase.publishableKey")
+          printf '%s' "$SUPABASE_URL" | npx wrangler secret put SUPABASE_URL --config dist/server/wrangler.json
+          printf '%s' "$READ_KEY"     | npx wrangler secret put SUPABASE_KEY --config dist/server/wrangler.json
+          echo "Site read key provisioned from project.config.json."
 
       # Proves the deploy produced a working generator instead of assuming it.
       # A Worker that answers /health with real data is reachable, authenticated

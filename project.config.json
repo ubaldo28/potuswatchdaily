@@ -33,6 +33,20 @@
     "domain": "potuswatchdaily.com"
   },
 
+  "supabase": {
+    "$comment": [
+      "Not a secret, and deliberately not a GitHub Secret. Supabase publishable",
+      "keys are designed to be shipped in browser code; this one grants exactly",
+      "what an anonymous visitor already has -- read access to published",
+      "articles, bounded by row-level security. Treating it as a secret bought",
+      "nothing and cost a manual step on every environment.",
+      "",
+      "The site reads with this. The generator writes with SUPABASE_WRITE_KEY,",
+      "which is a real secret and lives only in GitHub Secrets."
+    ],
+    "publishableKey": "sb_publishable_dwzndGsc-tK1ZVzivAKjWA_NgG9BL5z"
+  },
+
   "requiredSecrets": {
     "CLOUDFLARE_API_TOKEN": "Scoped Workers-edit token for the account above. Deploys nothing without it.",
     "SUPABASE_URL": "Project REST URL, https://<ref>.supabase.co",
@@ -40,7 +54,6 @@
   },
 
   "optionalSecrets": {
-    "SUPABASE_READ_KEY": "Publishable read-only key. Jobs that only read prefer it; without it they fall back to SUPABASE_WRITE_KEY.",
     "UNSPLASH_ACCESS_KEY": "Article imagery. Without it the generator falls back to government photo feeds.",
     "RESEND_API_KEY": "Newsletter delivery. Without it /subscribe stores the address and sends nothing."
   }
