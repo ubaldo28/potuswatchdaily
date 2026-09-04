@@ -126,6 +126,30 @@ jobs:
           fi
           echo "Generator secrets provisioned."
 
+      # The site only ever reads published articles, so it runs on the
+      # publishable key -- the one Supabase says is safe in a browser. Keeping
+      # the site off the privileged key means a mistake in a page template
+      # cannot expose or change anything the public should not see, and it lets
+      # the legacy service_role JWT be switched off entirely.
+      #
+      # Only provisioned when SUPABASE_READ_KEY is actually set, so a repository
+      # that has not configured it keeps whatever the site Worker already has
+      # rather than having its working secret replaced with an empty string.
+      - name: Provision the site's read key
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_READ_KEY: ${{ secrets.SUPABASE_READ_KEY }}
+        run: |
+          set -e
+          if [ -z "$SUPABASE_READ_KEY" ]; then
+            echo "::warning::SUPABASE_READ_KEY is not set — leaving the site Worker's existing Supabase secrets alone."
+            exit 0
+          fi
+          printf '%s' "$SUPABASE_URL"      | npx wrangler secret put SUPABASE_URL --config dist/server/wrangler.json
+          printf '%s' "$SUPABASE_READ_KEY" | npx wrangler secret put SUPABASE_KEY --config dist/server/wrangler.json
+          echo "Site read key provisioned."
+
       # Proves the deploy produced a working generator instead of assuming it.
       # A Worker that answers /health with real data is reachable, authenticated
       # against Supabase, and running current code; anything less fails here
@@ -139,4 +163,21 @@ jobs:
           case "$BODY" in
             *last_article_minutes_ago*) echo "Generator is reachable and can read the database." ;;
             *) echo "::error::Generator deployed but /health returned no article data: $BODY"; exit 1 ;;
+          esac
+
+      # The site's key was just replaced, so prove the front page still renders
+      # real articles rather than finding out from a reader.
+      - name: Verify the site still serves articles
+        run: |
+          DOMAIN=$(node -p "require('./project.config.json').site.domain")
+          BODY=$(curl -sSL --max-time 30 "https://$DOMAIN/" || true)
+          SIZE=${#BODY}
+          echo "https://$DOMAIN/ returned $SIZE bytes"
+          if [ "$SIZE" -lt 2000 ]; then
+            echo "::error::The site returned almost nothing ($SIZE bytes). The Supabase read key is probably wrong."
+            exit 1
+          fi
+          case "$BODY" in
+            *article*) echo "Front page is rendering articles." ;;
+            *) echo "::error::The site rendered, but with no article markup on it."; exit 1 ;;
           esac
