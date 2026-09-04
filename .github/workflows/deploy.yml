@@ -124,6 +124,11 @@ jobs:
           else
             echo "::warning::UNSPLASH_ACCESS_KEY not set — the generator will fall back to government photo feeds only."
           fi
+          # A fresh random token on every deploy, used once by the step below
+          # and never stored anywhere else. It exists so a deploy can prove the
+          # generator actually generates, rather than only proving it answers.
+          openssl rand -hex 32 > /tmp/run-token
+          npx wrangler secret put RUN_TOKEN --config worker/wrangler.jsonc < /tmp/run-token
           echo "Generator secrets provisioned."
 
       # The site only ever reads published articles, so it runs on the
@@ -159,6 +164,31 @@ jobs:
           case "$BODY" in
             *last_article_minutes_ago*) echo "Generator is reachable and can read the database." ;;
             *) echo "::error::Generator deployed but /health returned no article data: $BODY"; exit 1 ;;
+          esac
+
+      # Answering /health only proves the Worker is up and can read. It said
+      # exactly that for thirteen hours while every scheduled run threw on a
+      # missing image key before fetching a single source. So the deploy now
+      # fires one real generation and reads the outcome.
+      #
+      # "skipped" is a pass: refusing to write up a document already covered in
+      # the last five days is the generator working correctly. Only an error, or
+      # no answer at all, fails the build.
+      - name: Make the generator actually generate
+        run: |
+          URL=$(node -p "require('./project.config.json').workers.generator.healthUrl" | sed 's#/health$#/run#')
+          BODY=$(curl -sS -X POST --max-time 120 "$URL" \
+                   -H "Authorization: Bearer $(cat /tmp/run-token)" || true)
+          rm -f /tmp/run-token
+          echo "$BODY"
+          case "$BODY" in
+            *'"status":"ok"'*|*'"status":"published"'*)
+              echo "Published an article." ;;
+            *'"status":"skipped"'*)
+              echo "::notice::Nothing new to write about right now — that is the generator declining to repeat itself, not a fault." ;;
+            *)
+              echo "::error::The generator could not produce an article: $BODY"
+              exit 1 ;;
           esac
 
       # The site's key was just replaced, so prove the front page still renders

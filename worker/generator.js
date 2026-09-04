@@ -671,10 +671,19 @@ async function generateText(env, prompt) {
 async function generateArticle(env) {
   console.log('[generator] Starting article generation...');
 
-  const missing = ['UNSPLASH_ACCESS_KEY','SUPABASE_URL','SUPABASE_KEY']
-    .filter(k => !env[k]);
+  // Only what the run genuinely cannot proceed without. UNSPLASH_ACCESS_KEY was
+  // in this list and is not one of them: getImage() prefers public-domain U.S.
+  // government photography and returns an empty string when Unsplash is
+  // unavailable, so an article without it publishes fine, just without a stock
+  // photo. Listing it here meant a missing image key threw before a single
+  // source was fetched -- every cron run failed, the Worker answered /health
+  // perfectly the whole time, and nothing in the failure named the image key.
+  const missing = ['SUPABASE_URL','SUPABASE_KEY'].filter(k => !env[k]);
   if (missing.length) {
     throw new Error(`Missing required secrets: ${missing.join(', ')}. Set them with: wrangler secret put <NAME>`);
+  }
+  if (!env.UNSPLASH_ACCESS_KEY) {
+    console.warn('[generator] No UNSPLASH_ACCESS_KEY — images will come from government photo feeds only.');
   }
 
   let region = await getNextRegion(env);
