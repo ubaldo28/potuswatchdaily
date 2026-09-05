@@ -3,6 +3,27 @@ export const prerender = true;
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Masthead from '../components/Masthead.astro';
 import Footer from '../components/Footer.astro';
+
+const safeJsonLd = (o: unknown) => JSON.stringify(o)
+  .replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
+
+// Astro never evaluates an expression inside a <script> element, so this page
+// shipped the source of the expression to Google. It also declared a SECOND
+// NewsMediaOrganization for the same URL, with a different foundingDate to the
+// homepage's and no @id to reconcile the two.
+const organizationLd = {
+  "@context": "https://schema.org", "@type": "NewsMediaOrganization",
+  "@id": "https://www.potuswatchdaily.com/#org",
+  "name": "POTUS Watch Daily",
+  "url": "https://www.potuswatchdaily.com",
+  "logo": { "@type": "ImageObject", "url": "https://www.potuswatchdaily.com/logo-v2.png", "width": 600, "height": 104 },
+  "sameAs": ["https://twitter.com/POTUSwatch"],
+  "description": "Independent foreign policy intelligence covering U.S. diplomacy, geopolitics, and global affairs.",
+  "foundingDate": "2026",
+  "publishingPrinciples": "https://www.potuswatchdaily.com/editorial",
+  "masthead": "https://www.potuswatchdaily.com/about",
+  "missionCoveragePrioritiesPolicy": "https://www.potuswatchdaily.com/editorial"
+};
 ---
 <BaseLayout
   title="About — POTUS Watch Daily"
@@ -10,18 +31,7 @@ import Footer from '../components/Footer.astro';
   canonical="https://www.potuswatchdaily.com/about"
 >
   <Fragment slot="head">
-    <script type="application/ld+json">{JSON.stringify({
-      "@context":"https://schema.org","@type":"NewsMediaOrganization",
-      "name":"POTUS Watch Daily",
-      "url":"https://www.potuswatchdaily.com",
-      "logo":{"@type":"ImageObject","url":"https://www.potuswatchdaily.com/logo-v2.png","width":300,"height":52},
-      "sameAs":["https://twitter.com/POTUSwatch"],
-      "description":"Independent foreign policy intelligence covering U.S. diplomacy, geopolitics, and global affairs.",
-      "foundingDate":"2024",
-      "publishingPrinciples":"https://www.potuswatchdaily.com/editorial",
-      "masthead":"https://www.potuswatchdaily.com/about",
-      "missionCoveragePrioritiesPolicy":"https://www.potuswatchdaily.com/editorial"
-    })}</script>
+    <script type="application/ld+json" set:html={safeJsonLd(organizationLd)} />
   </Fragment>
   <Masthead backLink="/" backLabel="← Back to feed" />
 

@@ -15,6 +15,10 @@
   "compatibility_flags": [
     "nodejs_compat"
   ],
+  // The preview hostname served a full, indexable copy of every page, and a
+  // canonical tag is a hint rather than a directive.
+  "workers_dev": false,
+
   "observability": {
     "enabled": true
   }

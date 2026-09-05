@@ -3,6 +3,26 @@ export const prerender = true;
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Masthead from '../../components/Masthead.astro';
 import Footer from '../../components/Footer.astro';
+
+const safeJsonLd = (o: unknown) => JSON.stringify(o)
+  .replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
+
+// In the frontmatter, rendered with set:html: Astro never evaluates an
+// expression inside a <script> element, so this shipped as literal source text
+// and the page had no Article markup at all. datePublished is required for an
+// Article rich result and was missing.
+const articleLd = {
+      "@context":"https://schema.org","@type":"Article",
+      "headline":"What NATO's Article 5 Actually Means — and When It Applies",
+      "description":"NATO's mutual defense clause explained in plain English — what it says, what it doesn't, and what happens when triggered.",
+      "datePublished":"2026-05-01T00:00:00Z",
+      "dateModified":"2026-05-01T00:00:00Z",
+      "image":["https://www.potuswatchdaily.com/og-default.jpg"],
+      "inLanguage":"en-US",
+      "author":{"@type":"Organization","name":"POTUS Watch Daily","url":"https://www.potuswatchdaily.com"},
+      "publisher":{"@id":"https://www.potuswatchdaily.com/#org"},
+      "mainEntityOfPage":{"@type":"WebPage","@id":"https://www.potuswatchdaily.com/explainers/nato-article-5"}
+    };
 ---
 <BaseLayout
   title="What NATO's Article 5 Actually Means — and When It Applies — POTUS Watch Daily"
@@ -10,14 +30,7 @@ import Footer from '../../components/Footer.astro';
   canonical="https://www.potuswatchdaily.com/explainers/nato-article-5"
 >
   <Fragment slot="head">
-    <script type="application/ld+json">{JSON.stringify({
-      "@context":"https://schema.org","@type":"Article",
-      "headline":"What NATO's Article 5 Actually Means — and When It Applies",
-      "description":"NATO's mutual defense clause explained in plain English — what it says, what it doesn't, and what happens when triggered.",
-      "author":{"@type":"Organization","name":"POTUS Watch Daily"},
-      "publisher":{"@type":"Organization","name":"POTUS Watch Daily","url":"https://www.potuswatchdaily.com"},
-      "mainEntityOfPage":"https://www.potuswatchdaily.com/explainers/nato-article-5"
-    })}</script>
+    <script type="application/ld+json" set:html={safeJsonLd(articleLd)} />
   </Fragment>
   <Masthead backLink="/explainers/" backLabel="← Explainers" />
   <main id="main" class="article-wrap" tabindex="-1">

@@ -37,7 +37,10 @@ const { maxWidth = '1280px' } = Astro.props;
 
 <style>
 .footer-regions { margin-bottom: 4px; }
-.footer-regions a { color: var(--text-3) !important; }
+  /* The !important here was identical to the value it overrode, and it
+     outranked .footer-links a:hover -- so these eight links never lit up on
+     hover or keyboard focus while the ten beside them did. */
+  .footer-regions a { color: var(--text-3); }
 .footer {
   background: #0d0d0d;
   border-top: 1px solid #1a1a1a;

@@ -81,9 +81,22 @@ const SITE = 'https://www.potuswatchdaily.com';
 
   <!-- Google Analytics -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-FRVP4L2Z2T"></script>
-  <script>
+  <script is:inline>
+    // is:inline matters: without it Astro hoists this into an external
+    // type="module" bundle, gtag() becomes module-scoped, window.gtag is
+    // undefined, and every later gtag() call -- including the consent updates
+    // from the banner -- silently does nothing.
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
+    window.gtag = gtag;
+    // Denied until the visitor says otherwise. The banner used to appear three
+    // seconds AFTER these tags had already set their cookies, and Decline only
+    // hid the div.
+    gtag('consent', 'default', {
+      ad_storage: 'denied', ad_user_data: 'denied',
+      ad_personalization: 'denied', analytics_storage: 'denied',
+      wait_for_update: 500
+    });
     gtag('js', new Date());
     gtag('config', 'G-FRVP4L2Z2T');
   </script>
@@ -174,7 +187,21 @@ const SITE = 'https://www.potuswatchdaily.com';
     .pager-count { color: var(--text-3); font-size: 12px; }
     .page h1 { font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 900; color: var(--text); margin-bottom: 8px; }
 
-    .masthead { background: #0a0a0a; border-bottom: 1px solid #1e1e1e; padding: 0 24px; }
+    /* The site's only <h1> and its subtitle had no rules anywhere in the
+     codebase, so they rendered at browser-default 2em Times. */
+  .site-h1 { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 900; color: var(--text); line-height: 1.2; margin: 0 0 8px; }
+  .site-h1-sub { font-size: 14px; color: var(--text-2); line-height: 1.6; margin: 0 0 8px; }
+
+  /* Region pages carry no <style> block and nothing defined a bare link colour,
+     so their links rendered as browser-default blue on near-black -- 2.11:1,
+     the exact defect the token comment above claims was fixed. */
+  .page a { color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px; }
+
+  /* Replaces onmouseover/onmouseout handlers, which never fired for keyboard
+     users and restored a 2.66:1 colour when they did fire. */
+  #load-more-btn:hover, #load-more-btn:focus-visible { color: #fff; border-color: var(--text-2); }
+
+  .masthead { background: #0a0a0a; border-bottom: 1px solid #1e1e1e; padding: 0 24px; }
     .masthead-inner { max-width: 1280px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 24px; }
     .nav { display: flex; align-items: center; }
     .nav a { color: var(--text-3); font-size: 12px; font-weight: 500; text-decoration: none; padding: 4px 12px; letter-spacing: 0.5px; text-transform: uppercase; transition: color 0.15s; white-space: nowrap; }
@@ -216,14 +243,14 @@ const SITE = 'https://www.potuswatchdaily.com';
     .hero-small .overlay { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.96)); padding: 20px 18px 18px; }
     .hero-small .card-title { font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 700; line-height: 1.3; color: #fff; margin-bottom: 0; }
     .hero-placeholder { width: 100%; background: linear-gradient(135deg,#161616 0%,#111 100%); display: flex; align-items: center; justify-content: center; }
-    .hero-placeholder-text { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 900; color: #222; letter-spacing: 2px; text-transform: uppercase; }
+    .hero-placeholder-text { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 900; color: var(--text-3); letter-spacing: 2px; text-transform: uppercase; }
     .grid-wrap { max-width: 1280px; margin: 0 auto; padding: 0 24px 48px; }
     .grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; }
     .card { cursor: pointer; overflow: hidden; border-radius: 4px; transition: opacity 0.2s; text-decoration: none; color: inherit; display: block; }
     .card:hover { opacity: 0.85; }
     .card-img { width: 100%; height: 190px; object-fit: cover; display: block; }
     .card-placeholder { width: 100%; height: 190px; background: #111; display: flex; align-items: center; justify-content: center; }
-    .card-placeholder-inner { font-family: 'Playfair Display', serif; font-size: 13px; font-weight: 700; color: #2a2a2a; letter-spacing: 3px; text-transform: uppercase; }
+    .card-placeholder-inner { font-family: 'Playfair Display', serif; font-size: 13px; font-weight: 700; color: var(--text-3); letter-spacing: 3px; text-transform: uppercase; }
     .card-body { padding: 16px 0 4px; }
     .card-title { font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 700; line-height: 1.35; color: #e8e8e8; margin-bottom: 8px; }
     .card-excerpt { font-size: 13px; color: var(--text-3); line-height: 1.6; }
@@ -234,7 +261,13 @@ const SITE = 'https://www.potuswatchdaily.com';
     .cookie-actions { display: flex; gap: 8px; flex-shrink: 0; }
     .btn-accept { background: #cc0000; color: #fff; border: none; padding: 7px 16px; border-radius: 3px; font-size: 11px; font-weight: 600; cursor: pointer; letter-spacing: 0.5px; }
     .btn-decline { background: none; color: var(--text-3); border: 1px solid var(--border-ui); padding: 7px 14px; border-radius: 3px; font-size: 11px; cursor: pointer; }
-    @media(max-width:900px) { .nav { display: none; } .hero { grid-template-columns: 1fr; } .hero-main-img { height: 360px; } .hero-side { grid-template-rows: auto auto; grid-template-columns: 1fr 1fr; } }
+    @media(max-width:900px) {
+    /* Was display:none with no hamburger and no fallback, so on the majority of
+       a news site's traffic the eight region links were unreachable except from
+       the footer. A scrollable strip keeps them. */
+    .nav { order: 3; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .nav::-webkit-scrollbar { display: none; }
+    .masthead-inner { flex-wrap: wrap; height: auto; padding: 8px 0; } .hero { grid-template-columns: 1fr; } .hero-main-img { height: 360px; } .hero-side { grid-template-rows: auto auto; grid-template-columns: 1fr 1fr; } }
     @media(max-width:640px) { .search-input-wrap { display: none; } .grid { grid-template-columns: 1fr; gap: 16px; } .masthead-inner { height: 52px; } .hero-side { grid-template-columns: 1fr; } }
   </style>
 </head>

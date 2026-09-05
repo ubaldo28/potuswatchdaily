@@ -1,13 +1,10 @@
 node_modules/
 dist/
-package-lock.json.bak
 .env
 .env.*
 .DS_Store
 *.log
 npm-debug.log*
-public/index.html.bak.*
-*.bak.*
 
 # wrangler files
 .wrangler
@@ -19,5 +16,30 @@ public/index.html.bak.*
 .astro/
 
 # migration artefacts
-articles-dump.json
-articles-schema.sql
+
+# Database snapshots. The daily backup uploads these as a workflow artifact
+# now; committing 25 MB of JSON a day grew the repository to 71 MB of dumps
+# for a project whose source is under 1 MB.
+backups/
+
+# Editor and OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# CI scratch
+out.txt
+
+# Removed from the repository but left on disk so nothing local breaks:
+#   public/logo.png                     byte-identical duplicate of logo-v2.png
+#   public/*.txt (IndexNow keys)        one superseded, one served by a route instead
+#   public/e7d7...txt                   duplicated by the route that now serves it
+#   scripts/migrate-dump.mjs            a one-off Railway migration, referenced nowhere
+#   MIGRATION.md                        a plan for a migration finished months ago
+public/logo.png
+public/d8a95a427bb64d83b7a64c4e17a9d133.txt
+public/e7d7dce91b634bc5bf610ae2367c52c7.txt
+scripts/migrate-dump.mjs
+MIGRATION.md

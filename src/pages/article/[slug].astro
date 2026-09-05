@@ -17,7 +17,7 @@ const { data: a, error } = await supabase
 
 if (error || !a) {
   return new Response(
-    `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Not Found — POTUS Watch Daily</title><meta name="robots" content="noindex"><link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%230a0a0a'/><circle cx='16' cy='16' r='12' fill='none' stroke='%23cc0000' stroke-width='2.5'/><circle cx='16' cy='16' r='4' fill='%23cc0000'/></svg>"></head><body style="background:#0a0a0a;color:#fff;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px;text-align:center"><div style="height:3px;background:#cc0000;position:fixed;top:0;left:0;right:0"></div><h1 style="font-size:72px;font-weight:900;color: var(--accent-text);margin:0">404</h1><p style="font-size:18px;color:#666">Dispatch not found.</p><a href="/" style="color: var(--accent-text);font-size:13px;text-decoration:none;border:1px solid #cc0000;padding:8px 20px;border-radius:3px">← Back to the feed</a></body></html>`,
+    `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Not Found — POTUS Watch Daily</title><meta name="robots" content="noindex"><link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%230a0a0a'/><circle cx='16' cy='16' r='12' fill='none' stroke='%23cc0000' stroke-width='2.5'/><circle cx='16' cy='16' r='4' fill='%23cc0000'/></svg>"></head><body style="background:#0a0a0a;color:#fff;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px;text-align:center"><div style="height:3px;background:#cc0000;position:fixed;top:0;left:0;right:0"></div><h1 style="font-size:72px;font-weight:900;color:#ff5c5c;margin:0">404</h1><p style="font-size:18px;color:#666">Dispatch not found.</p><a href="/" style="color:#ff5c5c;font-size:13px;text-decoration:none;border:1px solid #cc0000;padding:8px 20px;border-radius:3px">← Back to the feed</a></body></html>`,
     { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
   );
 }
@@ -54,7 +54,7 @@ try {
 const region = a.region || 'Analysis';
 const regionSlug = region.toLowerCase() === 'middle east' ? 'mideast' : region.toLowerCase().replace(/\s+/g, '-');
 const dateIso = a.published_at || a.created_at || new Date().toISOString();
-const words = (a.body || '').split(/\s+/).length;
+const words = (a.body || '').trim().split(/\s+/).filter(Boolean).length;
 const readTime = Math.max(1, Math.round(words / 200)) + ' min read';
 const desc = (a.meta_description || a.excerpt || '').replace(/"/g, '&quot;');
 
@@ -116,6 +116,43 @@ const safeUrl = (u: string | null | undefined) => {
     return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.href : null;
   } catch { return null; }
 };
+
+/**
+ * A responsive srcset that is actually responsive.
+ *
+ * The old form was three `img.replace(/&w=\d+/, ...)` calls. String.replace with
+ * a non-global regex matches `&w=NNN` only, so any URL where `w` was the FIRST
+ * query parameter -- or where there was no `w` at all -- produced three
+ * byte-identical URLs advertised at 640w, 1024w and 1600w. A phone then
+ * downloaded the full-resolution image believing it was the small one.
+ */
+const srcsetFor = (u: string) => {
+  try {
+    return [640, 1024, 1600].map(w => {
+      const url = new URL(u);
+      url.searchParams.set('w', String(w));
+      return `${url.href} ${w}w`;
+    }).join(', ');
+  } catch { return undefined; }
+};
+
+/**
+ * safeUrl() can return null, and the old code interpolated it straight into a
+ * template literal -- producing href="null?utm_source=..." , a relative link to
+ * /null that 404s. It also appended `?` unconditionally, corrupting any credit
+ * URL that already carried a query string.
+ */
+const creditUrl = (u: string | null | undefined) => {
+  const safe = safeUrl(u);
+  if (!safe) return null;
+  try {
+    const url = new URL(safe);
+    url.searchParams.set('utm_source', 'potuswatch');
+    url.searchParams.set('utm_medium', 'referral');
+    return url.href;
+  } catch { return null; }
+};
+const creditHref = creditUrl(photoCredit?.url);
 ---
 <BaseLayout
   title={a.title && a.title.length > 48 ? a.title : `${a.title} — POTUS Watch Daily`}
@@ -143,16 +180,16 @@ const safeUrl = (u: string | null | undefined) => {
 
   {img && img !== `${SITE_URL}/og-default.jpg` && (
   <Fragment>
-    <img class="hero-img" src={img} srcset={`${img.replace(/&w=\d+/, "&w=640")} 640w, ${img.replace(/&w=\d+/, "&w=1024")} 1024w, ${img} 1600w`} sizes="100vw" width="1600" height="640" alt="" fetchpriority="high" decoding="async" />
+    <img class="hero-img" src={img} srcset={srcsetFor(img)} sizes="100vw" width="1600" height="640" alt="" fetchpriority="high" decoding="async" />
     {photoCredit && photoCredit.src === 'gov' && (
       <p class="photo-credit">
         Photo: <a href={safeUrl(photoCredit.url)} target="_blank" rel="noopener">{photoCredit.name}</a>
         <span class="photo-credit-note"> — public domain (17 U.S.C. § 105).</span>
       </p>
     )}
-    {photoCredit && photoCredit.src !== 'gov' && (
+    {photoCredit && photoCredit.src !== 'gov' && creditHref && (
       <p class="photo-credit">
-        Photo by <a href={`${safeUrl(photoCredit.url)}?utm_source=potuswatch&utm_medium=referral`} target="_blank" rel="noopener nofollow">{photoCredit.name}</a>
+        Photo by <a href={creditHref} target="_blank" rel="noopener nofollow">{photoCredit.name}</a>
         {' '}on <a href="https://unsplash.com/?utm_source=potuswatch&utm_medium=referral" target="_blank" rel="noopener nofollow">Unsplash</a>
         <span class="photo-credit-note"> — illustrative stock image, not a depiction of the events described.</span>
       </p>
@@ -189,17 +226,17 @@ const safeUrl = (u: string | null | undefined) => {
 
     <div class="share-row">
       <span class="share-label">Share</span>
-      <a href={`https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}`} target="_blank" rel="noopener" class="icon-btn">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+      <a href={`https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}`} target="_blank" rel="noopener" class="icon-btn" aria-label="Share on X">
+        <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
       </a>
-      <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`} target="_blank" rel="noopener" class="icon-btn">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+      <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`} target="_blank" rel="noopener" class="icon-btn" aria-label="Share on Facebook">
+        <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
       </a>
-      <a href={`https://www.linkedin.com/shareArticle?mini=true&url=${encodedUrl}&title=${encodedTitle}`} target="_blank" rel="noopener" class="icon-btn">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+      <a href={`https://www.linkedin.com/shareArticle?mini=true&url=${encodedUrl}&title=${encodedTitle}`} target="_blank" rel="noopener" class="icon-btn" aria-label="Share on LinkedIn">
+        <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
       </a>
-      <a href={`https://reddit.com/submit?url=${encodedUrl}&title=${encodedTitle}`} target="_blank" rel="noopener" class="icon-btn">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z"/></svg>
+      <a href={`https://reddit.com/submit?url=${encodedUrl}&title=${encodedTitle}`} target="_blank" rel="noopener" class="icon-btn" aria-label="Share on Reddit">
+        <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z"/></svg>
       </a>
     </div>
 
@@ -209,7 +246,7 @@ const safeUrl = (u: string | null | undefined) => {
         <div class="related-grid">
           {related.map(r => (
             <a href={`/article/${r.slug}`} class="related-card">
-              {r.image && <img src={r.image} alt="" class="related-img" loading="lazy" />}
+              {r.image && <img src={r.image} alt="" class="related-img" width="400" height="120" loading="lazy" />}
               <div class="related-region">{r.region || ''}</div>
               <div class="related-title-text">{r.title}</div>
               <div class="related-date">{r.date || ''}</div>
@@ -238,19 +275,19 @@ const safeUrl = (u: string | null | undefined) => {
 .article-content { max-width: 740px; margin: 0 auto; padding: 40px 24px 80px; }
 .photo-credit { font-family: Inter, Arial, sans-serif; font-size: 11px; color: var(--text-3); margin: 8px auto 0; max-width: 740px; padding: 0 24px; }
 .photo-credit a { color: var(--text-3); text-decoration: none; }
-.photo-credit a:hover { color: var(--accent-text); text-decoration: underline; }
+.photo-credit a:hover { color:#ff5c5c; text-decoration: underline; }
 .photo-credit-note { color: var(--text-3); }
 .crumbs { font-family: Inter, Arial, sans-serif; font-size: 11px; color: var(--text-3); margin-bottom: 20px; display: flex; gap: 8px; align-items: center; }
 .crumbs a { color: var(--text-3); text-decoration: none; }
-.crumbs a:hover { color: var(--accent-text); }
+.crumbs a:hover { color:#ff5c5c; }
 .seq { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 48px; padding-top: 24px; border-top: 1px solid #1e1e1e; }
 .seq-link { display: flex; flex-direction: column; gap: 4px; text-decoration: none; padding: 12px 0; }
 .seq-next { text-align: right; }
-.seq-dir { font-family: Inter, Arial, sans-serif; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--accent-text); }
+.seq-dir { font-family: Inter, Arial, sans-serif; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color:#ff5c5c; }
 .seq-title { font-family: 'Playfair Display', serif; font-size: 14px; color: #999; line-height: 1.35; }
 .seq-link:hover .seq-title { color: #e0e0e0; }
 @media (max-width: 640px) { .seq { grid-template-columns: 1fr; } .seq-next { text-align: left; } }
-.back { color: var(--accent-text); text-decoration: none; font-size: 12px; font-family: Inter, Arial, sans-serif; letter-spacing: 0.5px; display: inline-block; margin-bottom: 20px; }
+.back { color:#ff5c5c; text-decoration: none; font-size: 12px; font-family: Inter, Arial, sans-serif; letter-spacing: 0.5px; display: inline-block; margin-bottom: 20px; }
 .eyebrow { margin: 16px 0 8px; font-size: 12px; font-family: Inter, Arial, sans-serif; color: var(--text-3); display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .tag { background: #cc0000; color: #fff; padding: 2px 8px; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; font-family: Inter, Arial, sans-serif; }
 .byline-meta a { color: var(--text-2); text-decoration: none; }
@@ -266,16 +303,16 @@ hr { border: none; border-top: 1px solid #1e1e1e; margin: 20px 0; }
 .sources-note { font-size: 11px; color: var(--text-3); line-height: 1.5; margin-bottom: 12px; font-family: Inter, Arial, sans-serif; }
 .sources-label { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-3); font-family: Inter, Arial, sans-serif; margin-bottom: 10px; }
 .sources a { display: block; color: var(--text-3); font-size: 12px; text-decoration: none; margin-bottom: 6px; font-family: Inter, Arial, sans-serif; }
-.sources a:hover { color: var(--accent-text); }
+.sources a:hover { color:#ff5c5c; }
 .share-row { margin-top: 32px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .share-label { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-3); font-family: Inter, Arial, sans-serif; margin-right: 4px; }
 .icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: #111; border: 1px solid #222; text-decoration: none; }
 .related-section { margin-top: 56px; padding-top: 32px; border-top: 1px solid #1e1e1e; }
-.related-label { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--accent-text); margin-bottom: 24px; font-family: Inter, Arial, sans-serif; }
+.related-label { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color:#ff5c5c; margin-bottom: 24px; font-family: Inter, Arial, sans-serif; }
 .related-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
 .related-card { display: block; text-decoration: none; color: inherit; background: #0e0e0e; border: 1px solid #1e1e1e; border-top: 2px solid #cc0000; padding: 16px; }
 .related-img { width: 100%; height: 120px; object-fit: cover; display: block; margin-bottom: 12px; }
-.related-region { font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--accent-text); margin-bottom: 6px; font-family: Inter, Arial, sans-serif; }
+.related-region { font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color:#ff5c5c; margin-bottom: 6px; font-family: Inter, Arial, sans-serif; }
 .related-title-text { font-family: 'Playfair Display', Georgia, serif; font-size: 15px; font-weight: 700; color: #e0e0e0; line-height: 1.35; margin-bottom: 6px; }
 .related-date { font-size: 11px; color: var(--text-3); font-family: Inter, Arial, sans-serif; }
 </style>

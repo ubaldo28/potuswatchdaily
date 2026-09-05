@@ -9,7 +9,10 @@ const SITE_URL = 'https://www.potuswatchdaily.com';
 const PER = 100;
 
 const raw = Astro.params.page;
-const page = Math.max(1, parseInt(String(raw ?? '1'), 10) || 1);
+// Bounded at both ends: nothing stopped /archive/99999999 reaching PostgREST
+// as offset=9999999800, with a self-referential canonical that let a crawler
+// mint unlimited indexable empty pages.
+const page = Math.min(Math.max(1, parseInt(String(raw ?? '1'), 10) || 1), 1000);
 
 // env comes from the Workers runtime module (Astro.locals.runtime was removed in adapter v14)
 const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_KEY);

@@ -2,7 +2,7 @@ import { env } from 'cloudflare:workers';
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
 
-export const GET: APIRoute = async ({ request, locals }) => {
+export const GET: APIRoute = async ({ request }) => {
   // env comes from the Workers runtime module (Astro.locals.runtime was removed in adapter v14)
   const url = new URL(request.url);
   // Clamp: an unvalidated parseInt lets ?offset=abc reach .range() as NaN,
@@ -28,35 +28,29 @@ export const GET: APIRoute = async ({ request, locals }) => {
       },
     });
   } catch (e: any) {
-    // Never return the raw PostgREST body to an unauthenticated caller.
-    console.error('[get-articles]', e?.message);
-
-    // When the page is empty, the one question worth answering is whether this
-    // Worker was handed a usable database URL and key at all -- and that took
-    // an hour to answer last time, because the only honest reply the site could
-    // give was "Unable to load articles". So a failure now also reports the
-    // shape of what it was configured with. No secret is exposed: the host of a
-    // public REST endpoint, the length of the key, and the prefix of a key that
-    // is only ever the publishable one, which Supabase ships in browser code.
+    // Diagnostics go to Workers Logs, which observability already surfaces.
+    // They used to go in the RESPONSE: the raw PostgREST message (which names
+    // tables, columns and RLS policies), the Supabase host, the key length and
+    // — worst of the four — the key KIND, which told an anonymous caller
+    // whether the live Worker was running a publishable key, a secret key or a
+    // legacy JWT. That is precisely the question worth asking before deciding
+    // whether a misconfiguration is worth chasing.
     const key = env.SUPABASE_KEY || '';
     let host = '(unset)';
     try { host = new URL(env.SUPABASE_URL).host; } catch { host = env.SUPABASE_URL ? '(unparseable)' : '(unset)'; }
+    console.error('[get-articles]', e?.message, JSON.stringify({
+      supabase_host: host,
+      key_length: key.length,
+      key_kind: key.startsWith('sb_publishable_') ? 'publishable'
+              : key.startsWith('sb_secret_')      ? 'secret'
+              : key.split('.').length === 3       ? 'legacy JWT'
+              : key                                ? 'unrecognised'
+                                                   : '(unset)',
+    }));
 
-    return new Response(JSON.stringify({
-      error: 'Unable to load articles',
-      reason: e?.message || String(e),
-      config: {
-        supabase_host: host,
-        key_length: key.length,
-        key_kind: key.startsWith('sb_publishable_') ? 'publishable'
-                : key.startsWith('sb_secret_')      ? 'secret'
-                : key.split('.').length === 3       ? 'legacy JWT'
-                : key                                ? 'unrecognised'
-                                                     : '(unset)',
-      },
-    }), {
+    return new Response(JSON.stringify({ error: 'Unable to load articles' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
     });
   }
 };

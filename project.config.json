@@ -66,7 +66,10 @@
   },
 
   "optionalSecrets": {
-    "UNSPLASH_ACCESS_KEY": "Article imagery. Without it the generator falls back to government photo feeds.",
-    "RESEND_API_KEY": "Newsletter delivery. Without it /subscribe stores the address and sends nothing."
+    "UNSPLASH_ACCESS_KEY": "Article imagery. Without it the generator uses government photo feeds only.",
+    "CF_PURGE_TOKEN": "Cloudflare token scoped to Zone -> Cache Purge on this zone ONLY. Enables purge-on-publish. Never reuse CLOUDFLARE_API_TOKEN here: that one can edit every Worker in the account, and this value is written into a publicly reachable Worker.",
+    "RESEND_API_KEY": "Newsletter delivery, on the SITE Worker. Set by hand with `wrangler secret put`; no workflow provisions it. Without it /subscribe returns an error and stores nothing.",
+    "RESEND_AUDIENCE_ID": "The Resend audience subscribers are added to. Required alongside RESEND_API_KEY.",
+    "SUBSCRIBE_SECRET": "HMAC key for signing confirmation and unsubscribe links. Required for double opt-in."
   }
 }

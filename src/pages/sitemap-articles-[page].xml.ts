@@ -12,7 +12,12 @@ function esc(s: string | null | undefined) {
 
 export const GET: APIRoute = async ({ params, locals }) => {
   // env comes from the Workers runtime module (Astro.locals.runtime was removed in adapter v14)
-  const page = Math.max(1, parseInt(params.page || '1', 10));
+  // Math.max propagates NaN, so /sitemap-articles-abc.xml used to reach
+  // PostgREST as offset=NaN&limit=NaN, throw, and return the upstream error
+  // text to an anonymous GET. The upper bound stops a crawler minting
+  // unbounded offsets.
+  const parsed = parseInt(params.page || '1', 10);
+  const page = Number.isFinite(parsed) ? Math.min(Math.max(1, parsed), 1000) : 1;
   const from = (page - 1) * PAGE_SIZE;
 
   try {
@@ -47,6 +52,7 @@ export const GET: APIRoute = async ({ params, locals }) => {
       { headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=600, s-maxage=1800' } }
     );
   } catch (e: any) {
-    return new Response('Sitemap error: ' + e.message, { status: 500 });
+    console.error('[sitemap-articles]', e?.message);
+    return new Response('Sitemap unavailable', { status: 500 });
   }
 };

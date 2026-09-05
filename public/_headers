@@ -1,42 +1,26 @@
+# This file applies ONLY to files served from the static asset store — the
+# prerendered pages and everything in public/. It never reaches a response the
+# Worker rendered; those get their headers from src/middleware.ts.
+#
+# Eleven routes are prerendered, including /newsletter, which carries the email
+# form. So the two lists have to agree, and previously they did not: this file
+# still carried a retired X-XSS-Protection header and cache rules for SSR
+# routes that could never apply and contradicted the live values.
+
 /*
   X-Content-Type-Options: nosniff
-  X-Frame-Options: SAMEORIGIN
-  X-XSS-Protection: 1; mode=block
+  X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
-  Permissions-Policy: geolocation=(), microphone=(), camera=()
-
-/
-  Cache-Control: no-store
-
-/article/*
-  Cache-Control: public, s-maxage=3600, stale-while-revalidate=86400
-
-/explainers/*
-  Cache-Control: public, s-maxage=86400, stale-while-revalidate=604800
-
-/about
-  Cache-Control: public, s-maxage=86400, stale-while-revalidate=604800
-
-/editorial
-  Cache-Control: public, s-maxage=86400, stale-while-revalidate=604800
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
+  Permissions-Policy: accelerometer=(), autoplay=(), camera=(), display-capture=(), encrypted-media=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), publickey-credentials-get=(), screen-wake-lock=(), usb=(), xr-spatial-tracking=()
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests; script-src 'self' 'unsafe-inline' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.googletagmanager.com https://www.google-analytics.com https://cdnjs.buymeacoffee.com https://cdn.buymeacoffee.com https://pl29502765.effectivecpmnetwork.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://www.google-analytics.com https://analytics.google.com https://*.analytics.google.com https://pagead2.googlesyndication.com https://api.buymeacoffee.com; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.buymeacoffee.com
 
 /logo-v2.png
   Cache-Control: public, max-age=604800
 
-/logo.png
-  Cache-Control: no-store
-
 /og-default.jpg
   Cache-Control: public, max-age=31536000, immutable
 
-/*.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/*.css
-  Cache-Control: public, max-age=31536000, immutable
-
-/feed.xml
-  Cache-Control: public, max-age=600, s-maxage=600
-
-/sitemap.xml
-  Cache-Control: public, max-age=1800, s-maxage=1800
+/favicon.ico
+  Cache-Control: public, max-age=604800

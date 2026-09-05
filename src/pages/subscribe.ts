@@ -1,7 +1,24 @@
 import { env } from 'cloudflare:workers';
 import type { APIRoute } from 'astro';
 
-function buildWelcomeHtml(thuDate: string) {
+
+/**
+ * HMAC-SHA256 over the address, so /unsubscribe can verify a link came from us
+ * without a database lookup and without letting anyone unsubscribe a stranger
+ * by editing a query string.
+ */
+async function signEmail(email: string): Promise<string> {
+  const secret = env.SUBSCRIBE_SECRET;
+  if (!secret) return '';
+  const key = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(email.toLowerCase()));
+  return [...new Uint8Array(sig)].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
+}
+
+function buildWelcomeHtml(thuDate: string, unsubUrl: string) {
   return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
 <head>
@@ -35,7 +52,7 @@ function buildWelcomeHtml(thuDate: string) {
       <a href="https://www.potuswatchdaily.com/privacy" style="color:#555555;text-decoration:none">Privacy</a>
     </div>
     <div style="font-size:10px;color:#333333;font-family:Arial,Helvetica,sans-serif">&copy; 2026 POTUS Watch Daily. Independent foreign policy coverage.</div>
-    <div style="font-size:10px;color:#333333;margin-top:5px;font-family:Arial,Helvetica,sans-serif">You subscribed at potuswatchdaily.com. <a href="{{{RESEND_UNSUBSCRIBE_URL}}}" style="color:#444444;text-decoration:underline">Unsubscribe</a></div>
+    <div style="font-size:10px;color:#333333;margin-top:5px;font-family:Arial,Helvetica,sans-serif">You subscribed at potuswatchdaily.com. <a href="${unsubUrl}" style="color:#444444;text-decoration:underline">Unsubscribe</a></div>
   </td></tr>
   <tr><td bgcolor="#cc0000" height="2" style="background-color:#cc0000;height:2px;font-size:0;line-height:0">&nbsp;</td></tr>
 </table>
@@ -100,9 +117,54 @@ async function overRateLimit(request: Request): Promise<boolean> {
 }
 
 function isValidEmail(email: string) {
-  return typeof email === 'string' &&
-    email.length <= 320 &&
-    /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
+  // The old pattern accepted `<a@b.co>`, `"Name"<victim@example.com>`, `a@b.co>x`
+  // and `a@b..co`. Multi-recipient injection was never possible (only one `@`
+  // is permitted and the JSON body is serialised), but an attacker controlled
+  // the display-name portion of the To: header, and each variant was a
+  // different dedup key.
+  if (typeof email !== 'string') return false;
+  const e = email.trim();
+  return e.length <= 254 &&
+    /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$/.test(e);
+}
+
+/**
+ * The key used for "have we already mailed this person", never as the send
+ * address.
+ *
+ * Resend treats `victim+1@gmail.com`, `victim+2@gmail.com` and
+ * `v.i.c.tim@gmail.com` as three separate contacts. They all deliver to one
+ * inbox. With a per-IP throttle only, that made this endpoint a working mail
+ * bomb: a few hundred welcome emails an hour into a stranger's inbox, each one
+ * leaving a real, non-consented row on the mailing list.
+ */
+function dedupKey(email: string) {
+  const [local, domainRaw] = email.split('@');
+  const domain = (domainRaw || '').toLowerCase();
+  let l = local.split('+')[0];
+  if (domain === 'gmail.com' || domain === 'googlemail.com') l = l.replace(/\./g, '');
+  return `${l}@${domain === 'googlemail.com' ? 'gmail.com' : domain}`;
+}
+
+/**
+ * One welcome email per address per day, regardless of how the address is
+ * spelled or which datacenter the request lands in. The per-IP throttle is
+ * per-PoP, so a distributed caller multiplied its allowance by the number of
+ * Cloudflare datacenters it could reach; this cap is keyed on the person being
+ * mailed, which is the thing actually being protected.
+ */
+async function alreadyMailedToday(key: string): Promise<boolean> {
+  try {
+    const cache = (caches as any).default;
+    const cacheKey = new Request(`https://rate-limit.internal/subscribe-addr/${encodeURIComponent(key)}`);
+    if (await cache.match(cacheKey)) return true;
+    await cache.put(cacheKey, new Response('1', {
+      headers: { 'Cache-Control': 'max-age=86400' },
+    }));
+    return false;
+  } catch {
+    return false;   // never fail a real signup because the cache misbehaved
+  }
 }
 
 function nextThursdayStr() {
@@ -170,6 +232,9 @@ export const POST: APIRoute = async ({ request }) => {
     const existing = await fetch(`${audience}/${encodeURIComponent(email)}`, { headers: auth });
     if (existing.ok) return json({ success: true });
 
+    // Second gate, on the person rather than the caller. See dedupKey().
+    if (await alreadyMailedToday(dedupKey(email))) return json({ success: true });
+
     const thuDate = nextThursdayStr();
 
     const audienceResp = await fetch(audience, {
@@ -178,10 +243,19 @@ export const POST: APIRoute = async ({ request }) => {
       body: JSON.stringify({ email, unsubscribed: false }),
     });
     if (!audienceResp.ok) {
-      const detail = await audienceResp.text().catch(() => '');
-      console.error(`[subscribe] Resend contact create failed (${audienceResp.status}): ${detail.slice(0, 300)}`);
+      // Status only. Resend's validation errors quote the offending address
+      // back, and Workers Logs have their own retention and access model that
+      // the privacy policy says nothing about.
+      console.error(`[subscribe] Resend contact create failed (${audienceResp.status})`);
       return json({ error: 'Subscription failed. Please try again.' }, 502);
     }
+
+    // A real, working unsubscribe. The welcome mail used to carry Resend's
+    // Broadcasts merge tag `{{{RESEND_UNSUBSCRIBE_URL}}}`, which this
+    // transactional send does not substitute — so every subscriber received an
+    // opt-out link whose href was that literal string. One-click headers are
+    // also what keeps Gmail and Yahoo delivering to the inbox at all.
+    const unsubUrl = `https://www.potuswatchdaily.com/unsubscribe?e=${encodeURIComponent(email)}&s=${await signEmail(email)}`;
 
     const mailResp = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -190,14 +264,17 @@ export const POST: APIRoute = async ({ request }) => {
         from: env.RESEND_FROM_EMAIL || 'POTUS Watch Daily <onboarding@resend.dev>',
         to: email,
         subject: `Welcome to POTUS Watch Daily — First issue arriving ${thuDate}`,
-        html: buildWelcomeHtml(thuDate),
+        html: buildWelcomeHtml(thuDate, unsubUrl),
+        headers: {
+          'List-Unsubscribe': `<${unsubUrl}>`,
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        },
       }),
     });
     // The subscription is the thing that matters; a failed welcome email is
     // logged but not surfaced, since the address is already on the list.
     if (!mailResp.ok) {
-      const detail = await mailResp.text().catch(() => '');
-      console.error(`[subscribe] Welcome email failed (${mailResp.status}): ${detail.slice(0, 300)}`);
+      console.error(`[subscribe] Welcome email failed (${mailResp.status})`);
     }
 
     return json({ success: true });

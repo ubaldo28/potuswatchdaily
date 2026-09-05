@@ -10,7 +10,7 @@ function esc(s: string | null | undefined) {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-export const GET: APIRoute = async ({ locals }) => {
+export const GET: APIRoute = async () => {
   // env comes from the Workers runtime module (Astro.locals.runtime was removed in adapter v14)
 
   try {

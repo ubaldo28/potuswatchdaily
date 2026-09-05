@@ -8,7 +8,7 @@ export const PAGE_SIZE = 2000;
 // Sitemap INDEX. The previous single-file sitemap hard-capped at .limit(1000),
 // so every article beyond the newest 1000 was absent from the only surface
 // Google uses to discover them.
-export const GET: APIRoute = async ({ locals }) => {
+export const GET: APIRoute = async () => {
   // env comes from the Workers runtime module (Astro.locals.runtime was removed in adapter v14)
 
   try {
@@ -33,6 +33,7 @@ export const GET: APIRoute = async ({ locals }) => {
       { headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=600, s-maxage=1800' } }
     );
   } catch (e: any) {
-    return new Response('Sitemap error: ' + e.message, { status: 500 });
+    console.error('[sitemap]', e?.message);
+    return new Response('Sitemap unavailable', { status: 500 });
   }
 };

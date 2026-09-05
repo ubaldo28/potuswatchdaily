@@ -12,7 +12,7 @@ function esc(s: string | null | undefined) {
 // Google News sitemaps must contain ONLY articles from the last 2 days.
 // The old sitemap put <news:news> on all 1000 entries, the oldest ~50 days
 // old, which invalidates the file as a News discovery channel.
-export const GET: APIRoute = async ({ locals }) => {
+export const GET: APIRoute = async () => {
   // env comes from the Workers runtime module (Astro.locals.runtime was removed in adapter v14)
   const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
 
@@ -40,6 +40,7 @@ export const GET: APIRoute = async ({ locals }) => {
       { headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=300, s-maxage=300' } }
     );
   } catch (e: any) {
-    return new Response('Sitemap error: ' + e.message, { status: 500 });
+    console.error('[news-sitemap]', e?.message);
+    return new Response('Sitemap unavailable', { status: 500 });
   }
 };

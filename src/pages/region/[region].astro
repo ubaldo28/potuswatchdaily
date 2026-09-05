@@ -19,7 +19,10 @@ const REGIONS: Record<string, { name: string; aliases: string[]; blurb: string }
 };
 
 const key = (Astro.params.region || '').toLowerCase();
-const meta = REGIONS[key];
+// hasOwnProperty, not a bare lookup: `constructor`, `valueOf` and friends
+// resolve up the prototype chain, so /region/constructor rendered a live,
+// indexable region hub titled "Object".
+const meta = Object.prototype.hasOwnProperty.call(REGIONS, key) ? REGIONS[key] : undefined;
 
 let articles: any[] = [];
 if (meta) {
