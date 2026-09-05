@@ -477,7 +477,13 @@ async function fetchFederalRegister(region) {
   const agencies = FR_AGENCIES[region] || FR_AGENCIES.Analysis;
   try {
     const u = new URL('https://www.federalregister.gov/api/v1/documents.json');
-    u.searchParams.set('per_page', '20');
+    // 20 was starving the pool. The Federal Register publishes hundreds of
+    // documents a day and this is the one source that never runs dry, but only
+    // twenty were being considered per region -- and after the noise filter
+    // dropped the procedural ones, often only a handful survived. With a
+    // five-day no-repeat rule and 24 articles a day, that is how the feed ran
+    // out of things to write about overnight. 100 is the API's maximum.
+    u.searchParams.set('per_page', '100');
     u.searchParams.set('order', 'newest');
     for (const a of agencies) u.searchParams.append('conditions[agencies][]', a);
 
@@ -996,6 +1002,7 @@ export default {
   /**
    * Not required by the cron, but handy during cutover.
    *   GET  /health          — is the feed still fresh?
+   *   GET  /sources         — which feeds are alive, and how much unused material is left
    *   POST /run?token=...   — fire a generation by hand (only if RUN_TOKEN is set)
    */
   async fetch(request, env) {
@@ -1043,6 +1050,46 @@ export default {
       }
     }
 
-    return new Response('potuswatch-generator: cron worker. Try GET /health', { status: 404 });
+    // Which sources are actually alive, and how much uncovered material each
+    // one is holding right now. Reads nothing secret and writes nothing.
+    //
+    // This exists because "no article this hour" and "that feed has been
+    // returning 404 for a week" look identical from the outside, and the only
+    // way to tell them apart was to read Worker logs in a dashboard nobody has
+    // open at 3am.
+    if (url.pathname === '/sources') {
+      const cache = new Map();
+      const covered = await recentlyUsedSourceUrls(env).catch(() => new Set());
+      const perRegion = {};
+      const seen = new Set();
+      let totalUncovered = 0;
+
+      for (const r of regions) {
+        const docs = await fetchPrimarySources(r, cache);
+        const uncovered = docs.filter(d => !covered.has(d.url));
+        const usable = uncovered.filter(d => scoreDocument(d, r) > 0);
+        for (const d of usable) {
+          if (!seen.has(d.url)) { seen.add(d.url); totalUncovered++; }
+        }
+        perRegion[r] = { documents: docs.length, uncovered: uncovered.length, usable: usable.length };
+      }
+
+      const bySource = {};
+      for (const [, promise] of cache) {
+        for (const d of await promise) {
+          bySource[d.source] = (bySource[d.source] || 0) + 1;
+        }
+      }
+
+      return Response.json({
+        covered_in_last_5_days: covered.size,
+        distinct_usable_documents_available: totalUncovered,
+        hours_of_runway: totalUncovered,
+        by_source: bySource,
+        by_region: perRegion
+      });
+    }
+
+    return new Response('potuswatch-generator: cron worker. Try GET /health or GET /sources', { status: 404 });
   }
 };
