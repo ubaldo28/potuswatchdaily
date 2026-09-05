@@ -20,6 +20,10 @@ networks, analytics), and volumetric denial of service.
 
 ## Handling of credentials
 
-No secret is committed to this repository. The generator and the site read
+No secret is committed to this repository. The one key that *is* committed, in
+`project.config.json`, is the Supabase **publishable** key -- Supabase designs it
+to ship in browser JavaScript, and row-level security bounds it to reading
+published articles. Every real credential lives in a Worker secret or a GitHub
+Actions secret. The generator and the site read
 every credential from Cloudflare Worker secrets, Cloudflare Pages environment
 variables, or GitHub Actions secrets. `.env` and `.dev.vars` are gitignored.

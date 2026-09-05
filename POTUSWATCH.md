@@ -35,7 +35,7 @@ git push → GitHub Actions → npm run build → wrangler deploy → Cloudflare
 - **Just run `git push`** — everything else is automatic
 - GitHub Actions workflow: `.github/workflows/deploy.yml`
 - Workflow also disables Cloudflare's own auto-build (prevents conflicts)
-- GitHub Secrets needed: `CLOUDFLARE_API_KEY`, `CLOUDFLARE_EMAIL`, `CLOUDFLARE_ACCOUNT_ID`, `SUPABASE_URL`, `SUPABASE_KEY`
+- GitHub Secrets needed: `CLOUDFLARE_API_TOKEN`, `SUPABASE_URL`, `SUPABASE_WRITE_KEY` (required); `UNSPLASH_ACCESS_KEY` and `CF_PURGE_TOKEN` (optional). Do **not** set `CLOUDFLARE_ACCOUNT_ID` -- the account is pinned in the wrangler configs, and a stale secret overrides it
 
 ### Daily backup
 - `.github/workflows/backup.yml` dumps the whole `articles` table to `backups/` at 06:00 UTC and commits it
@@ -48,7 +48,7 @@ git push → GitHub Actions → npm run build → wrangler deploy → Cloudflare
 
 - **File**: `worker/generator.js`
 - **Runs**: Cloudflare Worker `potuswatch-generator`, cron `0 * * * *`
-- **Health check**: `GET /health` on `process.env.PORT`
+- **Health check**: `GET /health` on the generator Worker, https://potuswatch-generator.potuswatchdaily.workers.dev/health . `GET /sources` reports what material is left, behind the same token as `/run`
 - **Schedule**: 1 article per hour via Cloudflare Workers AI + primary sources + Unsplash
 - **Config**: `worker/wrangler.jsonc` — cron trigger, Workers AI binding, observability on
 - **Deploy**: `npx wrangler deploy --config worker/wrangler.jsonc`
@@ -106,7 +106,7 @@ potuswatch/
 ## Critical Rules
 
 1. **`package.json` has `"type": "module"`** — always use `import/export`, never `require()`
-2. **ALL CSS lives in `BaseLayout.astro`** — never in `<style>` blocks in page files. `<style is:global>` outside a layout wrapper is unreliable in Astro SSR + Cloudflare and silently breaks in production while working in dev. Article page uses scoped `<style>` which is fine — only `is:global` in page files is the problem.
+2. **ALL **global** CSS lives in `BaseLayout.astro`. A scoped `<style>` in a component or page is fine; `<style is:global>` in a page file is the thing that breaks in production** — never in `<style>` blocks in page files. `<style is:global>` outside a layout wrapper is unreliable in Astro SSR + Cloudflare and silently breaks in production while working in dev. Article page uses scoped `<style>` which is fine — only `is:global` in page files is the problem.
 3. **`dist/` is in `.gitignore`** — never commit it, GitHub Actions builds fresh
 5. **SUPABASE_URL / SUPABASE_KEY are Worker secrets**, set with `npx wrangler secret put`, never in code. Since adapter v14 the pages read them via `import { env } from 'cloudflare:workers'` — `Astro.locals.runtime` no longer exists
 6. **Static files in `public/` are unreliable with the Cloudflare SSR adapter** — serve them as Astro API routes (`.ts` files in `src/pages/`) like `ads.txt.ts`, `robots.txt.ts`, `favicon.svg.ts`

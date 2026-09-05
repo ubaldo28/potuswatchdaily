@@ -60,7 +60,7 @@ one-second grep-level check catches all three.
 
 ## 🚨 Site is down / not loading
 
-1. Check the Worker: https://dash.cloudflare.com → Workers & Pages → potuswatchdaily
+1. Check the Worker: https://dash.cloudflare.com → Workers & Pages → `potuswatchdaily` (the Pages project that serves the domain) or `potuswatchdaily-site` (the Worker CI deploys)
 2. Check latest deployment — is it green?
 3. If red: check GitHub Actions https://github.com/ubaldo28/potuswatch/actions
 4. If Actions red: expand the failed step and read the error
@@ -73,12 +73,12 @@ one-second grep-level check catches all three.
 The generator is a Cloudflare Worker on an hourly cron. Railway is gone.
 
 ```bash
-curl -s https://potuswatch-generator.<your-subdomain>.workers.dev/health
+curl -s https://potuswatch-generator.potuswatchdaily.workers.dev/health
 npx wrangler tail --config worker/wrangler.jsonc
 ```
 
 `status: degraded` means the newest article is over 3 hours old. The
-"Generator health check" workflow polls this every 3 hours and emails on failure.
+"Generator health check" workflow polls this hourly and opens a GitHub issue on failure.
 
 Common causes:
 - **Daily free Neuron allocation spent** (error 3040/4006) — 10,000/day, resets
@@ -97,14 +97,14 @@ Common causes:
 **Always expand the failed step to read the actual error.**
 
 ### Error: `Not logged in`
-- `CLOUDFLARE_API_KEY` or `CLOUDFLARE_EMAIL` secret is wrong/missing
+- `CLOUDFLARE_API_TOKEN` is missing or wrong. `deploy.yml` verifies it against Cloudflare's own token-verify endpoint before building, and prints the token's length -- a short length means a truncated paste.
 - Go to: https://github.com/ubaldo28/potuswatch/settings/secrets/actions
 - Delete and re-add: `CLOUDFLARE_API_TOKEN` (Cloudflare → Manage account → Account API tokens → Create Token → "Edit Cloudflare Workers")
 - Tokens live at: Cloudflare dashboard → Manage account → Account API tokens
 
 ### Error: `Authentication error [code: 10000]`
 - The token is missing the Workers Scripts:Edit permission, or is scoped to the wrong account
-- Use Global API Key instead of scoped token (always works)
+- The token is missing `Workers Scripts:Edit`, or is scoped to a different account. Re-issue it from the "Edit Cloudflare Workers" template on the account pinned in `wrangler.jsonc`. Do **not** substitute the Global API Key: it grants the whole account and cannot be scoped.
 
 ### Error: `refusing to allow...workflow`
 - GitHub token missing `workflow` scope
@@ -112,7 +112,7 @@ Common causes:
 - Clear saved credential: `git credential-osxkeychain erase` then enter `protocol=https` / `host=github.com`
 
 ### Site not updating after green build:
-- Cloudflare's own auto-build is overwriting — workflow already handles this
+- (removed: nothing in deploy.yml disables a Cloudflare auto-build, so this line described handling that does not exist)
 - Try purging cache: https://dash.cloudflare.com → potuswatchdaily.com → Caching → Purge Everything
 
 ---
@@ -174,7 +174,9 @@ git push
 Check the row count first — the articles are probably present but undiscoverable:
 
 ```bash
-railway run bash -c 'curl -s -o /dev/null -D - "$SUPABASE_URL/rest/v1/articles?select=id&limit=1" -H "apikey: $SUPABASE_KEY" -H "Authorization: Bearer $SUPABASE_KEY" -H "Prefer: count=exact" | grep -i content-range'
+curl -s -o /dev/null -D - "$SUPABASE_URL/rest/v1/articles?select=id&limit=1" \
+  -H "apikey: $SUPABASE_KEY" -H "Authorization: Bearer $SUPABASE_KEY" \
+  -H "Prefer: count=exact" | grep -i content-range
 ```
 
 `content-range: 0-0/N` — N is the true row count.
@@ -195,13 +197,13 @@ railway run bash -c 'curl -s -o /dev/null -D - "$SUPABASE_URL/rest/v1/articles?s
 The generator is a Cloudflare Worker (cron `0 * * * *`), not Railway.
 
 ```bash
-curl -s https://potuswatch-generator.<your-subdomain>.workers.dev/health
+curl -s https://potuswatch-generator.potuswatchdaily.workers.dev/health
 npx wrangler tail --config worker/wrangler.jsonc      # watch a live run
-curl -sS -X POST "https://potuswatch-generator.<your-subdomain>.workers.dev/run?token=$RUN_TOKEN"
+curl -sS -X POST "https://potuswatch-generator.potuswatchdaily.workers.dev/run?token=$RUN_TOKEN"
 ```
 
 `status: degraded` means the last article is over 3 hours old. The GitHub Actions
-"Generator health check" workflow polls this every 3 hours and emails on failure.
+"Generator health check" workflow polls this hourly and opens a GitHub issue on failure.
 
 Common causes:
 - **Daily free Neuron allocation spent** (error 3040/4006) — 10,000/day, resets 00:00 UTC. ~147 neurons per article, so 24/day should use ~35%. If it is exhausted, something is retrying in a loop.
@@ -212,16 +214,26 @@ Common causes:
 
 ## Credentials location
 
-| Secret | Where stored |
-|---|---|
-| SUPABASE_URL / SUPABASE_KEY | Worker secrets on both the site Worker and the generator Worker (`npx wrangler secret put ...`) |
+| Secret | Where stored | Notes |
+|---|---|---|
+| `SUPABASE_URL` | GitHub Secrets | Pushed to both Workers by `deploy.yml` on every deploy |
+| `SUPABASE_WRITE_KEY` | GitHub Secrets | service_role or `sb_secret_`; uploaded to the generator as `SUPABASE_KEY` |
+| `CLOUDFLARE_API_TOKEN` | GitHub Secrets | Scoped "Edit Cloudflare Workers" token. Never the Global API Key |
+| `CF_PURGE_TOKEN` | GitHub Secrets (optional) | Zone -> Cache Purge on this zone ONLY. Enables purge-on-publish |
+| `UNSPLASH_ACCESS_KEY` | GitHub Secrets (optional) | Without it, images come from government photo feeds only |
+| `RESEND_API_KEY` / `RESEND_AUDIENCE_ID` | Site Worker secrets | Set by hand with `wrangler secret put`; no workflow provisions them |
+| `SUBSCRIBE_SECRET` | Site Worker secret | Signs unsubscribe links |
+| `RUN_TOKEN` | Generator Worker secret | Minted fresh by each deploy; gates `POST /run` and `GET /sources` |
 
-| UNSPLASH_ACCESS_KEY | Worker secret |
-| CLOUDFLARE_API_TOKEN | GitHub Secrets (scoped token, Edit Cloudflare Workers) |
-| CLOUDFLARE_EMAIL | GitHub Secrets |
-| CLOUDFLARE_ACCOUNT_ID | GitHub Secrets |
-| SUPABASE_URL / SUPABASE_KEY | GitHub Secrets (deploy + backup workflows) |
-| CF_ZONE_ID / CF_PURGE_TOKEN | Worker secrets — optional, enables purge-on-publish |
+The site's **read** key is not a secret and is not listed here: it is the
+Supabase publishable key, committed in `project.config.json`. Supabase designs
+that key to ship in browser JavaScript, and row-level security bounds it to
+reading published articles.
+
+`CLOUDFLARE_ACCOUNT_ID` is deliberately **not** a repository secret. When it was
+one, a stale value silently overrode the account pinned in the wrangler configs
+and every deploy failed with a generic authentication error that pointed at the
+token instead.
 
 ---
 

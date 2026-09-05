@@ -53,7 +53,12 @@ Cloudflare Worker ── fetch ──▶ whitehouse.gov       presidential actio
      Edge cache · sitemap index · Google News feed · region hubs
 ```
 
-Two Workers, one database, no servers. The generator and the site are deployed
+Two Workers, one database, no servers.
+
+One caveat, documented at the top of `RUNBOOK.md`: the custom domain is still
+attached to the predecessor Cloudflare Pages project. The site Worker is current
+and correct at its `workers.dev` address; moving the hostname across is a
+deliberate pending migration, not an accident. The generator and the site are deployed
 independently and share nothing but the table.
 
 ## Decisions
@@ -181,7 +186,7 @@ cp worker/.dev.vars.example worker/.dev.vars   # then fill it in
 npx wrangler dev --config worker/wrangler.jsonc
 ```
 
-Worker secrets — `SUPABASE_URL`, `SUPABASE_KEY`, `UNSPLASH_ACCESS_KEY`.
+Worker secrets — `SUPABASE_URL` and `SUPABASE_KEY` are required; `UNSPLASH_ACCESS_KEY`, `CF_ZONE_ID` + `CF_PURGE_TOKEN` and `RUN_TOKEN` are optional.
 Optional: `CF_ZONE_ID` + `CF_PURGE_TOKEN` (purge the edge cache on publish),
 `RUN_TOKEN` (enables `POST /run` to generate on demand).
 
@@ -189,7 +194,6 @@ Optional: `CF_ZONE_ID` + `CF_PURGE_TOKEN` (purge the edge cache on publish),
 
 `RUNBOOK.md` covers failure modes and recovery, including the Pages → Workers
 cutover and its rollback. `POTUSWATCH.md` is the working reference.
-`MIGRATION.md` documents the Railway → Cloudflare move.
 
 ## Licence
 
