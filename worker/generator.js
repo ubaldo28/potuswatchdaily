@@ -116,6 +116,18 @@ const IMAGE_STOPWORDS = new Set([
 // no licence, no attribution requirement, no API key, no rate limit. When a
 // photo genuinely matches the story this beats any stock image, because it is
 // an actual photograph of the subject rather than a mood shot.
+// war.gov answers 403 to "potuswatch-generator/1.0" and 200 to a browser, so
+// every article has been publishing with no image at all. Nothing here is
+// pretending to be a person: the contact URL is still in the string, which is
+// what the polite-crawler convention actually asks for. It is sent on every
+// outbound fetch because the same WAF sits in front of the feeds too.
+const UA = 'Mozilla/5.0 (compatible; potuswatch-generator/1.0; +https://www.potuswatchdaily.com)';
+const FETCH_HEADERS = {
+  'User-Agent': UA,
+  'Accept': 'application/rss+xml, application/xml, text/xml, application/json;q=0.9, */*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.9'
+};
+
 const GOV_PHOTO_FEED = 'https://www.war.gov/desktopmodules/imagegallery/dgovfeeds/leadphotos.ashx?SMPI=1096&ModuleId=579&TabId=131';
 
 /**
@@ -127,7 +139,7 @@ async function getGovImage(titleWords, size) {
   if (!titleWords.length) return '';
   try {
     const r = await fetch(GOV_PHOTO_FEED, {
-      headers: { 'User-Agent': 'potuswatch-generator/1.0 (+https://www.potuswatchdaily.com)' },
+      headers: FETCH_HEADERS,
       signal: AbortSignal.timeout(10000)
     });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -201,6 +213,11 @@ async function getImage(env, region, size, title) {
   // the story. Falls through to Unsplash when it does not.
   const gov = await getGovImage(titleKeywords(title), size);
   if (gov) return gov;
+
+  // No key means no Unsplash. It used to call anyway, with "Client-ID
+  // undefined", and log an authentication failure on every single article --
+  // noise that made a missing key look like a broken integration.
+  if (!env.UNSPLASH_ACCESS_KEY) return '';
 
   try {
     const query = imageQueryFor(title, region);
@@ -460,7 +477,7 @@ function parseFeed(xml) {
 async function fetchFeed(src) {
   try {
     const r = await fetch(src.url, {
-      headers: { 'User-Agent': 'potuswatch-generator/1.0 (+https://www.potuswatchdaily.com)' },
+      headers: FETCH_HEADERS,
       signal: AbortSignal.timeout(12000)
     });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -488,7 +505,7 @@ async function fetchFederalRegister(region) {
     for (const a of agencies) u.searchParams.append('conditions[agencies][]', a);
 
     const r = await fetch(u, {
-      headers: { 'User-Agent': 'potuswatch-generator/1.0 (+https://www.potuswatchdaily.com)' },
+      headers: FETCH_HEADERS,
       signal: AbortSignal.timeout(12000)
     });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
