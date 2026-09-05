@@ -34,7 +34,7 @@ mkdirSync('backups', { recursive: true });
 // Guard: if the table has shrunk by more than 5% since the last snapshot,
 // write nothing and fail the job loudly. A silent overwrite would destroy
 // the only copy of whatever just disappeared.
-const prior = readdirSync('backups').filter(f => f.endsWith('.json')).sort();
+const prior = readdirSync('backups').filter(f => /^articles-\d{4}-\d{2}-\d{2}\.json$/.test(f)).sort();
 if (prior.length) {
   const last = JSON.parse(readFileSync(`backups/${prior[prior.length - 1]}`, 'utf8'));
   const before = last.count ?? last.rows?.length ?? 0;

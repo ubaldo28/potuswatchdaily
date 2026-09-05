@@ -19,7 +19,19 @@ console.log(`backup holds ${rows.length} rows`);
 const live = new Set();
 for (let from = 0; ; from += 1000) {
   const res = await fetch(`${URL_BASE}/rest/v1/articles?select=slug&limit=1000&offset=${from}`, { headers: HEADERS });
+  if (!res.ok) {
+    console.error(`Supabase returned ${res.status} reading live slugs: ${(await res.text()).slice(0, 300)}`);
+    process.exit(1);
+  }
   const batch = await res.json();
+  // PostgREST answers an error with an OBJECT, so an unchecked forEach threw
+  // "batch.forEach is not a function" in the middle of a restore. Worse, an
+  // empty result would have made every row look missing and re-inserted the
+  // entire backup as duplicates.
+  if (!Array.isArray(batch)) {
+    console.error(`Unexpected response reading live slugs: ${JSON.stringify(batch).slice(0, 300)}`);
+    process.exit(1);
+  }
   batch.forEach(r => live.add(r.slug));
   if (batch.length < 1000) break;
 }

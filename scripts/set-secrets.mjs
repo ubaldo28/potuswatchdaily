@@ -188,7 +188,7 @@ for (const s of todo) {
   const v = await askHidden('  paste it here (hidden), or press Enter to skip: ');
   if (!v) { console.log('  skipped\n'); continue; }
 
-  if (s.name === 'SUPABASE_WRITE_KEY' || s.name === 'SUPABASE_READ_KEY') {
+  if (s.name === 'SUPABASE_WRITE_KEY') {
     const isJwt = v.split('.').length === 3 && v.length > 100;
     const isSecret = /^sb_(secret|publishable)_/.test(v);
     const wantsWrite = s.name === 'SUPABASE_WRITE_KEY';
@@ -248,7 +248,12 @@ if (Object.keys(values).length === 0) {
 // Installed into a throwaway directory so it never lands in package.json.
 console.log('Encrypting locally...');
 const scratch = mkdtempSync(join(tmpdir(), 'pw-secrets-'));
-execSync('npm install --silent --no-audit --no-fund libsodium-wrappers@0.7.15', { cwd: scratch, stdio: 'ignore' });
+try {
+  execSync('npm install --silent --no-audit --no-fund libsodium-wrappers@0.7.15', { cwd: scratch, stdio: 'ignore' });
+} catch {
+  console.error('\nCould not install libsodium-wrappers, which is needed to encrypt the secrets\nlocally before they are sent. Check your network or npm proxy, then re-run:\n\n  npm run secrets\n');
+  process.exit(1);
+}
 const { default: sodium } = await import(join(scratch, 'node_modules/libsodium-wrappers/dist/modules/libsodium-wrappers.js'));
 await sodium.ready;
 

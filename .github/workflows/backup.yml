@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   backup:
@@ -30,9 +30,10 @@ jobs:
         run: |
           # Reading is all this job does, so it uses the publishable key from
           # project.config.json -- no secret needed for a backup of public rows.
-          KEY=$(node -p "require('./project.config.json').supabase.publishableKey")
-          if [ -z "$SUPABASE_URL" ] || [ -z "$KEY" ]; then
-            echo "::warning::SUPABASE_URL and a Supabase key are not both set on this repository — skipping the backup. Add them under Settings → Secrets and variables → Actions. The read-only publishable key is sufficient."
+          # The key comes from a committed file, so it is always set; only the
+          # URL can be missing.
+          if [ -z "$SUPABASE_URL" ]; then
+            echo "::warning::SUPABASE_URL is not set on this repository — skipping the backup. Add it under Settings → Secrets and variables → Actions."
             echo "ready=false" >> "$GITHUB_OUTPUT"
           else
             echo "ready=true" >> "$GITHUB_OUTPUT"
@@ -46,16 +47,18 @@ jobs:
           export SUPABASE_KEY=$(node -p "require('./project.config.json').supabase.publishableKey")
           node scripts/backup-articles.mjs
 
-      - name: Keep the 14 most recent daily snapshots
+      # Uploaded as a workflow artifact, NOT committed.
+      #
+      # Committing a ~25 MB JSON dump every day put 71 MB of database snapshots
+      # in the working tree and grew the git pack by several megabytes a day,
+      # permanently, for a project whose actual source is under 1 MB. Anyone
+      # cloning this repository was downloading the database three times over.
+      # Artifacts expire on their own and are downloadable from the run page.
+      - name: Upload the snapshot
         if: steps.cfg.outputs.ready == 'true'
-        run: |
-          ls -1 backups/articles-*.json 2>/dev/null | sort | head -n -14 | xargs -r rm --
-
-      - name: Commit snapshot
-        if: steps.cfg.outputs.ready == 'true'
-        run: |
-          git config user.name  "potuswatch-backup"
-          git config user.email "actions@github.com"
-          git add backups/
-          git diff --staged --quiet || git commit -m "backup: articles table $(date -u +%Y-%m-%d) ($(cat backups/LATEST-COUNT.txt | tr -d '\n') rows)"
-          git push
+        uses: actions/upload-artifact@v4
+        with:
+          name: articles-${{ github.run_id }}
+          path: backups/
+          retention-days: 30
+          if-no-files-found: error

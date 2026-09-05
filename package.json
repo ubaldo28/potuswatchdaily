@@ -1,15 +1,27 @@
 {
   "name": "potuswatch",
   "version": "1.0.0",
+  "private": true,
+  "description": "A foreign-policy news site that writes and publishes itself: an hourly Cloudflare Worker builds articles from U.S. government primary sources, served by Astro SSR on Cloudflare Workers.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ubaldo28/potuswatchdaily.git"
+  },
+  "homepage": "https://www.potuswatchdaily.com",
+  "engines": {
+    "node": ">=22"
+  },
   "type": "module",
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "preview": "astro preview",
     "astro": "astro",
     "check:config": "node scripts/check-config.mjs",
     "doctor": "node scripts/doctor.mjs",
-    "secrets": "node scripts/set-secrets.mjs"
+    "secrets": "node scripts/set-secrets.mjs",
+    "test": "node test/generator.test.mjs",
+    "check": "npm run check:config && npm test"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.2.5",
@@ -17,7 +29,6 @@
     "astro": "^7.2.9"
   },
   "devDependencies": {
-    "@types/node": "^26.4.1",
     "wrangler": "^4.93.0"
   }
 }

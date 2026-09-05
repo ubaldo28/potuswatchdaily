@@ -1,8 +1,9 @@
 /**
  * POTUS Watch — hourly article generator (Cloudflare Worker, Cron Trigger).
  *
- * Port of the Railway service in ../localserver.js.
- * Differences from the Railway version are documented in ../MIGRATION.md.
+ * Ported from the retired Railway/Express service. That process, its NewsAPI
+ * source and its Anthropic generation path are all gone; this Worker is the
+ * whole generator.
  *
  * No axios (its Node http adapter does not work on Workers), no express,
  * no dotenv, no @supabase/supabase-js. Everything is plain fetch().
@@ -14,7 +15,7 @@
  *   RUN_TOKEN  — if set, enables POST /run?token=... to fire a generation by hand.
  */
 
-// ── Config (verbatim from localserver.js) ─────────────────────────────────────
+// ── Config ───────────────────────────────────────────────────────────────────
 const regions = ['Iran', 'China', 'NATO', 'Americas', 'Mideast', 'Russia', 'Trade', 'Analysis'];
 
 const imageQueries = {
@@ -135,8 +136,8 @@ const GOV_PHOTO_FEED = 'https://www.war.gov/desktopmodules/imagegallery/dgovfeed
  * subject. Returns a URL only on a real keyword match — a random military photo
  * on an unrelated story would be no better than random stock.
  */
-async function getGovImage(titleWords, size) {
-  if (!titleWords.length) return '';
+async function getGovImagePair(titleWords) {
+  if (!titleWords.length) return null;
   try {
     const r = await fetch(GOV_PHOTO_FEED, {
       headers: FETCH_HEADERS,
@@ -158,18 +159,19 @@ async function getGovImage(titleWords, size) {
       const score = titleWords.filter(w => hay.includes(w)).length;
       if (score > 0 && (!best || score > best.score)) best = { ...it, score };
     }
-    if (!best) return '';
+    if (!best) return null;
 
-    // The feed serves 600x400; ask for a larger render for the hero.
-    const url = size === 'hero'
-      ? best.url.replace(/\/600\/400\//, '/1200/800/')
-      : best.url;
-
+    // The feed serves 600x400; ask for a larger render for the hero. Both
+    // renditions are the SAME photograph, which is the whole point.
+    const credit = `?pw_src=gov&pw_by=${encodeURIComponent('U.S. Department of War')}&pw_at=${encodeURIComponent('https://www.war.gov')}`;
     console.log(`[image] gov photo matched (${best.score}): "${best.title}"`);
-    return `${url}?pw_src=gov&pw_by=${encodeURIComponent('U.S. Department of War')}&pw_at=${encodeURIComponent('https://www.war.gov')}`;
+    return {
+      hero:  best.url.replace(/\/600\/400\//, '/1200/800/') + credit,
+      thumb: best.url + credit
+    };
   } catch (e) {
     console.warn('[image] gov photo lookup failed:', e.message);
-    return '';
+    return null;
   }
 }
 
@@ -204,20 +206,25 @@ function imageQueryFor(title, region) {
 }
 
 /**
- * Returns { url, credit } where credit is "Name|profileUrl", or '' on failure.
+ * One photograph, resolved once, returned in both renditions the site needs:
+ * a 1200px hero and a 600px card. This used to be two independent calls, which
+ * on the Unsplash path returned two unrelated random photographs -- the card
+ * and the hero showed different things -- and fetched and re-scanned the
+ * government photo feed twice for an identical answer.
+ *
  * Attribution and the download trigger are both REQUIRED by the Unsplash API
- * Guidelines and were previously not done at all.
+ * Guidelines.
  */
-async function getImage(env, region, size, title) {
+async function getImagePair(env, region, title) {
   // Prefer public-domain U.S. government photography when it actually matches
   // the story. Falls through to Unsplash when it does not.
-  const gov = await getGovImage(titleKeywords(title), size);
+  const gov = await getGovImagePair(titleKeywords(title));
   if (gov) return gov;
 
-  // No key means no Unsplash. It used to call anyway, with "Client-ID
-  // undefined", and log an authentication failure on every single article --
-  // noise that made a missing key look like a broken integration.
-  if (!env.UNSPLASH_ACCESS_KEY) return '';
+  // No key means no Unsplash. It used to call anyway with "Client-ID
+  // undefined" and log an authentication failure on every single article --
+  // noise that made a missing optional key look like a broken integration.
+  if (!env.UNSPLASH_ACCESS_KEY) return { hero: '', thumb: '' };
 
   try {
     const query = imageQueryFor(title, region);
@@ -227,38 +234,40 @@ async function getImage(env, region, size, title) {
     u.searchParams.set('content_filter', 'high');
 
     const r = await fetch(u, {
-      headers: { Authorization: 'Client-ID ' + env.UNSPLASH_ACCESS_KEY },
+      headers: { ...FETCH_HEADERS, Authorization: 'Client-ID ' + env.UNSPLASH_ACCESS_KEY },
       signal: AbortSignal.timeout(10000)
     });
     if (!r.ok) throw new Error(`Unsplash ${r.status}: ${(await r.text()).slice(0, 200)}`);
     const data = await r.json();
     console.log(`[image] query "${query}" -> ${data.user?.name || 'unknown'}`);
 
-    // Required by the API Guidelines whenever a photo is used. Fire and forget.
+    // Awaited, not fire-and-forget: an unawaited fetch with no ctx.waitUntil()
+    // is cancelled when the handler returns, so the download event the
+    // Guidelines require was being dropped much of the time.
     if (data.links?.download_location) {
-      fetch(data.links.download_location, {
-        headers: { Authorization: 'Client-ID ' + env.UNSPLASH_ACCESS_KEY }
+      await fetch(data.links.download_location, {
+        headers: { Authorization: 'Client-ID ' + env.UNSPLASH_ACCESS_KEY },
+        signal: AbortSignal.timeout(5000)
       }).catch(() => {});
     }
 
-    const raw = data.urls.raw;
-    let url;
-    if (size === 'thumb') url = raw + '&w=600&q=75&fit=crop';
-    else if (size === 'hero') url = raw + '&w=1200&q=85&fit=crop';
-    else url = data.urls.regular;
-
-    // Attribution is carried in the URL because the articles table has no column
-    // for it. Unsplash ignores unrecognised query params, and the article page
+    // Attribution rides in the URL because the articles table has no column for
+    // it. Unsplash ignores unrecognised query params, and the article page
     // parses these back out to render the required credit line.
+    const raw = data.urls.raw;
     const name = data.user?.name;
     const link = data.user?.links?.html;
-    if (name && link) {
-      url += `&pw_src=unsplash&pw_by=${encodeURIComponent(name)}&pw_at=${encodeURIComponent(link)}`;
-    }
-    return url;
+    const credit = (name && link)
+      ? `&pw_src=unsplash&pw_by=${encodeURIComponent(name)}&pw_at=${encodeURIComponent(link)}`
+      : '';
+
+    return {
+      hero:  `${raw}&w=1200&q=85&fit=crop${credit}`,
+      thumb: `${raw}&w=600&q=75&fit=crop${credit}`
+    };
   } catch (e) {
-    console.warn('Image fetch failed:', e.message);
-    return '';
+    console.warn('[image] Unsplash lookup failed:', e.message);
+    return { hero: '', thumb: '' };
   }
 }
 
@@ -271,40 +280,62 @@ async function getImage(env, region, size, title) {
 async function recentlyUsedSourceUrls(env) {
   try {
     const since = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
-    const rows = await sb(env, `articles?select=sources&published_at=gte.${encodeURIComponent(since)}&limit=${SIMILARITY_ROW_CAP}`);
+    const rows = await sb(env, `articles?select=sources&published_at=gte.${encodeURIComponent(since)}&order=published_at.desc&limit=${SIMILARITY_ROW_CAP}`);
     const used = new Set();
     for (const r of rows || []) {
       try {
-        for (const src of JSON.parse(r.sources || '[]')) if (src?.url) used.add(src.url);
-      } catch { /* a malformed sources cell must not stop generation */ }
+        for (const src of JSON.parse(r.sources || '[]')) {
+          // Only the document an article was actually ABOUT counts as covered.
+          // Supporting documents are cited, not written up, and marking them
+          // covered burned three extra documents an hour out of the same pool
+          // this function reads back -- roughly 480 documents consumed to
+          // produce 120 articles, which is what emptied the pool overnight.
+          // Rows written before the flag existed have no flag; treat those as
+          // covered, so history is not suddenly reopened.
+          if (src?.url && src.lead !== false) used.add(src.url);
+        }
+      } catch (pe) {
+        console.error(`[sources] Malformed sources cell (id ${r.id ?? '?'}): ${pe.message}`);
+      }
     }
     console.log(`[sources] ${used.size} documents already covered in the last 5 days.`);
     return used;
   } catch (e) {
-    console.warn('[sources] Could not load recent source URLs:', e.message);
-    return new Set();
+    // Do NOT return an empty Set. Empty means "nothing is covered", which is
+    // indistinguishable from "I could not find out what is covered", and the
+    // caller will cheerfully republish a document it wrote up an hour ago.
+    console.error('[sources] Could not load recent source URLs:', e.message);
+    throw new Error(`Deduplication unavailable (${e.message}); refusing to publish blind.`);
   }
 }
 
 async function isTooSimilar(env, newTitle) {
   try {
     const since = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-    const data = await sb(env, `articles?select=title&published_at=gte.${encodeURIComponent(since)}&limit=${SIMILARITY_ROW_CAP}`);
+    const data = await sb(env, `articles?select=title&published_at=gte.${encodeURIComponent(since)}&order=published_at.desc&limit=${SIMILARITY_ROW_CAP}`);
     if (!data || !data.length) return false;
 
     const newWords = new Set(newTitle.toLowerCase().replace(/[^a-z0-9\s]/g,'').split(/\s+/).filter(w => w.length > 3));
     for (const row of data) {
-      const existWords = row.title.toLowerCase().replace(/[^a-z0-9\s]/g,'').split(/\s+/).filter(w => w.length > 3);
+      const existWords = String(row.title || '').toLowerCase().replace(/[^a-z0-9\s]/g,'').split(/\s+/).filter(w => w.length > 3);
       const overlap = existWords.filter(w => newWords.has(w)).length;
-      if (overlap >= 4) {
+      // Four was tripping on pure boilerplate: "department/export/controls/
+      // russian" is four words of overlap between two unrelated actions.
+      // Require five, and require the overlap to be at least half the shorter
+      // title, so genuinely different actions are not refused.
+      const shorter = Math.min(existWords.length, newWords.size) || 1;
+      if (overlap >= 5 && overlap / shorter >= 0.5) {
         console.log(`[similarity] Too similar to: "${row.title}" (${overlap} words overlap)`);
         return true;
       }
     }
     return false;
   } catch (e) {
-    console.warn('[similarity] Check failed:', e.message);
-    return false;
+    // Fail CLOSED. This is the last guard against publishing the same story
+    // twice, and treating an unreachable database as "not similar" is the one
+    // outcome worse than skipping.
+    console.error('[similarity] Check failed, treating as duplicate:', e.message);
+    return true;
   }
 }
 
@@ -384,15 +415,44 @@ const FR_AGENCIES = {
 // Topical scoring. Without this the White House feed — which is in every
 // region's source list and carries the heaviest weight — always won the lead
 // slot, so a flag-half-staff proclamation got filed under "Russia".
+// A document that clears the foreign-policy gate is publishable SOMEWHERE.
+// BASE_SCORE is what such a document is worth with no region-term hit at all;
+// TOPICAL_SCORE is the bar for "this really is a <region> story".
+const BASE_SCORE = 1;
+const TOPICAL_SCORE = 2;
+
+// These lists were written before FOREIGN_POLICY_TERMS and never reconciled
+// with it. Eighteen of the forty-two gate terms -- 'korea', 'visa', 'missile',
+// 'embassy', 'export', 'terrorism' among them -- appeared in no region list at
+// all, so a document could pass the gate and then score zero for all eight
+// regions. The standard OFAC blocking notice does exactly that: its prose says
+// "blocked", "designated" and "Office of Foreign Assets Control", never
+// "sanction", and it names no country. On 2026-09-05 that produced nine
+// consecutive hours of "all regions exhausted" with forty uncovered documents
+// sitting in the pool.
+//
+// Note the inverted agency names: government prose is always "Department of
+// State", never "state department", so that term never fired either.
 const REGION_TERMS = {
-  Americas: ['mexico','canada','brazil','venezuela','colombia','cuba','haiti','hemisphere','border','migration','cartel','western hemisphere','latin america','panama','argentina'],
-  China:    ['china','chinese','beijing','xi jinping','taiwan','hong kong','indo-pacific','south china sea','prc','semiconductor','huawei','tariff on china'],
-  NATO:     ['nato','alliance','article 5','baltic','poland','germany','france','united kingdom','norway','allied','transatlantic','european defence','european defense','burden-sharing'],
-  Iran:     ['iran','iranian','tehran','irgc','nuclear','enrichment','hormuz','houthi','proxy','jcpoa','snapback'],
-  Mideast:  ['israel','gaza','palestin','saudi','yemen','syria','lebanon','iraq','jordan','egypt','qatar','uae','emirates','hezbollah','hamas','abraham accords','middle east','afghan'],
-  Russia:   ['russia','russian','moscow','putin','ukraine','kyiv','kremlin','wagner','belarus','black sea','donbas','oil price cap'],
-  Trade:    ['tariff','trade','export control','import','customs','wto','supply chain','sanction','duty','duties','trade agreement','commerce','economic security'],
-  Analysis: ['foreign policy','national security','diplomacy','treaty','alliance','sanction','state department','secretary of state','geopolitic','defense','defence','security council']
+  Americas: ['mexico','canada','brazil','venezuela','colombia','cuba','haiti','hemisphere','border','migration','cartel','western hemisphere','latin america','panama','argentina',
+             'immigration','visa','refugee','asylum','consular','organization of american states'],
+  China:    ['china','chinese','beijing','xi jinping','taiwan','hong kong','indo-pacific','south china sea','prc','semiconductor','huawei','tariff on china',
+             'entity list','export administration','advanced computing','xinjiang','uyghur','bureau of industry'],
+  NATO:     ['nato','alliance','article 5','baltic','poland','germany','france','united kingdom','norway','allied','transatlantic','european defence','european defense','burden-sharing',
+             'sweden','finland','netherlands','italy','spain','turkey','arms transfer','foreign military sale','munitions'],
+  Iran:     ['iran','iranian','tehran','irgc','nuclear','enrichment','hormuz','houthi','proxy','jcpoa','snapback',
+             'ballistic','missile','centrifuge','maximum pressure','tanker'],
+  Mideast:  ['israel','gaza','palestin','saudi','yemen','syria','lebanon','iraq','jordan','egypt','qatar','uae','emirates','hezbollah','hamas','abraham accords','middle east','afghan',
+             'red sea','bab el-mandeb','arms sale','foreign military sale'],
+  Russia:   ['russia','russian','moscow','putin','ukraine','kyiv','kremlin','wagner','belarus','black sea','donbas','oil price cap',
+             'sanctions evasion','price cap','shadow fleet','oligarch','export administration'],
+  Trade:    ['tariff','trade','export control','import','customs','wto','supply chain','sanction','duty','duties','trade agreement','commerce','economic security',
+             'export administration','entity list','itar','arms regulations','bureau of industry','anti-dumping','antidumping','countervailing','section 301','harmonized tariff',
+             'office of foreign assets control','department of commerce'],
+  Analysis: ['foreign policy','national security','diplomacy','treaty','alliance','sanction','state department','secretary of state','geopolitic','defense','defence','security council',
+             'department of state','department of the treasury','department of commerce','korea','north korea','dprk','terrorism','terrorist','weapon','missile','embassy','ambassador',
+             'arms control','nonproliferation','proliferation','human rights','multilateral','united nations','visa','executive order',
+             'office of foreign assets control','blocked person','designation']
 };
 
 // Anything foreign-policy-adjacent at all. A document that matches nothing here
@@ -411,13 +471,24 @@ const CEREMONIAL = /half-staff|half staff|national .{0,30}(day|week|month)\b|pro
 
 function scoreDocument(doc, region) {
   const title = (doc.title || '').toLowerCase();
-  const body = (doc.text || '').slice(0, 3000).toLowerCase();
+  // Memoised on the document. This is called up to three times per document per
+  // region, and in a bad hour that was ~1,280 calls each allocating a fresh 3 KB
+  // lowercased copy -- tens of megabytes of string scanning inside a 10 ms CPU
+  // budget, in precisely the hour that already had trouble.
+  if (doc._lcBody === undefined) doc._lcBody = (doc.text || '').slice(0, 3000).toLowerCase();
+  const body = doc._lcBody;
 
   if (CEREMONIAL.test(title)) return -1;                       // hard reject
-  if (!FOREIGN_POLICY_TERMS.some(t => title.includes(t) || body.includes(t))) return -1;
+
+  const fpTitle = FOREIGN_POLICY_TERMS.some(t => title.includes(t));
+  if (!fpTitle && !FOREIGN_POLICY_TERMS.some(t => body.includes(t))) return -1;
 
   const terms = REGION_TERMS[region] || REGION_TERMS.Analysis;
-  let score = 0;
+  // Baseline, not zero: anything that clears the foreign-policy gate is worth
+  // publishing somewhere. A zero used to be indistinguishable from a hard
+  // reject, which is how a pool full of documents produced no article.
+  let score = BASE_SCORE;
+  if (fpTitle) score += 1;
   for (const t of terms) {
     if (title.includes(t)) score += 5;   // the subject of the document
     else if (body.includes(t)) score += 1;
@@ -558,10 +629,23 @@ async function fetchPrimarySources(region, cache = new Map()) {
     once('fr:' + region, () => fetchFederalRegister(region))
   ]);
 
-  const all = results.flat().filter(i => i.title && i.text && i.text.length > 120);
+  // Federal Register abstracts are frequently null -- most Notices, most
+  // Presidential Documents, most OFAC and BIS actions. Dropping those threw
+  // away the majority of the one source that is supposed to never run dry,
+  // silently, right after per_page was raised to 100 to fix starvation.
+  // A title plus its agency is thin, but it is still a real primary document,
+  // and the scorer reads the title anyway.
+  const all = results.flat()
+    .filter(i => i.title)
+    .map(i => (i.text && i.text.length > 120)
+      ? i
+      : { ...i, text: `${i.title}. ${i.source}.${i.text ? ' ' + i.text : ''}`, thinText: true });
+  const thin = all.filter(i => i.thinText).length;
+  if (thin) console.log(`[sources] ${thin}/${all.length} documents have no usable abstract; using the title.`);
 
   // Rank: full text first, then source weight, then recency.
   all.sort((a, b) => {
+    if (!!a.thinText !== !!b.thinText) return a.thinText ? 1 : -1;
     if (a.hasFullText !== b.hasFullText) return a.hasFullText ? -1 : 1;
     if (a.weight !== b.weight) return b.weight - a.weight;
     return new Date(b.date || 0) - new Date(a.date || 0);
@@ -572,9 +656,13 @@ async function fetchPrimarySources(region, cache = new Map()) {
 
 // ── Cloudflare Workers AI (default, free) ────────────────────────────────────
 // 10,000 Neurons/day are free and reset at 00:00 UTC. @cf/openai/gpt-oss-120b
-// bills 31,818 Neurons/M input and 68,182/M output, so at ~1,200 in / ~1,600 out
-// an article costs ~147 Neurons — roughly 67 articles/day, ~2.8x headroom at the
-// hourly cadence. Do NOT switch to kimi-k2.6/2.7, glm-5.2/5.3 or deepseek-v4-*:
+// bills 31,818 Neurons/M input and 68,182/M output. The real prompt is a
+// ~2,000-char instruction block plus a 4,000-char lead plus 3x900 chars of
+// context — about 1,900 input tokens, not the 1,200 this comment used to
+// claim — and max_tokens is 4,000. Worst case is therefore ~333 Neurons and
+// typical is ~180, so 24 articles/day sits around 4,300-8,000 of the
+// allowance. The headroom is real but it is retries that would spend it, not
+// steady state. Do NOT switch to kimi-k2.6/2.7, glm-5.2/5.3 or deepseek-v4-*:
 // those require a paid billing method and hard-fail on the Workers Free plan.
 const WORKERS_AI_MODEL = '@cf/openai/gpt-oss-120b';
 
@@ -611,24 +699,40 @@ function salvageTruncatedJson(text) {
   let s = text.slice(start);
 
   // Walk the string tracking whether we are inside a quoted value, so we know
-  // where it is safe to cut.
-  let inStr = false, esc = false, depth = 0, lastSafe = -1;
+  // where it is safe to cut. `strStart` remembers where the CURRENT string
+  // opened, which matters below.
+  let inStr = false, esc = false, depth = 0, lastSafe = -1, strStart = -1, closedAt = -1;
   for (let i = 0; i < s.length; i++) {
     const c = s[i];
     if (esc) { esc = false; continue; }
     if (c === '\\') { esc = true; continue; }
-    if (c === '"') { inStr = !inStr; continue; }
+    if (c === '"') { if (!inStr) strStart = i; inStr = !inStr; continue; }
     if (inStr) continue;
     if (c === '{') depth++;
-    else if (c === '}') { depth--; if (depth === 0) return null; }  // not truncated
+    else if (c === '}') { depth--; if (depth === 0) { closedAt = i; break; } }
     else if (c === ',' && depth === 1) lastSafe = i;
   }
 
+  // A balanced object that closed cleanly was not truncated at all -- it just
+  // had junk after it, which is why the primary parse (which cuts at the LAST
+  // brace in the payload) failed. Return that object rather than throwing away
+  // a perfectly good generation because the model appended a sentence.
+  if (closedAt !== -1) {
+    try {
+      const parsed = JSON.parse(s.slice(0, closedAt + 1));
+      return (parsed && parsed.title && typeof parsed.body === 'string' && parsed.body.length > 400)
+        ? parsed : null;
+    } catch { return null; }
+  }
+
   if (inStr) {
-    // Cut the severed string back to its last paragraph break so the article
-    // does not end mid-sentence, then close the quote.
+    // Search for the paragraph break ONLY inside the severed string. Searching
+    // the whole payload could land the cut inside an EARLIER, complete field,
+    // producing an object that parses cleanly with a silently amputated body
+    // and a log line claiming a successful salvage.
     const brk = s.lastIndexOf('\\n\\n');
-    if (brk > 0) s = s.slice(0, brk);
+    if (brk > strStart) s = s.slice(0, brk);
+    else s = s.slice(0, strStart + 1);
     // The cut can land inside a two-character escape ("\\n", "\\u00e9"). A
     // dangling backslash would escape the quote we are about to add, so drop
     // any trailing partial escape first.
@@ -641,7 +745,9 @@ function salvageTruncatedJson(text) {
 
   try {
     const parsed = JSON.parse(s);
-    return (parsed && parsed.title && parsed.body) ? parsed : null;
+    // A sixty-character "body" is not an article; let the caller retry.
+    return (parsed && parsed.title && typeof parsed.body === 'string' && parsed.body.length > 400)
+      ? parsed : null;
   } catch {
     return null;
   }
@@ -650,8 +756,12 @@ function salvageTruncatedJson(text) {
 async function callWorkersAI(env, prompt) {
   if (!env.AI) throw new Error('Workers AI binding "AI" is not configured. Add {"ai":{"binding":"AI"}} to wrangler.jsonc and redeploy.');
 
+  // One attempt. The retry loop lives in generateArticleJson, which can also
+  // retry a well-formed response whose CONTENT is unusable -- this loop could
+  // only ever retry a thrown error, so a model that returned prose burned the
+  // hour with two unused retries still on the table.
   let lastErr;
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  for (let attempt = 1; attempt <= 1; attempt++) {
     try {
       // max_tokens defaults to 256 on Workers AI. Without this the article is
       // truncated mid-JSON and the parse fails. 2500 was too small -- a
@@ -704,6 +814,54 @@ async function generateText(env, prompt) {
 }
 
 // ── Main generation routine ───────────────────────────────────────────────────
+/**
+ * Generate AND parse in one retry loop.
+ *
+ * `callWorkersAI` retried only on a thrown error. A response that was a
+ * perfectly well-formed string of the wrong content -- prose, an apology, a
+ * markdown fence with nothing in it, half an object that cannot be salvaged --
+ * returned successfully, and the parse and validation then threw outside the
+ * retry. One bad sample cost the whole hour with two unused retries still on
+ * the table.
+ */
+async function generateArticleJson(env, prompt) {
+  let lastErr;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    let raw;
+    try {
+      raw = await generateText(env, prompt);
+    } catch (e) {
+      // The daily Neuron allowance is not a retryable condition.
+      if (/\b(3040|4006)\b/.test(String(e?.message)) || /neuron/i.test(String(e?.message))) throw e;
+      lastErr = e;
+      continue;
+    }
+
+    raw = raw.replace(/[\x00-\x1F\x7F]/g, ' ').replace(/```json|```/g, '').trim();
+    const js = raw.indexOf('{'), je = raw.lastIndexOf('}') + 1;
+
+    let parsed = null;
+    if (js !== -1 && je > js) {
+      try { parsed = JSON.parse(raw.slice(js, je)); } catch { /* try salvage */ }
+    }
+    if (!parsed) {
+      parsed = salvageTruncatedJson(raw);
+      if (parsed) console.warn(`[generator] Output truncated; salvaged ${parsed.body.length} chars of body.`);
+    }
+
+    // A salvage that recovers forty characters is not an article.
+    if (parsed && typeof parsed.title === 'string' && parsed.title.trim()
+        && typeof parsed.body === 'string' && parsed.body.length > 400) {
+      return parsed;
+    }
+
+    lastErr = new Error(`Unusable model output on attempt ${attempt}: ${raw.slice(0, 300)}`);
+    console.warn(`[generator] ${lastErr.message}`);
+    if (attempt < 3) await sleep(2000 * attempt);
+  }
+  throw lastErr;
+}
+
 async function generateArticle(env) {
   console.log('[generator] Starting article generation...');
 
@@ -746,21 +904,30 @@ async function generateArticle(env) {
   const tried = [];
 
   const sourceCache = new Map();
+  let minScore = TOPICAL_SCORE;
 
-  for (const candidate of order) {
-    const docs = await fetchPrimarySources(candidate, sourceCache);
-    const unused = docs.filter(d => !alreadyCovered.has(d.url));
-    // Require something that also scores as foreign-policy relevant, otherwise
-    // this just defers the same skip a few lines further down.
-    const usable = unused.some(d => scoreDocument(d, candidate) > 0);
+  // Two passes over the SAME cached documents, so this costs no extra
+  // subrequests. Pass one demands real topical affinity, so a Russia story
+  // still files under Russia. Pass two accepts anything that merely clears the
+  // foreign-policy gate, so an hour is skipped only when there is genuinely
+  // nothing uncovered left -- not merely nothing matching fifteen hand-written
+  // words.
+  outer:
+  for (const threshold of [TOPICAL_SCORE, BASE_SCORE]) {
+    for (const candidate of order) {
+      const docs = await fetchPrimarySources(candidate, sourceCache);
+      const unused = docs.filter(d => !alreadyCovered.has(d.url));
+      const usable = unused.some(d => scoreDocument(d, candidate) >= threshold);
 
-    tried.push(`${candidate}:${docs.length}/${unused.length}${usable ? '' : ' (none relevant)'}`);
+      tried.push(`${candidate}@${threshold}:${docs.length}/${unused.length}${usable ? '' : ' (none relevant)'}`);
 
-    if (usable) {
-      region = candidate;
-      allDocs = docs;
-      fresh = unused;
-      break;
+      if (usable) {
+        region = candidate;
+        allDocs = docs;
+        fresh = unused;
+        minScore = threshold;
+        break outer;
+      }
     }
   }
 
@@ -784,43 +951,42 @@ async function generateArticle(env) {
   // or with no foreign-policy content at all scores -1 and is dropped outright.
   const scored = fresh
     .map(d => ({ doc: d, score: scoreDocument(d, region) }))
-    .filter(x => x.score > 0)
+    .filter(x => x.score >= minScore)
     .sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
       if (a.doc.hasFullText !== b.doc.hasFullText) return a.doc.hasFullText ? -1 : 1;
       return new Date(b.doc.date || 0) - new Date(a.doc.date || 0);
     });
 
+  // The region loop only breaks when at least one uncovered document cleared
+  // `minScore` for this exact region, so `scored` is non-empty by construction.
+  // The cross-region reassignment that used to live here was unreachable for
+  // the same reason -- it was written before the loop above existed, and so the
+  // safety net meant to catch a zero-scoring pool had never once run.
   if (!scored.length) {
-    // The round-robin region has nothing relevant today. Rather than forcing an
-    // off-topic article into it, find the region that DOES match the material.
-    let best = null;
-    for (const r of Object.keys(REGION_TERMS)) {
-      for (const d of fresh) {
-        const sc = scoreDocument(d, r);
-        if (sc > 0 && (!best || sc > best.score)) best = { doc: d, score: sc, region: r };
-      }
-    }
-    if (!best) {
-      console.warn(`[generator] No document scored as foreign-policy relevant for any region. Skipping.`);
-      return { status: 'skipped', reason: 'no-relevant-sources' };
-    }
-    console.log(`[generator] No relevant ${region} material; reassigning to ${best.region}.`);
-    region = best.region;
-    scored.push({ doc: best.doc, score: best.score });
+    throw new Error('Internal invariant broken: region loop chose a region with no scoring documents.');
   }
 
-  const lead = scored[0].doc;
-  console.log(`[generator] Lead: "${lead.title}" (${lead.source}, ${region} score ${scored[0].score})`);
+  // Up to three candidate leads. A similarity hit means "write about a
+  // different document", not "publish nothing this hour" -- the masthead says
+  // Updated Hourly, and the remaining candidates are already in memory and
+  // already paid for.
+  let lead = null, context = [], used = [], parsed = null;
 
-  // Context must also clear the relevance bar, or it drags the article off topic.
-  const context = allDocs
-    .filter(d => d.url !== lead.url && scoreDocument(d, region) > 0)
-    .slice(0, 3);
-  const used = [lead, ...context];
-  console.log(`[generator] ${context.length} supporting documents.`);
+  for (const candidate of scored.slice(0, 3)) {
+    lead = candidate.doc;
+    console.log(`[generator] Lead: "${lead.title}" (${lead.source}, ${region} score ${candidate.score})`);
 
-  const leadBlock = `[1] LEAD DOCUMENT — this article is about this document\n    ${lead.title}\n    Source: ${lead.source}${lead.date ? ` (${lead.date})` : ''}\n    URL: ${lead.url}\n    ${lead.text.slice(0, lead.hasFullText ? 6000 : 1500)}`;
+    // Context comes from UNCOVERED documents and must clear the relevance bar,
+    // or it drags the article off topic. Drawing it from allDocs also re-stamped
+    // already-covered documents' five-day clock forward for no benefit.
+    context = fresh
+      .filter(d => d.url !== lead.url && scoreDocument(d, region) >= BASE_SCORE)
+      .slice(0, 3);
+    used = [lead, ...context];
+    console.log(`[generator] ${context.length} supporting documents.`);
+
+  const leadBlock = `[1] LEAD DOCUMENT — this article is about this document\n    ${lead.title}\n    Source: ${lead.source}${lead.date ? ` (${lead.date})` : ''}\n    URL: ${lead.url}\n    ${lead.text.slice(0, lead.hasFullText ? 4000 : 1500)}`;
 
   const contextBlock = context.length
     ? '\n\n' + context.map((d, i) =>
@@ -837,7 +1003,6 @@ async function generateArticle(env) {
   ];
   const articleType = types[Math.floor(Math.random() * types.length)];
 
-  // Prompt text is byte-for-byte identical to localserver.js.
   const prompt = `You are a senior foreign policy correspondent at POTUS Watch Daily writing a ${articleType} on the ${region} portfolio.
 
 Below are PRIMARY SOURCE DOCUMENTS. Document [1] is the LEAD — this article is about that document and nothing else. The others are supporting context you may reference where genuinely relevant, but they must not drive the headline, the opening, or the structure.
@@ -877,50 +1042,50 @@ Slug rules: derived from the headline, url-safe, specific enough to be unique, n
 Respond ONLY with valid JSON, no markdown:
 {"title":"specific 5-9 word headline about document [1]","region":"${region}","excerpt":"one sentence max 25 words","meta_description":"max 155 chars","slug":"specific-url-slug","body":"## Heading One\\n\\nparagraph\\n\\nparagraph\\n\\n## Heading Two\\n\\nparagraph\\n\\nparagraph\\n\\n## Heading Three\\n\\nparagraph\\n\\nparagraph\\n\\n## Heading Four\\n\\nparagraph"}`;
 
-  let raw = await generateText(env, prompt);
-  raw = raw.replace(/[\x00-\x1F\x7F]/g,' ').replace(/```json|```/g,'').trim();
-  const js = raw.indexOf('{'), je = raw.lastIndexOf('}') + 1;
+    const attempt = await generateArticleJson(env, prompt);
 
-  let parsed;
-  try {
-    parsed = JSON.parse(raw.slice(js, je));
-  } catch (e) {
-    // A cut-off response still contains a usable article most of the time.
-    parsed = salvageTruncatedJson(raw);
-    if (parsed) {
-      console.warn(`[generator] Model output was truncated; salvaged ${parsed.body.length} chars of body.`);
-    } else {
-      console.error('[generator] Failed to parse model JSON. First 600 chars of payload:', raw.slice(0, 600));
-      throw new Error(`Model returned unparseable JSON: ${e.message}`);
+    if (await isTooSimilar(env, attempt.title)) {
+      console.log(`[generator] "${attempt.title}" is too similar to recent content — trying the next document.`);
+      continue;
     }
-  }
-  if (!parsed.title || !parsed.body) {
-    throw new Error(`Model JSON missing title or body. Keys: ${Object.keys(parsed).join(',')}`);
+    parsed = attempt;
+    break;
   }
 
-  if (await isTooSimilar(env, parsed.title)) {
-    console.log('[generator] Article too similar to recent content — skipping.');
-    return { status: 'skipped', reason: 'too-similar', title: parsed.title };
+  if (!parsed) {
+    return { status: 'skipped', reason: 'too-similar', tried };
   }
 
   const slug = (parsed.slug && parsed.slug.length > 3) ? slugify(parsed.slug) : slugify(parsed.title);
 
-  // NOTE: this mirrors localserver.js exactly, including the quirk that the
-  // uniqueness probe uses `slug` while the row is inserted with `cleanSlug`.
-  // See MIGRATION.md ("Known quirk carried over").
+  const cleanSlug = slug.replace(/\b(20\d\d)\b-?/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  // A headline of nothing but stopwords slugifies to '' and would publish at
+  // /article/ with no slug at all.
+  const baseSlug = cleanSlug || `${String(region).toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
+
+  // Probe the slug that is actually inserted. Probing `slug` while inserting
+  // `cleanSlug` meant any headline containing a year skipped the collision
+  // check entirely and hit the unique constraint on write -- losing the hour
+  // after the model call had already been paid for.
   let existing = null;
   try {
-    existing = await sb(env, `articles?select=slug&slug=eq.${encodeURIComponent(slug)}&limit=1`);
+    existing = await sb(env, `articles?select=slug&slug=eq.${encodeURIComponent(baseSlug)}&limit=1`);
   } catch (e) {
-    console.warn('[generator] Slug uniqueness probe failed, continuing:', e.message);
+    // Assume collision. Continuing as though the slug were free is the less
+    // safe of the two guesses.
+    console.warn('[generator] Slug uniqueness probe failed, suffixing defensively:', e.message);
+    existing = [{}];
   }
+  const finalSlug = (existing && existing.length) ? `${baseSlug}-${Date.now()}` : baseSlug;
 
-  const cleanSlug = slug.replace(/\b(2024|2025|2026|2027)\b-?/g,'').replace(/-+/g,'-').replace(/^-|-$/g,'');
-  const finalSlug = (existing && existing.length) ? cleanSlug + '-' + Date.now() : cleanSlug;
-
-  const heroImage = await getImage(env, region, 'hero', parsed.title);
-  const cardImage = await getImage(env, region, 'thumb', parsed.title);
-  if (!heroImage && !cardImage) console.warn('[generator] Both image fetches failed; publishing without images.');
+  // One lookup, two renditions. Two independent calls meant two independent
+  // /photos/random results, so the card on the front page and the hero on the
+  // article page showed different photographs of different things -- and the
+  // government feed was fetched and scanned twice for an identical answer.
+  const picked = await getImagePair(env, region, parsed.title);
+  const heroImage = picked.hero;
+  const cardImage = picked.thumb;
+  if (!heroImage && !cardImage) console.warn('[generator] No image found; publishing without one.');
 
   const now = new Date();
 
@@ -928,15 +1093,25 @@ Respond ONLY with valid JSON, no markdown:
     method: 'POST',
     headers: { Prefer: 'return=minimal' },
     body: JSON.stringify({
-      title: parsed.title, region: parsed.region || region,
-      excerpt: parsed.excerpt, meta_description: parsed.meta_description || parsed.excerpt,
+      title: parsed.title,
+      // Never trust the model's echo of the region. An unrecognised value
+      // breaks the round-robin (indexOf -> -1 -> always restart at Iran) and
+      // orphans the article from its /region/ page.
+      region: regions.includes(parsed.region) ? parsed.region : region,
+      excerpt: parsed.excerpt || parsed.title,
+      meta_description: parsed.meta_description || parsed.excerpt || parsed.title,
       slug: finalSlug, body: parsed.body,
       image: cardImage || heroImage, hero_image: heroImage || cardImage,
       published_at: now.toISOString(),
       date: now.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' }),
       time: now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', hourCycle:'h23' }),
       // The documents actually placed in the prompt — these are real citations now.
-      sources: JSON.stringify(used.map(d => ({ title: d.title, url: d.url })))
+      // `lead` marks the document this article is ABOUT. recentlyUsedSourceUrls
+      // treats only those as covered, so citing a document no longer spends it.
+      sources: JSON.stringify([
+        { title: lead.title, url: lead.url, lead: true },
+        ...context.map(d => ({ title: d.title, url: d.url, lead: false }))
+      ])
     })
   });
 
@@ -955,7 +1130,8 @@ Respond ONLY with valid JSON, no markdown:
       }),
       signal: AbortSignal.timeout(10000)
     });
-    console.log(`[indexnow] Submitted: ${finalSlug} (HTTP ${r.status})`);
+    if (r.ok) console.log(`[indexnow] Submitted: ${finalSlug}`);
+      else console.warn(`[indexnow] Rejected: ${finalSlug} (HTTP ${r.status})`);
   } catch (ie) {
     console.warn('[indexnow] Failed:', ie.message);
   }
@@ -964,15 +1140,14 @@ Respond ONLY with valid JSON, no markdown:
   // appears immediately despite the s-maxage set in src/middleware.ts. The new
   // article's own URL was never cached, so it needs no purge. No-ops silently
   // when the two optional vars are unset.
-  if (env.CF_ZONE_ID && (env.CF_PURGE_TOKEN || (env.CF_EMAIL && env.CF_API_KEY))) {
+  // Token only. The CF_EMAIL + CF_API_KEY (Global API Key) fallback that used
+  // to live here was provisioned by nothing in this repository and could not be
+  // scoped even if it were -- a Global Key grants the whole account.
+  if (env.CF_ZONE_ID && env.CF_PURGE_TOKEN) {
     try {
       const r = await fetch(`https://api.cloudflare.com/client/v4/zones/${env.CF_ZONE_ID}/purge_cache`, {
         method: 'POST',
-        // Either a scoped token (preferred) or the Global API Key, whichever
-        // is configured. The Global Key is what already lives in GitHub Secrets.
-        headers: env.CF_PURGE_TOKEN
-          ? { Authorization: `Bearer ${env.CF_PURGE_TOKEN}`, 'Content-Type': 'application/json' }
-          : { 'X-Auth-Email': env.CF_EMAIL, 'X-Auth-Key': env.CF_API_KEY, 'Content-Type': 'application/json' },
+        headers: { Authorization: `Bearer ${env.CF_PURGE_TOKEN}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ files: [
           'https://www.potuswatchdaily.com/',
           'https://www.potuswatchdaily.com/archive',
@@ -982,7 +1157,11 @@ Respond ONLY with valid JSON, no markdown:
           `https://www.potuswatchdaily.com/region/${String(region).toLowerCase() === 'middle east' ? 'mideast' : String(region).toLowerCase().replace(/\s+/g, '-')}`,
         ] }),
       });
-      console.log(`[cf-purge] HTTP ${r.status}`);
+      // The purge API answers 200 with {"success":false} for a bad zone, so
+      // the status alone is not the outcome.
+      const body = await r.json().catch(() => ({}));
+      if (r.ok && body.success !== false) console.log('[cf-purge] Purged.');
+      else console.warn(`[cf-purge] Failed: HTTP ${r.status} ${JSON.stringify(body).slice(0, 200)}`);
     } catch (pe) {
       console.warn('[cf-purge] Failed:', pe.message);
     }
@@ -1019,8 +1198,11 @@ export default {
   /**
    * Not required by the cron, but handy during cutover.
    *   GET  /health          — is the feed still fresh?
-   *   GET  /sources         — which feeds are alive, and how much unused material is left
-   *   POST /run?token=...   — fire a generation by hand (only if RUN_TOKEN is set)
+   *   GET  /sources         — which feeds are alive and how much unused material is left;
+ *                           same Bearer token as /run
+   *   POST /run             — fire a generation by hand, Authorization: Bearer $RUN_TOKEN
+ *                           (only when RUN_TOKEN is set). A ?token= query param is
+ *                           NOT accepted: query strings land in Workers Logs.
    */
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -1033,10 +1215,12 @@ export default {
           ? Math.floor((Date.now() - new Date(last.published_at).getTime()) / 60000)
           : null;
         return Response.json({
-          status: minsSinceLast === null || minsSinceLast > 180 ? 'degraded' : 'ok',
+          // 90, not 180. At 180 an hourly site can miss two consecutive hours
+          // and still report healthy, which is exactly what it did.
+          status: minsSinceLast === null || minsSinceLast > 90 ? 'degraded' : 'ok',
           last_article_minutes_ago: minsSinceLast,
           last_article_title: last?.title ?? null
-        });
+        }, { headers: { 'Cache-Control': 'no-store' } });
       } catch (e) {
         console.error('[health] Supabase query failed:', e.message);
         return Response.json({ status: 'degraded' }, { status: 503 });
@@ -1075,6 +1259,19 @@ export default {
     // way to tell them apart was to read Worker logs in a dashboard nobody has
     // open at 3am.
     if (url.pathname === '/sources') {
+      // Same gate as /run. Unauthenticated, this fired twelve outbound requests
+      // at five government sites per call from Cloudflare IPs, ran the heaviest
+      // CPU path in the Worker, and published the coverage runway -- i.e. when
+      // the site is about to go quiet -- to anyone who asked. war.gov's filter
+      // already 403s this Worker once; this is the fastest way to earn a
+      // permanent block that would read as "the feed changed shape".
+      if (!env.RUN_TOKEN) return new Response('Not found', { status: 404 });
+      const auth = request.headers.get('authorization') || '';
+      const presented = (auth.startsWith('Bearer ') ? auth.slice(7) : '').trim();
+      if (!timingSafeEqual(presented, String(env.RUN_TOKEN).trim())) {
+        return new Response('Forbidden', { status: 403 });
+      }
+
       const cache = new Map();
       const covered = await recentlyUsedSourceUrls(env).catch(() => new Set());
       const perRegion = {};
@@ -1084,7 +1281,7 @@ export default {
       for (const r of regions) {
         const docs = await fetchPrimarySources(r, cache);
         const uncovered = docs.filter(d => !covered.has(d.url));
-        const usable = uncovered.filter(d => scoreDocument(d, r) > 0);
+        const usable = uncovered.filter(d => scoreDocument(d, r) >= BASE_SCORE);
         for (const d of usable) {
           if (!seen.has(d.url)) { seen.add(d.url); totalUncovered++; }
         }
@@ -1104,7 +1301,7 @@ export default {
         hours_of_runway: totalUncovered,
         by_source: bySource,
         by_region: perRegion
-      });
+      }, { headers: { 'Cache-Control': 'private, max-age=300', 'X-Robots-Tag': 'noindex' } });
     }
 
     return new Response('potuswatch-generator: cron worker. Try GET /health or GET /sources', { status: 404 });

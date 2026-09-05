@@ -90,7 +90,10 @@ if (!process.env.GITHUB_ACTIONS) {
   };
   console.log('\nSetting Worker secrets for purge-on-publish:');
   put('CF_ZONE_ID', zoneId);
-  put('CF_API_TOKEN', TOKEN);
+  // CF_PURGE_TOKEN, not CF_API_TOKEN: the Worker reads the former, and nothing
+// anywhere reads the latter, so this script used to report success while
+// purge-on-publish stayed permanently off.
+put('CF_PURGE_TOKEN', TOKEN);
 }
 
 console.log(`\nCF_ZONE_ID=${zoneId}`);

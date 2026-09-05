@@ -5,6 +5,13 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Each run mints a fresh RUN_TOKEN and then uses it. Two overlapping runs meant
+# the second one's `wrangler secret put` invalidated the first one's token, and
+# the first run failed with a bare "Forbidden" that nothing in its log explained.
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
@@ -71,6 +78,13 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      # Cheap, network-free, and covers the decision logic that has actually
+      # broken this site: the relevance scorer that once returned zero for
+      # every document in a full pool, and the JSON salvage that once truncated
+      # an article silently.
+      - name: Run tests
+        run: npm test
 
       - name: Build Astro site
         run: npm run build
@@ -206,8 +220,13 @@ jobs:
               exit 1 ;;
           esac
 
-      # The site's key was just replaced, so prove the front page still renders
-      # real articles rather than finding out from a reader.
+      # Two different questions, and they need two different requests.
+      #
+      # The live domain is served by the PAGES project, not by the Worker this
+      # job just deployed (see RUNBOOK.md). So this step is an outside-in check
+      # that readers still see articles — it would pass even if the Worker were
+      # completely broken. The Worker's own hostname is checked too, which is
+      # what actually verifies the deploy.
       - name: Verify the site still serves articles
         run: |
           DOMAIN=$(node -p "require('./project.config.json').site.domain")
@@ -221,4 +240,12 @@ jobs:
           case "$BODY" in
             *article*) echo "Front page is rendering articles." ;;
             *) echo "::error::The site rendered, but with no article markup on it."; exit 1 ;;
+          esac
+
+          WORKER="https://potuswatchdaily-site.$(node -p "require('./project.config.json').cloudflare.workersDevSubdomain").workers.dev/"
+          WBODY=$(curl -sSL --max-time 30 "$WORKER" || true)
+          echo "$WORKER returned ${#WBODY} bytes"
+          case "$WBODY" in
+            *article*) echo "The Worker this job deployed is serving articles." ;;
+            *) echo "::error::The site Worker deployed but serves no articles: check its Supabase secrets."; exit 1 ;;
           esac

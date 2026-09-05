@@ -25,8 +25,14 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
+          # pipefail matters here: without it the step's exit status is tee's,
+          # which is 0 even when the script throws. ZONE then came out empty,
+          # an empty CF_ZONE_ID was written to the Worker, and purge-on-publish
+          # stayed silently off.
+          set -euo pipefail
           node scripts/setup-cache-rule.mjs | tee out.txt
           ZONE=$(grep -o 'CF_ZONE_ID=[a-f0-9]*' out.txt | cut -d= -f2)
+          [ -n "$ZONE" ] || { echo "::error::setup-cache-rule.mjs produced no CF_ZONE_ID"; exit 1; }
           echo "zone_id=$ZONE" >> "$GITHUB_OUTPUT"
           echo "Zone: $ZONE"
 
@@ -35,6 +41,12 @@ jobs:
       - name: Set Worker purge secrets
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # A SEPARATE, purge-only token. The deploy token used to be written
+          # into the generator Worker as CF_PURGE_TOKEN -- an account-wide
+          # Workers-edit credential sitting inside a publicly reachable Worker,
+          # where the purge call needs exactly one permission: Zone → Cache
+          # Purge on this one zone.
+          CF_PURGE_TOKEN: ${{ secrets.CF_PURGE_TOKEN }}
           # No CLOUDFLARE_ACCOUNT_ID here on purpose. When it was a repository
           # secret it held a stale value, wrangler preferred it over the account
           # pinned in worker/wrangler.jsonc, and every run failed with a generic
@@ -46,6 +58,10 @@ jobs:
           ZONE_ID: ${{ steps.rule.outputs.zone_id }}
         run: |
           set -e
-          printf '%s' "$ZONE_ID"              | npx --yes wrangler@4 secret put CF_ZONE_ID     --config worker/wrangler.jsonc
-          printf '%s' "$CLOUDFLARE_API_TOKEN" | npx --yes wrangler@4 secret put CF_PURGE_TOKEN --config worker/wrangler.jsonc
+          if [ -z "$CF_PURGE_TOKEN" ]; then
+            echo "::error::CF_PURGE_TOKEN is not set. Create a token with Zone → Cache Purge on potuswatchdaily.com only, and add it as a repository secret. Do not reuse CLOUDFLARE_API_TOKEN — that one can edit every Worker in the account, and this puts it inside a publicly reachable Worker."
+            exit 1
+          fi
+          printf '%s' "$ZONE_ID"        | npx --yes wrangler@4 secret put CF_ZONE_ID     --config worker/wrangler.jsonc
+          printf '%s' "$CF_PURGE_TOKEN" | npx --yes wrangler@4 secret put CF_PURGE_TOKEN --config worker/wrangler.jsonc
           echo "Purge secrets set."
