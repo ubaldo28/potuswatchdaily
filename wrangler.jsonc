@@ -15,9 +15,18 @@
   "compatibility_flags": [
     "nodejs_compat"
   ],
-  // The preview hostname served a full, indexable copy of every page, and a
-  // canonical tag is a hint rather than a directive.
-  "workers_dev": false,
+  // Back on, deliberately. It was switched off because the preview hostname
+  // served a full, indexable copy of every page and a canonical tag is a hint
+  // rather than a directive -- but src/middleware.ts now sends
+  // "X-Robots-Tag: noindex, nofollow" on every response whose Host is not the
+  // canonical one, which IS a directive and covers this hostname.
+  //
+  // It needs to be reachable: potuswatchdaily.com is still served by the Pages
+  // project, not by this Worker, so this hostname is the only way to see what
+  // this Worker actually serves before the domain is moved onto it. Switching a
+  // live domain onto a Worker nobody can load first is not a migration, it is a
+  // coin toss. See RUNBOOK.md.
+  "workers_dev": true,
 
   "observability": {
     "enabled": true

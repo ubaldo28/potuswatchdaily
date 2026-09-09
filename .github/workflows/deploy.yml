@@ -242,15 +242,17 @@ jobs:
             *) echo "::error::The site rendered, but with no article markup on it."; exit 1 ;;
           esac
 
-          # There is deliberately no second probe of the site Worker's own
-          # workers.dev hostname here. `workers_dev` is false in wrangler.jsonc,
-          # because that hostname served a full, indexable duplicate of every
-          # page — so the address this step used to curl no longer resolves, and
-          # checking it failed the build on a URL we switched off on purpose.
-          #
-          # That leaves a real gap and it is worth naming: the live domain is
-          # served by the Pages project, so a green run here does NOT prove the
-          # site Worker is healthy. Closing it properly means moving the
-          # hostname onto the Worker, which is the migration RUNBOOK.md
-          # describes. Until then this step checks what readers see, which is
-          # the thing that matters most.
+          # The domain above is served by the PAGES project, so the check so far
+          # proves nothing about the Worker this job just deployed. This second
+          # probe is the one that does. It was removed once because
+          # `workers_dev` had been set to false in the same batch that added it,
+          # so it curled a hostname that no longer resolved; workers_dev is true
+          # again and the noindex header for non-canonical hosts is what keeps
+          # that hostname out of the index now.
+          WORKER="https://potuswatchdaily-site.$(node -p "require('./project.config.json').cloudflare.workersDevSubdomain").workers.dev/"
+          WBODY=$(curl -sSL --max-time 30 "$WORKER" || true)
+          echo "$WORKER returned ${#WBODY} bytes"
+          case "$WBODY" in
+            *article*) echo "The Worker this job deployed is serving articles." ;;
+            *) echo "::error::The site Worker deployed but serves no articles: check its Supabase secrets."; exit 1 ;;
+          esac
