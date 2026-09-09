@@ -264,16 +264,31 @@ generator Worker changed.
    still served by Pages at this point:
    `/`, `/article/<any-slug>`, `/archive/`, `/region/china`, `/sitemap.xml`,
    `/news-sitemap.xml`, `/robots.txt`, `/feed.xml`.
-5. Only then, in the dashboard: Workers & Pages → potuswatchdaily → Settings →
-   Domains & Routes on **potuswatchdaily-site** → add `www.potuswatchdaily.com`
-   and `potuswatchdaily.com`.
-   Adding the custom domain to the Worker takes it off the Pages project.
-6. Re-verify on the real domain, including the apex → www 301.
+5. Steps 5 and 6 are no longer done by hand. Do NOT remove the domain from
+   Pages in the dashboard and then add it to the Worker: Cloudflare will not let
+   a hostname sit on both, so between those two clicks the site is down, and it
+   refuses the Worker custom domain outright if the CNAME Pages left behind is
+   still there ("domain already in use").
+
+   Actions tab → **Move the domain onto the Worker**:
+
+   - **check** — writes nothing. Fetches the Worker and confirms it serves real
+     articles, then proves the API token can do every write the switch needs by
+     attaching and detaching a throwaway probe hostname. A token missing
+     Pages:Edit fails here, with the live site untouched.
+   - **switch** — takes each hostname off Pages, clears the record it left, and
+     attaches it to the Worker, back to back. Then polls the live domain, and
+     rolls itself back if it does not come up serving articles.
+   - **rollback** — puts both hostnames back on Pages.
+
+   The token needs, on this account: Cloudflare Pages · Edit, Workers Scripts ·
+   Edit, Zone · Read, DNS · Edit. The deploy token has the last three and
+   probably not the first; **check** says so in plain words.
 
 ### Rollback
 
-Re-point the custom domain at the Pages project. The last Pages deployment is
-still there and still serves the pre-migration build.
+Actions tab → Move the domain onto the Worker → **rollback**. The Pages project
+and its last deployment are never deleted, so it is always there to go back to.
 
 ### What changed in code
 

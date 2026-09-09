@@ -14,7 +14,15 @@
 
   "cloudflare": {
     "accountId": "7ded3077a7ce39644f81502fc5e09647",
-    "workersDevSubdomain": "potuswatchdaily"
+    "workersDevSubdomain": "potuswatchdaily",
+    "$pagesProject": [
+      "The Pages project that currently serves the live domain. Its source",
+      "repository is gone, so it can never be rebuilt -- it is a frozen",
+      "deployment and a rollback target, nothing more.",
+      "scripts/cutover.mjs moves the hostnames off it and onto the Worker,",
+      "and back again."
+    ],
+    "pagesProject": "potuswatchdaily"
   },
 
   "workers": {

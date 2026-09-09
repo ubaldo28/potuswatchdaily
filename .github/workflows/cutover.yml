@@ -1,0 +1,55 @@
+name: Move the domain onto the Worker
+
+# potuswatchdaily.com is served by a Cloudflare Pages project whose source
+# repository no longer exists. It cannot be rebuilt, and @astrojs/cloudflare v14
+# dropped Pages support anyway, so nothing in this repository reaches readers
+# while the hostname stays there.
+#
+# Run "check" first. It writes nothing: it fetches the Worker to confirm it is
+# really serving articles, then proves the API token can do every write the
+# switch needs by attaching and detaching a throwaway probe hostname. A token
+# missing a permission fails there, with the site still up.
+#
+# Then run "switch". It takes each hostname off Pages and puts it on the Worker
+# back to back -- seconds, not the minutes the dashboard takes -- then polls the
+# live site and rolls itself back if it does not come up serving articles.
+#
+# "rollback" puts it back on Pages at any time. The Pages deployment stays where
+# it is; nothing about it is deleted.
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'What to do'
+        type: choice
+        required: true
+        default: check
+        options: [check, switch, rollback]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: domain-cutover
+  cancel-in-progress: false
+
+jobs:
+  cutover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: ${{ inputs.action }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          case "${{ inputs.action }}" in
+            check)    node scripts/cutover.mjs ;;
+            switch)   node scripts/cutover.mjs --switch ;;
+            rollback) node scripts/cutover.mjs --rollback ;;
+          esac
