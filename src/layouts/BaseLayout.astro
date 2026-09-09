@@ -268,7 +268,22 @@ const SITE = 'https://www.potuswatchdaily.com';
     .nav { order: 3; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
     .nav::-webkit-scrollbar { display: none; }
     .masthead-inner { flex-wrap: wrap; height: auto; padding: 8px 0; } .hero { grid-template-columns: 1fr; } .hero-main-img { height: 360px; } .hero-side { grid-template-rows: auto auto; grid-template-columns: 1fr 1fr; } }
-    @media(max-width:640px) { .search-input-wrap { display: none; } .grid { grid-template-columns: 1fr; gap: 16px; } .masthead-inner { height: 52px; } .hero-side { grid-template-columns: 1fr; } }
+    /* The masthead overflowed the viewport by 100px on a 390px phone. The logo
+       is emitted at a fixed width=300, which is most of the screen on its own,
+       and .masthead-right sat beside it with flex-shrink:0 -- so the Subscribe
+       button and the LIVE badge hung off the right edge and the whole page
+       scrolled sideways. The fixed 52px height here was also fighting the
+       flex-wrap: wrap set in the rule above it. */
+    @media(max-width:640px) {
+      .search-input-wrap { display: none; }
+      .grid { grid-template-columns: 1fr; gap: 16px; }
+      .masthead-inner { height: auto; column-gap: 12px; row-gap: 6px; min-height: 52px; }
+      .masthead-inner > a:first-child { height: auto; }
+      .masthead-inner > a:first-child img { max-width: 190px; height: auto; }
+      .masthead-right { gap: 8px; min-width: 0; }
+      .live-badge { display: none; }
+      .hero-side { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
