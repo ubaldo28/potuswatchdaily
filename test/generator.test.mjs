@@ -22,7 +22,7 @@ import { fileURLToPath } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 let src = readFileSync(join(root, 'worker/generator.js'), 'utf8');
 src = src.replace(/^export default \{[\s\S]*$/m, '');
-src += '\nexport { scoreDocument, salvageTruncatedJson, slugify, REGION_TERMS, BASE_SCORE, TOPICAL_SCORE };\n';
+src += '\nexport { scoreDocument, salvageTruncatedJson, slugify, REGION_TERMS, BASE_SCORE, TOPICAL_SCORE, bestRegionFor, isNoise, regionAffinity };\n';
 const scratch = mkdtempSync(join(tmpdir(), 'pw-test-'));
 const modPath = join(scratch, 'generator.mjs');
 writeFileSync(modPath, src);
@@ -117,5 +117,72 @@ test('garbage returns null rather than throwing', () => {
   assert(m.salvageTruncatedJson(null) === null);
 });
 
+
+console.log('\nbestRegionFor — the front page that labelled itself with a counter\n');
+
+// Every one of these ran on 2026-09-09 under the label in the comment. The
+// rotation was NATO, China, Iran, Analysis, Trade, Russia, Mideast, Americas,
+// three times through, and it matched the content nowhere.
+const doc = (title, text = '') => ({ title, text });
+
+test('a Canadian alcohol proclamation is not a NATO story', () => {
+  const d = doc('President Bans Select Canadian Alcoholic Beverages',
+    'The proclamation excludes certain Canadian alcoholic beverages from importation into the United States, invoking section 338 of the Tariff Act of 1930.');
+  const r = m.bestRegionFor(d, 'NATO');
+  assert(r !== 'NATO', `filed under NATO again (got ${r})`);
+  assert(r === 'Americas' || r === 'Trade', `expected Americas or Trade, got ${r}`);
+});
+
+test('a fisheries advisory committee is not an Iran story', () => {
+  const d = doc('NMFS Solicits Nominations for ICCAT Advisory Committee',
+    'The National Marine Fisheries Service seeks nominations to the Advisory Committee to the U.S. Section to ICCAT.');
+  assert(m.bestRegionFor(d, 'Iran') === 'Analysis', 'a document with no regional vocabulary must fall to Analysis');
+});
+
+test('a real Russia story still files under Russia', () => {
+  const d = doc('Treasury Sanctions Russian Shadow Fleet Operators',
+    'The Office of Foreign Assets Control designated vessels moving Russian crude above the price cap.');
+  assert(m.bestRegionFor(d, 'Trade') === 'Russia', 'topical affinity must beat the rotation');
+});
+
+test('the rotation still breaks ties, so the front page stays varied', () => {
+  const d = doc('Statement on International Cooperation', 'foreign policy diplomacy');
+  const a = m.bestRegionFor(d, 'China');
+  const b = m.bestRegionFor(d, 'Mideast');
+  assert(a === b, 'a document with no affinity anywhere must be stable, not rotation-flavoured');
+});
+
+console.log('\nisNoise — twenty-four front-page slots, ten of them spent on this\n');
+
+const noisy = [
+  'U.S. Declares Women Impressionist Art Imports National Interest',
+  'U.S. Government Determines Byzantine Icons Cultural Significance',
+  'U.S. Imposes Import Restrictions on Nepalese Cultural Artifacts',
+  'NMFS Solicits Nominations for ICCAT Advisory Committee',
+  'U.S. Schedules Public Meeting for IMO CCC 12',
+  'Department of War Invests $4 Million in STEM Initiative',
+  'Dow Invests $19 Million to Upgrade Pine Bluff Arsenal',
+  'President Establishes Military Spouse Commission'
+];
+for (const t of noisy) {
+  test(`rejected: ${t.slice(0, 52)}`, () => {
+    assert(m.isNoise({ title: t, text: '' }), 'should be rejected as noise');
+    assert(m.scoreDocument({ title: t, text: '' }, 'Analysis') === -1, 'noise must score -1, not merely low');
+  });
+}
+
+const real = [
+  ['President Imposes Additional Duties on Canadian Alcohol', ''],
+  ['Treasury Adds Individuals to SDN List', 'Office of Foreign Assets Control blocked person designation'],
+  ['Commerce Streamlines Export Controls for Drone Exports', 'Bureau of Industry and Security export administration regulations'],
+  ['State Department Approves Foreign Military Sale to Poland', 'The proposed sale supports the foreign policy goals of the United States.']
+];
+for (const [t, body] of real) {
+  test(`kept: ${t.slice(0, 52)}`, () => {
+    assert(!m.isNoise({ title: t, text: body }), 'a real policy action was rejected as noise');
+  });
+}
+
 console.log(failed ? `\n${failed} test(s) failed\n` : '\nAll tests passed.\n');
+
 process.exit(failed ? 1 : 0);

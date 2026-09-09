@@ -206,6 +206,95 @@ function imageQueryFor(title, region) {
 }
 
 /**
+ * The building, body or capital the document actually came from. Ordered most
+ * specific first: the issuing agency beats the region, because "Department of
+ * the Treasury" is a fact about the document and "Iran" is an inference.
+ */
+const IMAGE_SUBJECTS = [
+  [/treasury|ofac|foreign assets control|sdn list/i,        'United States Department of the Treasury building Washington'],
+  [/white house|proclamation|executive order|president/i,   'White House north facade Washington'],
+  [/state department|department of state|secretary of state|consular|visa/i, 'Harry S Truman Building Washington'],
+  [/commerce|antidumping|countervailing|bureau of industry|export administration/i, 'Herbert C. Hoover Building Washington'],
+  [/pentagon|defense|defence|department of war|military/i,  'The Pentagon aerial view'],
+  [/united nations|secretary-general|security council/i,    'United Nations Headquarters New York'],
+  [/trade representative|wto|world trade/i,                 'World Trade Organization headquarters Geneva'],
+  [/homeland security|customs|border protection/i,          'United States Customs and Border Protection port of entry']
+];
+
+const REGION_IMAGE_SUBJECTS = {
+  Iran:     'Ministry of Foreign Affairs Tehran building',
+  China:    'Great Hall of the People Beijing',
+  NATO:     'NATO Headquarters Brussels building',
+  Americas: 'Organization of American States building Washington',
+  Mideast:  'Arab League headquarters Cairo',
+  Russia:   'Moscow Kremlin Senate building',
+  Trade:    'container ship port of Los Angeles',
+  Analysis: 'United States Capitol Washington'
+};
+
+/**
+ * A freely licensed photograph from Wikimedia Commons of whatever institution
+ * the document came from. No API key, no rate limit worth worrying about at one
+ * article an hour, and the URLs come back from the API itself so they cannot be
+ * a stale hardcoded guess.
+ *
+ * Both renditions are the same photograph at two widths -- Commons thumbnail
+ * URLs carry the width in the path, so the 600px card is a string edit rather
+ * than a second lookup.
+ */
+async function getCommonsImagePair(region, title, source) {
+  const hay = `${title || ''} ${source || ''}`;
+  let query = null;
+  for (const [re, subject] of IMAGE_SUBJECTS) {
+    if (re.test(hay)) { query = subject; break; }
+  }
+  if (!query) query = REGION_IMAGE_SUBJECTS[region] || REGION_IMAGE_SUBJECTS.Analysis;
+
+  try {
+    const u = new URL('https://commons.wikimedia.org/w/api.php');
+    u.searchParams.set('action', 'query');
+    u.searchParams.set('format', 'json');
+    u.searchParams.set('formatversion', '2');
+    u.searchParams.set('generator', 'search');
+    u.searchParams.set('gsrsearch', `${query} filetype:bitmap`);
+    u.searchParams.set('gsrnamespace', '6');       // File:
+    u.searchParams.set('gsrlimit', '8');
+    u.searchParams.set('prop', 'imageinfo');
+    u.searchParams.set('iiprop', 'url|extmetadata');
+    u.searchParams.set('iiurlwidth', '1200');
+
+    const r = await fetch(u, { headers: FETCH_HEADERS, signal: AbortSignal.timeout(8000) });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+
+    const pages = data?.query?.pages || [];
+    for (const page of pages) {
+      const info = page?.imageinfo?.[0];
+      const thumb = info?.thumburl;
+      // Landscape only. A portrait crop in a 16:9 hero slot looks like a
+      // mistake, and on this layout it is one.
+      if (!thumb || !info.thumbwidth || !info.thumbheight) continue;
+      if (info.thumbwidth < info.thumbheight * 1.2) continue;
+
+      const artist = stripHtml(info.extmetadata?.Artist?.value || '').trim().slice(0, 80);
+      const credit = `?pw_src=commons&pw_by=${encodeURIComponent(artist || 'Wikimedia Commons')}` +
+                     `&pw_at=${encodeURIComponent(info.descriptionurl || 'https://commons.wikimedia.org')}`;
+
+      console.log(`[image] commons "${query}" -> ${page.title}`);
+      return {
+        hero:  thumb + credit,
+        thumb: thumb.replace('/1200px-', '/600px-') + credit
+      };
+    }
+    console.warn(`[image] commons "${query}" returned nothing landscape.`);
+    return null;
+  } catch (e) {
+    console.warn('[image] commons lookup failed:', e.message);
+    return null;
+  }
+}
+
+/**
  * One photograph, resolved once, returned in both renditions the site needs:
  * a 1200px hero and a 600px card. This used to be two independent calls, which
  * on the Unsplash path returned two unrelated random photographs -- the card
@@ -215,11 +304,21 @@ function imageQueryFor(title, region) {
  * Attribution and the download trigger are both REQUIRED by the Unsplash API
  * Guidelines.
  */
-async function getImagePair(env, region, title) {
+async function getImagePair(env, region, title, source = '') {
   // Prefer public-domain U.S. government photography when it actually matches
-  // the story. Falls through to Unsplash when it does not.
+  // the story.
   const gov = await getGovImagePair(titleKeywords(title));
   if (gov) return gov;
+
+  // Then Wikimedia Commons, keyed on the institution that issued the document.
+  // Every article on 2026-09-09 -- all twenty-four of them -- published with no
+  // image at all, because the defence photo feed only ever matches a defence
+  // photo and there was no Unsplash key. A stock photograph of a container ship
+  // was never going to depict an antidumping determination anyway; a photograph
+  // of the Treasury building on a Treasury designation is what a wire service
+  // would run, and it is true.
+  const commons = await getCommonsImagePair(region, title, source);
+  if (commons) return commons;
 
   // No key means no Unsplash. It used to call anyway with "Client-ID
   // undefined" and log an authentication failure on every single article --
@@ -469,6 +568,38 @@ const FOREIGN_POLICY_TERMS = [
 // national observance days, flag orders, renamings, appointments.
 const CEREMONIAL = /half-staff|half staff|national .{0,30}(day|week|month)\b|proclaim.{0,40}(day|week|month)\b|anniversary|in memory of|honoring the|renaming|rename|birthday|awareness (day|week|month)|greetings|observance/i;
 
+// Documents that clear the foreign-policy gate on vocabulary alone and have no
+// business being the lead story on a foreign-policy site. Every one of these
+// was on the front page on 2026-09-09, taking a slot from something real:
+// Byzantine icons, Nepalese artifacts, women Impressionists, an IMO shipping
+// meeting, an ICCAT fisheries advisory committee, a $4M STEM grant, a military
+// spouse commission and three defence contract awards. They pass because they
+// contain the words "import", "international" and "military".
+//
+// Matched against the TITLE only. A body match would take out real stories that
+// merely mention a committee in passing.
+const NOISE_PATTERNS = [
+  // State Department cultural-property and art-exhibition determinations.
+  // Foreign, and about imports, and not foreign policy.
+  /cultural (property|significance|exchange|import)|archaeolog|ethnolog|objects? of cultural|works? of art|art (import|exhibition)|impressionist|byzantine|sculpture|icons|artifact|antiquit|museum/i,
+  // Procedural Federal Register furniture: the notice that a process exists.
+  /advisory (committee|board|panel|group)|request for nominations|solicit\w* nominations|(public|open) meeting|notice of meeting|information collection|paperwork reduction|privacy act of 1974|records schedule|agency information/i,
+  // Domestic spending, grants and contract awards.
+  /\binvests? \$|\bawarded? (a )?\$|contract award|scholarship|internship|apprenticeship|spouse|\bcommission on\b/i,
+  /\bSTEM\b/   // the acronym, not "stem the flow of"
+];
+
+// ...unless the document is one of the few procurement or licensing actions
+// that genuinely IS foreign policy. A foreign military sale is an arms transfer
+// with a dollar figure attached, and dropping it would be worse than the noise.
+const NOISE_EXEMPT = /foreign military sale|arms transfer|arms sale|security assistance|export licen|munitions list|\bitar\b/i;
+
+function isNoise(doc) {
+  const title = String(doc.title || '');
+  if (NOISE_EXEMPT.test(title + ' ' + String(doc.text || '').slice(0, 400))) return false;
+  return NOISE_PATTERNS.some(re => re.test(title));
+}
+
 function scoreDocument(doc, region) {
   const title = (doc.title || '').toLowerCase();
   // Memoised on the document. This is called up to three times per document per
@@ -479,6 +610,7 @@ function scoreDocument(doc, region) {
   const body = doc._lcBody;
 
   if (CEREMONIAL.test(title)) return -1;                       // hard reject
+  if (isNoise(doc)) return -1;                                 // hard reject
 
   const fpTitle = FOREIGN_POLICY_TERMS.some(t => title.includes(t));
   if (!fpTitle && !FOREIGN_POLICY_TERMS.some(t => body.includes(t))) return -1;
@@ -494,6 +626,60 @@ function scoreDocument(doc, region) {
     else if (body.includes(t)) score += 1;
   }
   return score;
+}
+
+/**
+ * How strongly a document matches ONE region's vocabulary, with the
+ * foreign-policy baseline removed. scoreDocument answers "is this publishable",
+ * which is deliberately generous; this answers "is this a China story", which
+ * must not be.
+ */
+function regionAffinity(doc, region) {
+  const title = (doc.title || '').toLowerCase();
+  if (doc._lcBody === undefined) doc._lcBody = (doc.text || '').slice(0, 3000).toLowerCase();
+  const body = doc._lcBody;
+  let score = 0;
+  for (const t of (REGION_TERMS[region] || [])) {
+    if (title.includes(t)) score += 5;
+    else if (body.includes(t)) score += 1;
+  }
+  return score;
+}
+
+/**
+ * The region an article should be LABELLED with.
+ *
+ * The rotation picks a region and then hunts for a document to fill it. That is
+ * the right way to keep the front page varied and the wrong way to name a
+ * story, and on 2026-09-09 the front page showed exactly what that costs: a
+ * Canadian alcohol proclamation filed under NATO, an EU Council agenda under
+ * Russia, an IMO shipping meeting and a fisheries advisory committee both under
+ * Iran -- twenty-four articles whose labels cycled NATO, China, Iran, Analysis,
+ * Trade, Russia, Mideast, Americas, three times over. The label was a counter.
+ * Any reader could see it.
+ *
+ * So the rotation keeps choosing which feeds to read first, which is what it is
+ * good for, and this decides the name afterwards, from the document's own
+ * words. Analysis is the honest answer when no region's vocabulary really
+ * appears -- it is a section, not a dumping ground, and a fisheries committee
+ * belongs there far more than it belongs in Iran.
+ */
+function bestRegionFor(doc, preferred) {
+  let bestRegion = null;
+  let bestScore = -1;
+  for (const r of regions) {
+    if (r === 'Analysis') continue;              // the fallback, never the winner
+    const s = regionAffinity(doc, r);
+    // Ties go to the rotation's choice, so variety survives wherever the text
+    // genuinely does not distinguish between two regions.
+    if (s > bestScore || (s === bestScore && r === preferred)) {
+      bestScore = s;
+      bestRegion = r;
+    }
+  }
+  // Two body mentions, or one in the headline. Below that the match is a
+  // coincidence of vocabulary rather than a subject.
+  return bestScore >= 2 ? bestRegion : 'Analysis';
 }
 
 /** Strip tags and decode the handful of entities that actually show up. */
@@ -973,9 +1159,24 @@ async function generateArticle(env) {
   // already paid for.
   let lead = null, context = [], used = [], parsed = null;
 
+  // The region the rotation settled on. Kept separate because `region` is about
+  // to be overwritten with what the document is actually about, and a retry
+  // must break the tie against the rotation's answer, not against the previous
+  // candidate's.
+  const rotationRegion = region;
+
   for (const candidate of scored.slice(0, 3)) {
     lead = candidate.doc;
-    console.log(`[generator] Lead: "${lead.title}" (${lead.source}, ${region} score ${candidate.score})`);
+
+    // Selection is done; naming is not. The rotation decided which feeds to
+    // read first, and that is all it is entitled to decide -- the label comes
+    // from the document's own vocabulary. See bestRegionFor.
+    region = bestRegionFor(lead, rotationRegion);
+
+    console.log(`[generator] Lead: "${lead.title}" (${lead.source}, ${rotationRegion} score ${candidate.score})`);
+    if (region !== rotationRegion) {
+      console.log(`[generator] Filing under ${region}, not ${rotationRegion} — that is what it is about.`);
+    }
 
     // Context comes from UNCOVERED documents and must clear the relevance bar,
     // or it drags the article off topic. Drawing it from allDocs also re-stamped
@@ -1082,7 +1283,9 @@ Respond ONLY with valid JSON, no markdown:
   // /photos/random results, so the card on the front page and the hero on the
   // article page showed different photographs of different things -- and the
   // government feed was fetched and scanned twice for an identical answer.
-  const picked = await getImagePair(env, region, parsed.title);
+  // The lead document's source is passed too: which building to photograph is
+  // a fact about where the document came from, not a guess from its headline.
+  const picked = await getImagePair(env, region, parsed.title, `${lead.source || ''} ${lead.title || ''}`);
   const heroImage = picked.hero;
   const cardImage = picked.thumb;
   if (!heroImage && !cardImage) console.warn('[generator] No image found; publishing without one.');
