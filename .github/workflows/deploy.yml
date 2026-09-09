@@ -86,7 +86,13 @@ jobs:
       - name: Run tests
         run: npm test
 
+      # PUBLIC_BUILD_SHA is inlined into every page as <meta name="pw-build">,
+      # and the hourly health check compares it against this repository's HEAD.
+      # That comparison is the thing nobody was doing while the live site served
+      # a four-day-old build with both existing checks green.
       - name: Build Astro site
+        env:
+          PUBLIC_BUILD_SHA: ${{ github.sha }}
         run: npm run build
 
       # SUPABASE_URL / SUPABASE_KEY are Worker secrets, not build-time env:

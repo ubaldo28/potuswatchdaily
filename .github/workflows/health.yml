@@ -67,6 +67,55 @@ jobs:
 
           echo "Front page is serving $COUNT articles."
 
+      # Is the live site actually running the code in this repository?
+      #
+      # Nothing asked that until 2026-09-09, and the answer had been "no" since
+      # 2026-09-05. Both checks above were green the entire time: the front page
+      # served articles, because articles come from the database, and the
+      # generator was publishing them on the hour. What nobody compared was the
+      # DEPLOYED build against the repository -- so four days of security
+      # headers, valid structured data and a working unsubscribe endpoint sat in
+      # a Worker no reader could reach, and the only symptom was that the site
+      # looked exactly the same as always.
+      #
+      # BaseLayout stamps the building commit into <meta name="pw-build">.
+      - name: Check the live site is running this repository's code
+        id: build
+        run: |
+          DOMAIN=$(node -p "require('./project.config.json').site.domain")
+          BODY=$(curl -sSL --max-time 30 "https://$DOMAIN/" || true)
+          LIVE=$(printf '%s' "$BODY" | sed -n 's/.*<meta name="pw-build" content="\([a-f0-9]*\)".*/\1/p' | head -1)
+          HEAD_SHA=$(git rev-parse HEAD)
+          AGE_MIN=$(( ( $(date +%s) - $(git log -1 --format=%ct) ) / 60 ))
+          echo "live build: ${LIVE:-none}"
+          echo "repository: $HEAD_SHA (${AGE_MIN} minutes old)"
+
+          if [ -z "$LIVE" ]; then
+            # Expected, for now: the domain is served by the Pages project, which
+            # was built before the stamp existed and cannot be rebuilt. This is a
+            # warning rather than a failure so it does not open an issue every
+            # hour for a condition that is already known and written down -- but
+            # it does not go silent either.
+            echo "::warning::The live site carries no build stamp, so it is not being served by anything this repository deploys. See RUNBOOK.md and the 'Move the domain onto the Worker' workflow."
+            exit 0
+          fi
+
+          if [ "$LIVE" = "$HEAD_SHA" ]; then
+            echo "The live site is running this exact commit."
+            exit 0
+          fi
+
+          # A deploy takes a couple of minutes, so a fresh commit being absent is
+          # normal. Two hours is not.
+          if [ "$AGE_MIN" -lt 120 ]; then
+            echo "::notice::Live build is $LIVE, repository is at $HEAD_SHA — the deploy is probably still running."
+            exit 0
+          fi
+
+          echo "detail=The live site is serving build $LIVE while this repository has been at $HEAD_SHA for $AGE_MIN minutes. Deploys are not reaching readers. Check the last 'Build & Deploy' run, and check what the domain is actually attached to." >> "$GITHUB_OUTPUT"
+          echo "::error::Live site is $AGE_MIN minutes behind the repository"
+          exit 1
+
       - name: Poll the generator health endpoint
         id: poll
         run: |
@@ -107,7 +156,7 @@ jobs:
           # Whichever check failed. Reading only steps.poll meant a SITE failure --
           # the case this workflow was written for -- opened an issue with the
           # generic fallback text and discarded the diagnosis.
-          DETAIL: ${{ steps.site.outputs.detail || steps.poll.outputs.detail }}
+          DETAIL: ${{ steps.site.outputs.detail || steps.build.outputs.detail || steps.poll.outputs.detail }}
         with:
           script: |
             const title = 'POTUS Watch Daily is not healthy';

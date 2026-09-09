@@ -18,6 +18,21 @@ const {
 } = Astro.props;
 
 const canonicalUrl = canonical ?? new URL(Astro.url.pathname, Astro.site).href;
+
+// The commit this page was built from, stamped in at build time. It exists for
+// one reason: from 2026-09-05 to 2026-09-09 the live site served a build four
+// days old and nothing noticed. The health check watched the live domain and it
+// watched the generator, and both were green the whole time, because articles
+// come from the database and kept arriving. Nothing compared what was DEPLOYED
+// with what was in the repository, so four days of security headers, structured
+// data and an unsubscribe endpoint sat in a Worker no reader could reach.
+//
+// PUBLIC_BUILD_SHA, not GITHUB_SHA: Astro inlines PUBLIC_-prefixed variables
+// into the bundle at build time. process.env would be read at REQUEST time
+// inside the Worker, where it is empty -- every page would ship a blank stamp
+// and the check would report "no stamp" forever, which is exactly the silent
+// failure this is here to prevent.
+const buildSha = (import.meta.env.PUBLIC_BUILD_SHA ?? '').slice(0, 40);
 const SITE = 'https://www.potuswatchdaily.com';
 ---
 <!DOCTYPE html>
@@ -25,6 +40,7 @@ const SITE = 'https://www.potuswatchdaily.com';
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  {buildSha && <meta name="pw-build" content={buildSha} />}
   <title>{title}</title>
   <meta name="description" content={description}>
   <link rel="canonical" href={canonicalUrl}>
