@@ -44,11 +44,11 @@ const CSP = [
   "frame-ancestors 'none'",
   "form-action 'self'",
   'upgrade-insecure-requests',
-  "script-src 'self' 'unsafe-inline' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.googletagmanager.com https://www.google-analytics.com https://cdnjs.buymeacoffee.com https://cdn.buymeacoffee.com https://pl29502765.effectivecpmnetwork.com",
+  "script-src 'self' 'unsafe-inline' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.googletagmanager.com https://www.google-analytics.com https://cdnjs.buymeacoffee.com https://cdn.buymeacoffee.com https://*.effectivecpmnetwork.com https://static.cloudflareinsights.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: https:",
-  "connect-src 'self' https://www.google-analytics.com https://analytics.google.com https://*.analytics.google.com https://pagead2.googlesyndication.com https://api.buymeacoffee.com",
+  "connect-src 'self' https://www.google-analytics.com https://analytics.google.com https://*.analytics.google.com https://pagead2.googlesyndication.com https://api.buymeacoffee.com https://cloudflareinsights.com https://*.effectivecpmnetwork.com",
   "frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.buymeacoffee.com",
 ].join('; ');
 

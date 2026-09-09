@@ -275,9 +275,72 @@ const SITE = 'https://www.potuswatchdaily.com';
   <a class="skip-link" href="#main">Skip to main content</a>
   <div class="top-bar"></div>
   <slot />
-  <!-- Adsterra async ad scripts -->
-  <script async src="https://pl29502765.effectivecpmnetwork.com/37/c5/f9/37c5f97dcf85aef347afb415f071ce90.js"></script>
-  <script async src="https://pl29502766.effectivecpmnetwork.com/05/06/4c/05064cd4192c96a0884ae0f79145c863.js"></script>
+  <!-- Consent, and the ad scripts it actually governs.
+
+       Two things were wrong here. The banner lived in index.astro, so it
+       appeared on the home page and nowhere else -- and search traffic lands on
+       articles, not the home page, which means most visitors were never asked.
+       And these two Adsterra tags loaded unconditionally on every page. Google
+       Consent Mode does not reach them, so "Decline" left them running while
+       the banner said the site was asking about personalised ads.
+
+       The banner is now in the layout, so it is on every page, and these two
+       scripts are injected only after the visitor accepts. -->
+  <div class="cookie-banner" id="cookie-banner" role="dialog" aria-modal="false"
+       aria-labelledby="cookie-banner-text" aria-live="polite">
+    <p id="cookie-banner-text">We use cookies to serve personalised ads and improve your experience. This includes Google AdSense. <a href="/privacy">Privacy Policy</a> · <a href="https://adssettings.google.com" target="_blank" rel="noopener">Opt out</a>.</p>
+    <div class="cookie-actions">
+      <button class="btn-accept" onclick="acceptCookies()">Accept</button>
+      <button class="btn-decline" onclick="declineCookies()">Decline</button>
+    </div>
+  </div>
+
+  <script is:inline>
+    // is:inline for the same reason the gtag block needs it: Astro would
+    // otherwise hoist this into a module and the onclick handlers above would
+    // find no such function.
+    var PW_AD_TAGS = [
+      'https://pl29502765.effectivecpmnetwork.com/37/c5/f9/37c5f97dcf85aef347afb415f071ce90.js',
+      'https://pl29502766.effectivecpmnetwork.com/05/06/4c/05064cd4192c96a0884ae0f79145c863.js'
+    ];
+    function pwLoadAdTags() {
+      if (window.__pwAdTagsLoaded) return;
+      window.__pwAdTagsLoaded = true;
+      PW_AD_TAGS.forEach(function (src) {
+        var el = document.createElement('script');
+        el.async = true; el.src = src;
+        document.body.appendChild(el);
+      });
+    }
+
+    function setConsent(granted) {
+      try { localStorage.setItem('cookies', granted ? '1' : '0'); } catch (e) {}
+      var b = document.getElementById('cookie-banner');
+      if (b) b.style.display = 'none';
+      if (window.gtag) {
+        var v = granted ? 'granted' : 'denied';
+        gtag('consent', 'update', { ad_storage: v, ad_user_data: v, ad_personalization: v, analytics_storage: v });
+      }
+      if (granted) pwLoadAdTags();
+    }
+    function acceptCookies() { setConsent(true); }
+    function declineCookies() { setConsent(false); }
+
+    // Shown immediately, not after three seconds. A consent prompt that arrives
+    // once the tags have already run is not a consent prompt.
+    (function () {
+      var stored = null;
+      try { stored = localStorage.getItem('cookies'); } catch (e) {}
+      if (stored === null) {
+        var b = document.getElementById('cookie-banner');
+        if (b) b.style.display = 'flex';
+        return;
+      }
+      var v = stored === '1' ? 'granted' : 'denied';
+      if (window.gtag) gtag('consent', 'update', { ad_storage: v, ad_user_data: v, ad_personalization: v, analytics_storage: v });
+      if (stored === '1') pwLoadAdTags();
+    })();
+  </script>
   <style is:global>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {

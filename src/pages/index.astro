@@ -209,15 +209,6 @@ const organizationLd = {
 
   <Footer />
 
-  <!-- Cookie banner -->
-  <div class="cookie-banner" id="cookie-banner" role="dialog" aria-modal="false"
-       aria-labelledby="cookie-banner-text" aria-live="polite">
-    <p id="cookie-banner-text">We use cookies to serve personalised ads and improve your experience. This includes Google AdSense. <a href="/privacy">Privacy Policy</a> · <a href="https://adssettings.google.com" target="_blank" rel="noopener">Opt out</a>.</p>
-    <div class="cookie-actions">
-      <button class="btn-accept" onclick="acceptCookies()">Accept</button>
-      <button class="btn-decline" onclick="declineCookies()">Decline</button>
-    </div>
-  </div>
 
   <!-- BMC widget -->
   <script async data-name="BMC-Widget" data-cfasync="false" src="https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js" data-id="POTUSwatch" data-description="Support me on Buy me a coffee!" data-message="" data-color="#FF5F5F" data-position="Right" data-x_margin="18" data-y_margin="18"></script>
@@ -299,36 +290,8 @@ const organizationLd = {
     // Initial state — hide cards beyond 21
     applyFilters();
 
-    // --- Cookie banner ---
-    // Decline used to be style.display='none' and nothing else: it stored no
-    // choice, so the banner returned on every page load, and it disabled none
-    // of the tags it was asking consent for. Both buttons now record the answer
-    // and push it to Google Consent Mode, which the layout defaults to denied.
-    function setConsent(granted) {
-      try { localStorage.setItem('cookies', granted ? '1' : '0'); } catch(e) {}
-      var b = document.getElementById('cookie-banner');
-      if (b) b.style.display = 'none';
-      if (window.gtag) {
-        var v = granted ? 'granted' : 'denied';
-        gtag('consent', 'update', { ad_storage: v, ad_user_data: v, ad_personalization: v, analytics_storage: v });
-      }
-    }
-    function acceptCookies() { setConsent(true); }
-    function declineCookies() { setConsent(false); }
-
-    // Shown immediately, not after three seconds. A consent prompt that arrives
-    // once the tags have already run is not a consent prompt.
-    (function () {
-      var stored = null;
-      try { stored = localStorage.getItem('cookies'); } catch(e) {}
-      if (stored === null) {
-        var b = document.getElementById('cookie-banner');
-        if (b) b.style.display = 'flex';
-      } else if (window.gtag) {
-        var v = stored === '1' ? 'granted' : 'denied';
-        gtag('consent', 'update', { ad_storage: v, ad_user_data: v, ad_personalization: v, analytics_storage: v });
-      }
-    })();
+    // The cookie banner and its consent handling live in BaseLayout now,
+    // so every page asks -- not just this one. See src/layouts/BaseLayout.astro.
 
     // --- Subscribe ---
     async function handleSubscribe(e) {
