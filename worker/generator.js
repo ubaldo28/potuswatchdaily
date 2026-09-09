@@ -1328,10 +1328,15 @@ Respond ONLY with valid JSON, no markdown:
     headers: { Prefer: 'return=minimal' },
     body: JSON.stringify({
       title: parsed.title,
-      // Never trust the model's echo of the region. An unrecognised value
-      // breaks the round-robin (indexOf -> -1 -> always restart at Iran) and
-      // orphans the article from its /region/ page.
-      region: regions.includes(parsed.region) ? parsed.region : region,
+      // The model's echo is ignored entirely. The comment above this line used
+      // to say "never trust the model's echo" while the code preferred it over
+      // the computed value whenever it was a valid name -- and since the prompt
+      // tells the model which portfolio it is writing on, it echoed the
+      // rotation back every time. That is the other half of why the front page
+      // read NATO, China, Iran, Analysis, Trade, Russia, Mideast, Americas in
+      // order: even a correct bestRegionFor answer was being overwritten by the
+      // model repeating what it had been told.
+      region,
       excerpt: parsed.excerpt || parsed.title,
       meta_description: parsed.meta_description || parsed.excerpt || parsed.title,
       slug: finalSlug, body: parsed.body,

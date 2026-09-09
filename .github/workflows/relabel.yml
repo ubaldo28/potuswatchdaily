@@ -1,0 +1,46 @@
+name: Relabel article regions
+
+# The generator used to name an article after the round-robin counter instead
+# of after the document. That is fixed going forward, but nothing repairs the
+# rows already in the table -- and the label is on every card, drives every
+# /region/ page, and was visibly a counter: NATO, China, Iran, Analysis, Trade,
+# Russia, Mideast, Americas, over and over down the front page.
+#
+# Run this once from the Actions tab. It is a dry run unless you tick "apply",
+# so the first run tells you what it would change and changes nothing.
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: 'Actually write the changes (leave unticked for a dry run)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: relabel-regions
+  cancel-in-progress: false
+
+jobs:
+  relabel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Score every published article against its own words
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_WRITE_KEY }}
+        run: |
+          if [ "${{ inputs.apply }}" = "true" ]; then
+            node scripts/relabel-regions.mjs --apply
+          else
+            node scripts/relabel-regions.mjs
+          fi
