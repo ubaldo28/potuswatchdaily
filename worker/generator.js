@@ -408,23 +408,54 @@ async function recentlyUsedSourceUrls(env) {
   }
 }
 
+// Headline words reduced to something that survives a rewrite. The generator
+// writes its own headlines, so the same underlying proclamation came back as
+// "President Bans Select Canadian Alcoholic Beverages", "President Broadens
+// Canada Auto Duties Scope" and "President Expands Canadian Alcohol Duty
+// Scope" on three consecutive hours -- three headlines that share almost no
+// exact words and are obviously one story. Crude suffix stripping is enough to
+// make canada/canadian and duty/duties the same token, which is all that was
+// needed to see it.
+const TITLE_STOPWORDS = new Set([
+  'the','and','for','with','from','that','this','into','over','after','under',
+  'new','more','than','its','has','have','will','announces','announce','issues',
+  'issue','says','said','amid','about','government','united','states','american'
+]);
+
+function titleStems(title) {
+  return [...new Set(
+    String(title || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter(w => w.length > 3 && !TITLE_STOPWORDS.has(w))
+      .map(w => w
+        .replace(/ies$/, 'y')       // duties  -> duty
+        .replace(/ian$/, 'a')       // canadian -> canada
+        .replace(/(ing|ed|es|s)$/, '')
+        .replace(/ic$/, '')         // alcoholic -> alcohol
+        .slice(0, 6))
+      .filter(w => w.length > 2)
+  )];
+}
+
 async function isTooSimilar(env, newTitle) {
   try {
     const since = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
     const data = await sb(env, `articles?select=title&published_at=gte.${encodeURIComponent(since)}&order=published_at.desc&limit=${SIMILARITY_ROW_CAP}`);
     if (!data || !data.length) return false;
 
-    const newWords = new Set(newTitle.toLowerCase().replace(/[^a-z0-9\s]/g,'').split(/\s+/).filter(w => w.length > 3));
+    const fresh = new Set(titleStems(newTitle));
     for (const row of data) {
-      const existWords = String(row.title || '').toLowerCase().replace(/[^a-z0-9\s]/g,'').split(/\s+/).filter(w => w.length > 3);
-      const overlap = existWords.filter(w => newWords.has(w)).length;
-      // Four was tripping on pure boilerplate: "department/export/controls/
-      // russian" is four words of overlap between two unrelated actions.
-      // Require five, and require the overlap to be at least half the shorter
-      // title, so genuinely different actions are not refused.
-      const shorter = Math.min(existWords.length, newWords.size) || 1;
-      if (overlap >= 5 && overlap / shorter >= 0.5) {
-        console.log(`[similarity] Too similar to: "${row.title}" (${overlap} words overlap)`);
+      const existing = titleStems(row.title);
+      const overlap = existing.filter(w => fresh.has(w)).length;
+      const shorter = Math.min(existing.length, fresh.size) || 1;
+      const ratio = overlap / shorter;
+      // Four shared subject words, or three that make up most of the headline.
+      // A false positive here costs nothing: the caller simply writes about the
+      // next candidate document, which is already fetched and already paid for.
+      if ((overlap >= 4 && ratio >= 0.5) || (overlap >= 3 && ratio >= 0.7)) {
+        console.log(`[similarity] Too similar to: "${row.title}" (${overlap} shared subject words, ${Math.round(ratio * 100)}%)`);
         return true;
       }
     }

@@ -22,7 +22,7 @@ import { fileURLToPath } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 let src = readFileSync(join(root, 'worker/generator.js'), 'utf8');
 src = src.replace(/^export default \{[\s\S]*$/m, '');
-src += '\nexport { scoreDocument, salvageTruncatedJson, slugify, REGION_TERMS, BASE_SCORE, TOPICAL_SCORE, bestRegionFor, isNoise, regionAffinity };\n';
+src += '\nexport { scoreDocument, salvageTruncatedJson, slugify, REGION_TERMS, BASE_SCORE, TOPICAL_SCORE, bestRegionFor, isNoise, regionAffinity, titleStems };\n';
 const scratch = mkdtempSync(join(tmpdir(), 'pw-test-'));
 const modPath = join(scratch, 'generator.mjs');
 writeFileSync(modPath, src);
@@ -182,6 +182,39 @@ for (const [t, body] of real) {
     assert(!m.isNoise({ title: t, text: body }), 'a real policy action was rejected as noise');
   });
 }
+
+
+console.log('\ntitleStems — the same proclamation, four times, four headlines\n');
+
+const overlapOf = (a, b) => {
+  const A = new Set(m.titleStems(a)), B = m.titleStems(b);
+  const o = B.filter(w => A.has(w)).length;
+  const shorter = Math.min(A.size, B.length) || 1;
+  return { o, ratio: o / shorter };
+};
+const wouldBlock = (a, b) => {
+  const { o, ratio } = overlapOf(a, b);
+  return (o >= 4 && ratio >= 0.5) || (o >= 3 && ratio >= 0.7);
+};
+
+// All four ran within twenty-four hours of each other on 2026-09-08/09.
+test('"Canadian Alcohol Duty Scope" is caught against "Canada Auto Duties Scope"', () => {
+  assert(wouldBlock('President Expands Canadian Alcohol Duty Scope',
+                    'President Broadens Canada Auto Duties Scope'),
+         'the running Canada story published three times in a row');
+});
+
+test('canada and canadian, duty and duties, are the same word', () => {
+  const st = m.titleStems('Canadian Duties');
+  assert(st.includes('canada'), `canadian did not stem to canada: ${st}`);
+  assert(st.includes('duty'), `duties did not stem to duty: ${st}`);
+});
+
+test('two genuinely different designations are still allowed', () => {
+  assert(!wouldBlock('Treasury Designates Houthi Financial Network',
+                     'Commerce Streamlines Export Controls for Drone Exports'),
+         'unrelated stories must not be suppressed');
+});
 
 console.log(failed ? `\n${failed} test(s) failed\n` : '\nAll tests passed.\n');
 
