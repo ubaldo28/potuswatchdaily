@@ -24,7 +24,7 @@
     "check": "npm run check:config && npm test"
   },
   "dependencies": {
-    "@astrojs/cloudflare": "^14.2.5",
+    "@astrojs/cloudflare": "^14.3.1",
     "@supabase/supabase-js": "^2.115.0",
     "astro": "^7.2.9"
   },
