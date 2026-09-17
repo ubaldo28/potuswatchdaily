@@ -216,6 +216,20 @@ test('two genuinely different designations are still allowed', () => {
          'unrelated stories must not be suppressed');
 });
 
+
+test('a cultural-property exhibit notice is rejected even when it says neither art nor cultural', () => {
+  // Published live on 2026-09-17 by the version that shipped an hour earlier.
+  assert(m.isNoise({ title: 'U.S. Determines Dead Sea Scrolls Exhibit in National Interest', text: '' }),
+         'the immunity-from-seizure series must be rejected');
+  assert(m.isNoise({ title: 'U.S. Government Deems Rembrandt Exhibition Objects Culturally Significant', text: '' }),
+         'so must the Rembrandt one');
+});
+
+test('a real export ban is not caught by the exhibit rule', () => {
+  assert(!m.isNoise({ title: 'UTair Aviation Receives Renewed Export Ban', text: 'Bureau of Industry and Security temporary denial order' }),
+         'a denial order is a policy action, not an exhibition notice');
+});
+
 console.log(failed ? `\n${failed} test(s) failed\n` : '\nAll tests passed.\n');
 
 process.exit(failed ? 1 : 0);

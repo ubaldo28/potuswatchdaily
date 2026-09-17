@@ -221,15 +221,20 @@ const IMAGE_SUBJECTS = [
   [/homeland security|customs|border protection/i,          'United States Customs and Border Protection port of entry']
 ];
 
+// Buildings, not scenes. The first version asked Commons for "container ship
+// port of Los Angeles" and got a photograph of a decommissioned LAFD fireboat
+// on a Dead Sea Scrolls story -- technically a match for "port" and "Los
+// Angeles", and visibly absurd. A named building has one obvious photograph and
+// a hundred near-identical ones; a scene has a million unrelated ones.
 const REGION_IMAGE_SUBJECTS = {
-  Iran:     'Ministry of Foreign Affairs Tehran building',
-  China:    'Great Hall of the People Beijing',
+  Iran:     'Ministry of Foreign Affairs building Tehran',
+  China:    'Great Hall of the People Beijing exterior',
   NATO:     'NATO Headquarters Brussels building',
-  Americas: 'Organization of American States building Washington',
-  Mideast:  'Arab League headquarters Cairo',
+  Americas: 'Organization of American States building Washington DC',
+  Mideast:  'Arab League headquarters building Cairo',
   Russia:   'Moscow Kremlin Senate building',
-  Trade:    'container ship port of Los Angeles',
-  Analysis: 'United States Capitol Washington'
+  Trade:    'Herbert C. Hoover Building Washington DC',
+  Analysis: 'United States Capitol Washington DC'
 };
 
 /**
@@ -250,6 +255,19 @@ async function getCommonsImagePair(region, title, source) {
   }
   if (!query) query = REGION_IMAGE_SUBJECTS[region] || REGION_IMAGE_SUBJECTS.Analysis;
 
+  // Commons search is generous, and a generous match on a picture is worse than
+  // none: the first live result was a decommissioned fire boat, returned for
+  // "port of Los Angeles" and printed on a story about the Dead Sea Scrolls.
+  // Falling back to the Capitol is not a great photograph either, but it is
+  // never a ridiculous one.
+  const primary = await commonsSearch(query);
+  if (primary) return primary;
+  const fallback = REGION_IMAGE_SUBJECTS.Analysis;
+  if (query !== fallback) return commonsSearch(fallback);
+  return null;
+}
+
+async function commonsSearch(query) {
   try {
     const u = new URL('https://commons.wikimedia.org/w/api.php');
     u.searchParams.set('action', 'query');
@@ -276,6 +294,14 @@ async function getCommonsImagePair(region, title, source) {
       if (!thumb || !info.thumbwidth || !info.thumbheight) continue;
       if (info.thumbwidth < info.thumbheight * 1.2) continue;
 
+      // The file's own name has to agree with what was asked for, in at least
+      // two distinctive words. One word is how "port of Los Angeles" returned a
+      // fire boat: it matched "Angeles" and nothing else.
+      const wanted = query.toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 4);
+      const fileName = String(page.title || '').toLowerCase();
+      const agreed = wanted.filter(w => fileName.includes(w)).length;
+      if (agreed < 2) continue;
+
       const artist = stripHtml(info.extmetadata?.Artist?.value || '').trim().slice(0, 80);
       const credit = `?pw_src=commons&pw_by=${encodeURIComponent(artist || 'Wikimedia Commons')}` +
                      `&pw_at=${encodeURIComponent(info.descriptionurl || 'https://commons.wikimedia.org')}`;
@@ -286,7 +312,7 @@ async function getCommonsImagePair(region, title, source) {
         thumb: thumb.replace('/1200px-', '/600px-') + credit
       };
     }
-    console.warn(`[image] commons "${query}" returned nothing landscape.`);
+    console.warn(`[image] commons "${query}" returned nothing landscape and on topic.`);
     return null;
   } catch (e) {
     console.warn('[image] commons lookup failed:', e.message);
@@ -612,7 +638,11 @@ const CEREMONIAL = /half-staff|half staff|national .{0,30}(day|week|month)\b|pro
 const NOISE_PATTERNS = [
   // State Department cultural-property and art-exhibition determinations.
   // Foreign, and about imports, and not foreign policy.
-  /cultural (property|significance|exchange|import)|archaeolog|ethnolog|objects? of cultural|works? of art|art (import|exhibition)|impressionist|byzantine|sculpture|icons|artifact|antiquit|museum/i,
+  // "U.S. Determines Dead Sea Scrolls Exhibit in National Interest" slipped
+  // through the first version of this list: it never says "art" and never says
+  // "cultural". The series is the State Department's immunity-from-seizure
+  // notices, and what they always have is an exhibit and a determination.
+  /cultural (property|significance|exchange|import)|archaeolog|ethnolog|objects? of cultural|works? of art|art (import|exhibition)|\bexhibit(ion|s)?\b|immunity from seizure|national interest determination|impressionist|byzantine|sculpture|\bicons?\b|artifact|antiquit|museum|\bscrolls?\b|\bpaintings?\b|\bcollections? of\b/i,
   // Procedural Federal Register furniture: the notice that a process exists.
   /advisory (committee|board|panel|group)|request for nominations|solicit\w* nominations|(public|open) meeting|notice of meeting|information collection|paperwork reduction|privacy act of 1974|records schedule|agency information/i,
   // Domestic spending, grants and contract awards.
