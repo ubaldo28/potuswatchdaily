@@ -45,7 +45,7 @@ const SITE = 'https://www.potuswatchdaily.com';
   <meta name="description" content={description}>
   <link rel="canonical" href={canonicalUrl}>
   {noIndex
-    ? <meta name="robots" content="noindex, nofollow">
+    ? <meta name="robots" content="noindex, follow">
     : <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
   }
 
@@ -330,10 +330,8 @@ const SITE = 'https://www.potuswatchdaily.com';
     // is:inline for the same reason the gtag block needs it: Astro would
     // otherwise hoist this into a module and the onclick handlers above would
     // find no such function.
-    var PW_AD_TAGS = [
-      'https://pl29502765.effectivecpmnetwork.com/37/c5/f9/37c5f97dcf85aef347afb415f071ce90.js',
-      'https://pl29502766.effectivecpmnetwork.com/05/06/4c/05064cd4192c96a0884ae0f79145c863.js'
-    ];
+    // Adsterra tags removed until AdSense approval. Re-add URLs here to restore.
+    var PW_AD_TAGS = [];
     function pwLoadAdTags() {
       if (window.__pwAdTagsLoaded) return;
       window.__pwAdTagsLoaded = true;

@@ -3,6 +3,7 @@ import { env } from 'cloudflare:workers';
 import { createClient } from '@supabase/supabase-js';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Footer from '../components/Footer.astro';
+import { dedupeImages } from '../lib/quality';
 
 // env comes from the Workers runtime module (Astro.locals.runtime was removed in adapter v14)
 const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_KEY);
@@ -13,7 +14,7 @@ const { data: articles = [] } = await supabase
   .order('id', { ascending: false })
   .limit(24);
 
-const list = articles ?? [];
+const list = dedupeImages(articles ?? []);
 const tickerTitles = list.slice(0, 8).map(a => a.title);
 
 // JSON.stringify escapes quotes and backslashes but NOT '<', so a title
@@ -176,14 +177,6 @@ const organizationLd = {
               <div class="card-meta">{a.date || ''}{a.time ? ` · ${a.time}` : ''}</div>
             </div>
           </a>
-          {i === 5 && (
-            <div class="affiliate-banner" id="affiliate-banner" style="grid-column:1/-1;background:#0e0e0e;border:1px solid #1e1e1e;border-left:3px solid #cc0000;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
-              <div>
-                <p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color: var(--accent-text);margin-bottom:4px;font-family:'Inter',sans-serif">Sponsored · Affiliate Disclosure</p>
-                <p style="font-size:13px;color:#aaa;font-family:'Inter',sans-serif;line-height:1.5;margin:0">With global instability rising, many readers are preparing. <a href="https://amzn.to/4cgkdM3" target="_blank" rel="noopener nofollow sponsored" style="color:#fff;text-decoration:underline;text-underline-offset:3px">View the #1 rated emergency survival kit →</a></p>
-              </div>
-            </div>
-          )}
         </>
       ))}
       <p id="no-results" style="display:none;color:var(--text-3);font-size:14px;padding:40px 0;grid-column:1/-1;text-align:center">No dispatches found for this filter.</p>

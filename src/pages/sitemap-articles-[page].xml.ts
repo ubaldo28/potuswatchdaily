@@ -1,6 +1,7 @@
 import { env } from 'cloudflare:workers';
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
+import { isRoutineNotice } from '../lib/quality';
 
 const SITE_URL = 'https://www.potuswatchdaily.com';
 const PAGE_SIZE = 2000;
@@ -38,7 +39,7 @@ export const GET: APIRoute = async ({ params, locals }) => {
       return new Date().toISOString();
     };
 
-    const urls = (data || []).filter(a => a.slug && a.slug.length > 3).map(a => {
+    const urls = (data || []).filter(a => a.slug && a.slug.length > 3 && !isRoutineNotice(a.title)).map(a => {
       const img = a.hero_image || a.image;
       return `<url><loc>${SITE_URL}/article/${esc(a.slug)}</loc><lastmod>${isoOf(a)}</lastmod>`
         + (img ? `<image:image><image:loc>${esc(img)}</image:loc><image:title>${esc(a.title)}</image:title></image:image>` : '')

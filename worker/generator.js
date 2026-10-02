@@ -330,7 +330,37 @@ async function commonsSearch(query) {
  * Attribution and the download trigger are both REQUIRED by the Unsplash API
  * Guidelines.
  */
+// A photograph already used by a recent article is never reused. Without this
+// every Treasury story got the same Treasury building and the front page showed
+// one photo thirteen times. No image is better than a repeated one: the site
+// renders a branded placeholder for it.
+async function recentImageKeys(env) {
+  try {
+    const rows = await sb(env, 'articles?select=image,hero_image&order=id.desc&limit=60');
+    const keys = new Set();
+    for (const r of rows || []) {
+      for (const u of [r.image, r.hero_image]) if (u) keys.add(String(u).split('?')[0]);
+    }
+    return keys;
+  } catch (e) {
+    console.warn('[image] Could not load recent images, skipping dedupe:', e.message);
+    return new Set();
+  }
+}
+
 async function getImagePair(env, region, title, source = '') {
+  const pair = await pickImagePair(env, region, title, source);
+  if (!pair.hero && !pair.thumb) return pair;
+  const recent = await recentImageKeys(env);
+  const key = String(pair.hero || pair.thumb).split('?')[0];
+  if (recent.has(key)) {
+    console.log(`[image] ${key} was used in the last 60 articles; publishing without a photo rather than repeat it.`);
+    return { hero: '', thumb: '' };
+  }
+  return pair;
+}
+
+async function pickImagePair(env, region, title, source = '') {
   // Prefer public-domain U.S. government photography when it actually matches
   // the story.
   const gov = await getGovImagePair(titleKeywords(title));
@@ -661,6 +691,11 @@ function isNoise(doc) {
   return NOISE_PATTERNS.some(re => re.test(title));
 }
 
+// List-maintenance filings carry no analysis to write about: a name added to a
+// sanctions list or a general license reissued. Stretching them to 700 words is
+// the scaled-content pattern AdSense rejects, so they are never leads.
+const ROUTINE_NOTICE = /\bSDN\b|specially designated|general licen[sc]e|\bGLs? ?[0-9][0-9A-Z]?\b|designations?\b|recent actions|blocked persons|sanctions list|unblock|delist/i;
+
 function scoreDocument(doc, region) {
   const title = (doc.title || '').toLowerCase();
   // Memoised on the document. This is called up to three times per document per
@@ -671,6 +706,7 @@ function scoreDocument(doc, region) {
   const body = doc._lcBody;
 
   if (CEREMONIAL.test(title)) return -1;                       // hard reject
+  if (ROUTINE_NOTICE.test(title)) return -1;                   // hard reject
   if (isNoise(doc)) return -1;                                 // hard reject
 
   const fpTitle = FOREIGN_POLICY_TERMS.some(t => title.includes(t));
@@ -1306,6 +1342,10 @@ Respond ONLY with valid JSON, no markdown:
 
     const attempt = await generateArticleJson(env, prompt);
 
+    if (ROUTINE_NOTICE.test(String(attempt.title || ''))) {
+      console.log(`[generator] "${attempt.title}" is a routine listing notice — trying the next document.`);
+      continue;
+    }
     if (await isTooSimilar(env, attempt.title)) {
       console.log(`[generator] "${attempt.title}" is too similar to recent content — trying the next document.`);
       continue;

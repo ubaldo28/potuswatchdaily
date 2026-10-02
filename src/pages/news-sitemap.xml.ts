@@ -1,6 +1,7 @@
 import { env } from 'cloudflare:workers';
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
+import { isRoutineNotice } from '../lib/quality';
 
 const SITE_URL = 'https://www.potuswatchdaily.com';
 
@@ -26,7 +27,7 @@ export const GET: APIRoute = async () => {
       .order('published_at', { ascending: false })
       .limit(1000);
 
-    const urls = (data || []).map(a => `<url>
+    const urls = (data || []).filter(a => !isRoutineNotice(a.title)).map(a => `<url>
   <loc>${SITE_URL}/article/${esc(a.slug)}</loc>
   <news:news>
     <news:publication><news:name>POTUS Watch Daily</news:name><news:language>en</news:language></news:publication>

@@ -37,7 +37,7 @@ const assert = (cond, msg) => { if (!cond) throw new Error(msg || 'assertion fai
 
 console.log('\nscoreDocument — the outage that made these tests exist\n');
 
-test('an OFAC blocking notice is publishable somewhere', () => {
+test('an OFAC blocking notice is rejected as a routine listing', () => {
   // Verbatim shape of the commonest Treasury/OFAC Federal Register notice.
   // Its prose says "blocked" and "Office of Foreign Assets Control", never
   // "sanction", and it names no country — so it used to score 0 eight times.
@@ -45,8 +45,10 @@ test('an OFAC blocking notice is publishable somewhere', () => {
     title: 'Blocking or Unblocking of Persons and Properties',
     text: "The Department of the Treasury's Office of Foreign Assets Control (OFAC) is publishing the names of one or more persons whose property and interests in property are blocked pursuant to Executive Order 13224, Persons Who Commit, Threaten To Commit, or Support Terrorism."
   };
+  // Reversed deliberately: these were once forced to publish, and a feed of
+  // them is the scaled-content pattern AdSense rejects. They are never leads.
   const best = Math.max(...Object.keys(m.REGION_TERMS).map(r => m.scoreDocument({ ...doc }, r)));
-  assert(best >= m.TOPICAL_SCORE, `best score was ${best}, below the topical bar`);
+  assert(best === -1, `best score was ${best}, expected a hard reject`);
 });
 
 test('a North Korea designation is topical somewhere', () => {
