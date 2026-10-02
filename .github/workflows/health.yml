@@ -91,13 +91,11 @@ jobs:
           echo "repository: $HEAD_SHA (${AGE_MIN} minutes old)"
 
           if [ -z "$LIVE" ]; then
-            # Expected, for now: the domain is served by the Pages project, which
-            # was built before the stamp existed and cannot be rebuilt. This is a
-            # warning rather than a failure so it does not open an issue every
-            # hour for a condition that is already known and written down -- but
-            # it does not go silent either.
-            echo "::warning::The live site carries no build stamp, so it is not being served by anything this repository deploys. See RUNBOOK.md and the 'Move the domain onto the Worker' workflow."
-            exit 0
+            # The site Worker stamps every page, so a missing stamp means the
+            # domain is not being served by what this repository deploys.
+            echo "detail=The live site carries no build stamp, so the domain may not be attached to the site Worker. Check Workers & Pages, potuswatchdaily-site, Domains & Routes." >> "$GITHUB_OUTPUT"
+            echo "::error::Live site carries no build stamp"
+            exit 1
           fi
 
           if [ "$LIVE" = "$HEAD_SHA" ]; then

@@ -42,5 +42,5 @@
   // NOTE: no "nodejs_compat" flag and no bundled dependencies. generator.js is
   // plain fetch() only, which keeps startup well inside the 1s startup budget.
   //
-  // Secrets are NOT set here. Use `wrangler secret put` — see ../MIGRATION.md.
+  // Secrets are NOT set here. Use `wrangler secret put` — see RUNBOOK.md (or run `npm run secrets`).
 }

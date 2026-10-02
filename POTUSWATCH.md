@@ -93,7 +93,7 @@ potuswatch/
 │   ├── logo-v2.png                 # Current logo
 │   └── og-default.jpg              # OG fallback image
 ├── src/middleware.ts               # Cache-Control + security headers for SSR routes
-├── worker/generator.js             # Cloudflare Cron replacement — see MIGRATION.md
+├── worker/generator.js             # The article generator (Cloudflare Worker on a cron)
 ├── scripts/backup-articles.mjs     # Daily table dump
 ├── scripts/restore-articles.mjs    # Restore from a snapshot
 ├── wrangler.jsonc                  # Cloudflare Workers config

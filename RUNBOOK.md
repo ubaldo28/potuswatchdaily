@@ -15,29 +15,21 @@ know *why*.
 `npm run check:config` is the first half on its own — it needs no network and
 runs in under a second. CI runs it before every deploy.
 
-### What actually serves potuswatchdaily.com
+### What serves potuswatchdaily.com
 
-**A Cloudflare Pages project named `potuswatchdaily` — not the Worker.**
+**The Worker `potuswatchdaily-site`.** Both `potuswatchdaily.com` and
+`www.potuswatchdaily.com` are custom domains of that Worker, which CI deploys on
+every push to `main` (moved off the old Cloudflare Pages project on 2026-10-02).
+The old Pages project still exists but is frozen and cannot be rebuilt; do not
+move the domain back to it.
 
-This is the single most expensive thing to get wrong in this repository, so it
-is written down here rather than remembered. CI deploys a Worker called
-`potuswatchdaily-site`, and that Worker is correct, current, and reachable at
-`potuswatchdaily-site.potuswatchdaily.workers.dev`. It is **not** what readers
-hit. The hostname `potuswatchdaily.com` is attached to the Pages project, and a
-hostname can only be attached to one of them at a time.
-
-Consequences, all learned the hard way:
-
-- Changing a secret on the site Worker changes nothing about the live site.
-- The Pages project's GitHub repository no longer exists, so it cannot be
-  rebuilt or reconfigured. It runs on the environment variables it already has,
-  including a **legacy Supabase anon key**. Disabling legacy JWT keys in
-  Supabase takes the live site down instantly and completely.
-- Before concluding anything from a change to the site Worker, check the live
-  domain, not the Worker. `npm run doctor` checks the live domain.
-
-Moving the hostname onto the Worker is the right end state and is a deliberate
-migration, not a fix to reach for while something is broken.
+- Secrets for the live site are set on the site Worker (`SUPABASE_URL`,
+  `SUPABASE_KEY`); CI provisions them from `project.config.json` and GitHub
+  Secrets on every deploy.
+- The live domain carries a build stamp (`<meta name="pw-build">`) that
+  `health.yml` compares with the repository, so a deploy that does not reach
+  readers is caught.
+- `npm run doctor` checks the live domain, the generator and the config.
 
 ### One place for names
 
@@ -60,7 +52,7 @@ one-second grep-level check catches all three.
 
 ## 🚨 Site is down / not loading
 
-1. Check the Worker: https://dash.cloudflare.com → Workers & Pages → `potuswatchdaily` (the Pages project that serves the domain) or `potuswatchdaily-site` (the Worker CI deploys)
+1. Check the Worker: https://dash.cloudflare.com → Workers & Pages → `potuswatchdaily-site` (the Worker that serves the domain and that CI deploys)
 2. Check latest deployment — is it green?
 3. If red: check GitHub Actions https://github.com/ubaldo28/potuswatch/actions
 4. If Actions red: expand the failed step and read the error
@@ -237,74 +229,12 @@ token instead.
 
 ---
 
-## Pages → Workers cutover (Aug 2026)
+## History: Pages to Workers (Aug to Oct 2026)
 
-Why: `@astrojs/cloudflare` v14 removed Cloudflare Pages support, and Astro 5 had
-no patched release for five runtime advisories — including a **high** Host-header
-SSRF (GHSA-2pvr-wf23-7pc7) and a **high** reflected XSS via unescaped slot name
-(GHSA-8hv8-536x-4wqp). Staying on Astro 5 meant shipping those. `npm audit` is
-now clean.
-
-The Worker is named `potuswatchdaily-site`, not `potuswatchdaily`: the old
-Pages project still owns that name and is left in place as the rollback target. Nothing about the
-generator Worker changed.
-
-### Cutover, in order
-
-1. `npm ci && npm run build` — must succeed locally first.
-2. Set the site Worker's secrets (once):
-   ```
-   npx wrangler secret put SUPABASE_URL   --config dist/server/wrangler.json
-   npx wrangler secret put SUPABASE_KEY   --config dist/server/wrangler.json
-   ```
-   Use the Supabase **anon/publishable** key here, never `service_role`: this
-   Worker only reads, and its bundle is reachable by anyone.
-3. `npx wrangler deploy --config dist/server/wrangler.json`
-4. Verify on the `*.workers.dev` URL **before touching DNS** — the live site is
-   still served by Pages at this point:
-   `/`, `/article/<any-slug>`, `/archive/`, `/region/china`, `/sitemap.xml`,
-   `/news-sitemap.xml`, `/robots.txt`, `/feed.xml`.
-5. Steps 5 and 6 are no longer done by hand. Do NOT remove the domain from
-   Pages in the dashboard and then add it to the Worker: Cloudflare will not let
-   a hostname sit on both, so between those two clicks the site is down, and it
-   refuses the Worker custom domain outright if the CNAME Pages left behind is
-   still there ("domain already in use").
-
-   Actions tab → **Move the domain onto the Worker**:
-
-   - **check** — writes nothing. Fetches the Worker and confirms it serves real
-     articles, then proves the API token can do every write the switch needs by
-     attaching and detaching a throwaway probe hostname. A token missing
-     Pages:Edit fails here, with the live site untouched.
-   - **switch** — takes each hostname off Pages, clears the record it left, and
-     attaches it to the Worker, back to back. Then polls the live domain, and
-     rolls itself back if it does not come up serving articles.
-   - **rollback** — puts both hostnames back on Pages.
-
-   The token needs, on this account: Cloudflare Pages · Edit, Workers Scripts ·
-   Edit, Zone · Read, DNS · Edit. The deploy token has the last three and
-   probably not the first; **check** says so in plain words.
-
-### Rollback
-
-Actions tab → Move the domain onto the Worker → **rollback**. The Pages project
-and its last deployment are never deleted, so it is always there to go back to.
-
-### What changed in code
-
-- `Astro.locals.runtime` is gone in adapter v14. Every route that needed Supabase
-  now does `import { env } from 'cloudflare:workers'` (10 files).
-- `wrangler.jsonc` lost `pages_build_output_dir`; the adapter generates the real
-  deploy config at `dist/server/wrangler.json`.
-- `session: false` and `imageService: 'passthrough'` in `astro.config.mjs`. Without
-  them the adapter provisions a KV namespace and a Cloudflare Images binding on
-  every deploy; this site uses neither.
-- `src/pages/index.astro` had `<main>` closed by `</div>` and a stray `</main>`
-  around the newsletter block. Astro 5 tolerated it; Astro 7's compiler rejects
-  it. The landmark had been wrapping the wrong content in production.
-
-
----
+`@astrojs/cloudflare` v14 dropped Cloudflare Pages support, and staying on Astro 5
+meant shipping known high-severity advisories, so the site moved to a Worker. The
+code was deployed to the Worker in August and the domain was attached to it on
+2026-10-02. Nothing about the generator Worker changed.
 
 ## The generator, and why it is set up this way
 

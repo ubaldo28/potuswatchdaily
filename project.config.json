@@ -16,11 +16,9 @@
     "accountId": "7ded3077a7ce39644f81502fc5e09647",
     "workersDevSubdomain": "potuswatchdaily",
     "$pagesProject": [
-      "The Pages project that currently serves the live domain. Its source",
-      "repository is gone, so it can never be rebuilt -- it is a frozen",
-      "deployment and a rollback target, nothing more.",
-      "scripts/cutover.mjs moves the hostnames off it and onto the Worker,",
-      "and back again."
+      "Retired. The domain used to be served by the Pages project of this name;",
+      "on 2026-10-02 both hostnames were moved onto the site Worker. The Pages",
+      "project is a frozen, unbuildable leftover and is not a rollback target."
     ],
     "pagesProject": "potuswatchdaily"
   },
@@ -41,28 +39,8 @@
     "domain": "potuswatchdaily.com",
 
     "$servedBy": [
-      "potuswatchdaily.com is served by the Cloudflare PAGES project named",
-      "'potuswatchdaily', not by the 'potuswatchdaily-site' Worker that CI",
-      "deploys. The Worker is current and correct at its workers.dev address,",
-      "but the hostname is attached to Pages, and a hostname can only be",
-      "attached to one at a time.",
-      "",
-      "So: a secret changed on the site Worker does not affect the live site,",
-      "and the Pages project still runs on a legacy Supabase anon key. See",
-      "RUNBOOK.md, 'What actually serves potuswatchdaily.com'."
-    ]
-  },
-
-  "supabase": {
-    "$comment": [
-      "Not a secret, and deliberately not a GitHub Secret. Supabase publishable",
-      "keys are designed to be shipped in browser code; this one grants exactly",
-      "what an anonymous visitor already has -- read access to published",
-      "articles, bounded by row-level security. Treating it as a secret bought",
-      "nothing and cost a manual step on every environment.",
-      "",
-      "The site reads with this. The generator writes with SUPABASE_WRITE_KEY,",
-      "which is a real secret and lives only in GitHub Secrets."
+      "potuswatchdaily.com and www.potuswatchdaily.com are custom domains of the",
+      "Worker 'potuswatchdaily-site', which CI deploys on every push to main."
     ],
     "publishableKey": "sb_publishable_dwzndGsc-tK1ZVzivAKjWA_NgG9BL5z"
   },

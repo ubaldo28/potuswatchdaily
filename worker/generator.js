@@ -1890,7 +1890,7 @@ export default {
   },
 
   /**
-   * Not required by the cron, but handy during cutover.
+   * Not required by the cron; handy for checks and manual runs.
    *   GET  /health          — is the feed still fresh?
    *   GET  /sources         — which feeds are alive and how much unused material is left;
  *                           same Bearer token as /run

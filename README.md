@@ -55,10 +55,7 @@ Cloudflare Worker ── fetch ──▶ whitehouse.gov       presidential actio
 
 Two Workers, one database, no servers.
 
-One caveat, documented at the top of `RUNBOOK.md`: the custom domain is still
-attached to the predecessor Cloudflare Pages project. The site Worker is current
-and correct at its `workers.dev` address; moving the hostname across is a
-deliberate pending migration, not an accident. The generator and the site are deployed
+The custom domain is attached to the site Worker (moved off the old Pages project on 2026-10-02). The generator and the site are deployed
 independently and share nothing but the table.
 
 ## Decisions
@@ -192,8 +189,7 @@ Optional: `CF_ZONE_ID` + `CF_PURGE_TOKEN` (purge the edge cache on publish),
 
 ## Operations
 
-`RUNBOOK.md` covers failure modes and recovery, including the Pages → Workers
-cutover and its rollback. `POTUSWATCH.md` is the working reference.
+`RUNBOOK.md` covers failure modes and recovery. `POTUSWATCH.md` is the working reference.
 
 ## Licence
 

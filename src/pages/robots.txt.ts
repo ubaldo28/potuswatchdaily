@@ -7,14 +7,12 @@ export const GET: APIRoute = () => {
   const content = `User-agent: *
 Allow: /
 Disallow: /api/
-Disallow: /get-articles
 Disallow: /subscribe
 Disallow: /_image
 
 User-agent: Googlebot
 Allow: /
 Disallow: /api/
-Disallow: /get-articles
 Disallow: /subscribe
 Disallow: /_image
 
@@ -22,13 +20,11 @@ User-agent: Googlebot-News
 Allow: /
 Allow: /article/
 Disallow: /api/
-Disallow: /get-articles
 Disallow: /subscribe
 
 User-agent: Bingbot
 Allow: /
 Disallow: /api/
-Disallow: /get-articles
 Disallow: /subscribe
 Disallow: /_image
 
