@@ -1344,8 +1344,13 @@ async function generateArticle(env) {
     // Context comes from UNCOVERED documents and must clear the relevance bar,
     // or it drags the article off topic. Drawing it from allDocs also re-stamped
     // already-covered documents' five-day clock forward for no benefit.
+    // Supporting documents must also share a real subject word with the lead.
+    // Clearing the foreign-policy gate alone attached a White House AI
+    // proclamation and a government-services order to a UN human-rights debate.
+    const leadStems = new Set(titleStems(`${lead.title} ${String(lead.text || '').slice(0, 300)}`).filter(w => !GENERIC_STEMS.has(w)));
+    const related = d => titleStems(d.title).some(w => leadStems.has(w) && !GENERIC_STEMS.has(w));
     context = fresh
-      .filter(d => d.url !== lead.url && scoreDocument(d, region) >= BASE_SCORE)
+      .filter(d => d.url !== lead.url && scoreDocument(d, region) >= BASE_SCORE && related(d))
       .slice(0, 3);
     used = [lead, ...context];
     console.log(`[generator] ${context.length} supporting documents.`);
@@ -1409,7 +1414,7 @@ Structure (use ## for section headings; the two fixed headings below must appear
 ## What to Watch
 3-4 bullet lines, each starting with "- ": a specific decision point, deadline, reaction or signal that would show where this goes next. Only what the record supports; say so if the record sets no date.
 
-Style: active voice, analytical, no rhetorical questions, no sensationalism, never glorify violence. 1,100-1,500 words in total.
+Style: active voice, analytical, no rhetorical questions, no sensationalism, never glorify violence. 1,300-1,700 words in total. Do not stop early: every section needs its full paragraph count.
 
 Headline rules: 5-9 words, drawn from document [1]. It must name a SPECIFIC actor and a SPECIFIC action — for example "Treasury Designates Three Iranian Shipping Firms", not "Iran Portfolio Faces Mounting Pressure". No colons. Abstract noun-stacks are rejected.
 
@@ -1420,8 +1425,8 @@ Respond ONLY with valid JSON, no markdown:
 
     const attempt = await generateArticleJson(env, prompt);
 
-    if (String(attempt.body || '').split(/\s+/).length < 650) {
-      console.log(`[generator] "${attempt.title}" came back under 650 words — trying the next document.`);
+    if (String(attempt.body || '').split(/\s+/).length < 800) {
+      console.log(`[generator] "${attempt.title}" came back under 800 words — trying the next document.`);
       continue;
     }
     if (ROUTINE_NOTICE.test(String(attempt.title || ''))) {
