@@ -32,3 +32,20 @@ export function dedupeImages<T extends { image?: string | null }>(list: T[]): T[
     return a;
   });
 }
+
+// The card that stands in for a photo names the document the story came from,
+// so it is always true: a stock photo can only ever look like the story, a
+// label can say what it is.
+const HOSTS: Array<[RegExp, string]> = [
+  [/whitehouse\.gov/, 'THE WHITE HOUSE'], [/federalregister\.gov/, 'FEDERAL REGISTER'],
+  [/war\.gov|defense\.gov/, 'DEPT. OF WAR'], [/un\.org/, 'UNITED NATIONS'],
+  [/consilium\.europa/, 'EU COUNCIL'], [/csis\.org/, 'CSIS ANALYSIS'], [/ustr\.gov/, 'USTR'],
+  [/potuswatchdaily/, 'WEEKLY REVIEW'],
+];
+export function sourceLabel(sources: string | null | undefined, region?: string | null) {
+  try {
+    const first = JSON.parse(sources || '[]')?.[0]?.url || '';
+    for (const [re, label] of HOSTS) if (re.test(first)) return label;
+  } catch {}
+  return (region || 'POTUS WATCH').toUpperCase();
+}

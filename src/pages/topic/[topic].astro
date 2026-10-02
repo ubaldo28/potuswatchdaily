@@ -1,0 +1,92 @@
+---
+import { env } from 'cloudflare:workers';
+import { createClient } from '@supabase/supabase-js';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Masthead from '../../components/Masthead.astro';
+import Footer from '../../components/Footer.astro';
+import { topicBySlug, topicFilter } from '../../lib/topics';
+import { isRoutineNotice } from '../../lib/quality';
+
+const SITE_URL = 'https://www.potuswatchdaily.com';
+const meta = topicBySlug(String(Astro.params.topic || ''));
+
+let articles: any[] = [];
+if (meta) {
+  const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_KEY);
+  const { data } = await supabase
+    .from('articles')
+    .select('title,slug,excerpt,region,date,time')
+    .or(topicFilter(meta))
+    .order('id', { ascending: false })
+    .limit(120);
+  articles = (data ?? []).filter(a => !isRoutineNotice(a.title));
+}
+
+const canonical = `${SITE_URL}/topic/${meta?.slug}`;
+// A hub with almost nothing on it is thin content; keep it out of the index
+// until it has real coverage.
+const thin = articles.length < 4;
+
+const collectionLd = meta ? {
+  '@context': 'https://schema.org', '@type': 'CollectionPage',
+  name: meta.name, description: meta.blurb, url: canonical,
+  isPartOf: { '@type': 'WebSite', name: 'POTUS Watch Daily', url: SITE_URL },
+  mainEntity: { '@type': 'ItemList', itemListElement: articles.slice(0, 50).map((a, i) => ({
+    '@type': 'ListItem', position: i + 1, url: `${SITE_URL}/article/${a.slug}`, name: a.title })) },
+} : null;
+const breadcrumbLd = meta ? {
+  '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+    { '@type': 'ListItem', position: 2, name: meta.name },
+  ],
+} : null;
+
+const safeJsonLd = (o: unknown) => JSON.stringify(o)
+  .replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
+if (!meta) Astro.response.status = 404;
+---
+{!meta ? (
+  <BaseLayout title="Not found — POTUS Watch Daily" noIndex={true}>
+    <Masthead backLink="/" backLabel="← Back to feed" />
+    <main id="main" class="page" tabindex="-1">
+      <h1>Topic not found</h1>
+      <p class="page-sub"><a href="/">Return to the feed</a>.</p>
+    </main>
+    <Footer />
+  </BaseLayout>
+) : (
+  <BaseLayout
+    title={`${meta.name} — Analysis and Updates | POTUS Watch Daily`}
+    description={meta.blurb}
+    canonical={canonical}
+    noIndex={thin}
+  >
+    <Fragment slot="head">
+      <script type="application/ld+json" set:html={safeJsonLd(collectionLd)} />
+      <script type="application/ld+json" set:html={safeJsonLd(breadcrumbLd)} />
+    </Fragment>
+    <Masthead backLink="/" backLabel="← Back to feed" />
+    <main id="main" class="page" tabindex="-1">
+      <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> <span aria-hidden="true">›</span> <span>{meta.name}</span></nav>
+      <div class="eyebrow">Topic</div>
+      <h1>{meta.name}</h1>
+      <p class="page-sub">{meta.intro}</p>
+
+      {articles.length === 0 && <p class="page-sub">No dispatches filed on this topic yet.</p>}
+
+      {articles.map(a => (
+        <div class="archive-item">
+          <a href={`/article/${a.slug}`} class="archive-link">
+            <span class="archive-title">{a.title}</span>
+            <span class="archive-meta">{a.date || ''}{a.time ? ` · ${a.time}` : ''}</span>
+          </a>
+          {a.excerpt && <p class="archive-excerpt">{a.excerpt}</p>}
+        </div>
+      ))}
+
+      <p class="page-sub" style="margin-top:32px"><a href="/archive">Browse the full archive →</a></p>
+    </main>
+    <Footer />
+  </BaseLayout>
+)}

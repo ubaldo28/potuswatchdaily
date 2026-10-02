@@ -16,6 +16,8 @@
  */
 
 // ── Config ───────────────────────────────────────────────────────────────────
+// Must match the second entry in worker/wrangler.jsonc.
+const WEEKLY_CRON = '0 16 * * 0';
 const regions = ['Iran', 'China', 'NATO', 'Americas', 'Mideast', 'Russia', 'Trade', 'Analysis'];
 
 const imageQueries = {
@@ -583,8 +585,64 @@ const RSS_SOURCES = [
     url: 'https://www.consilium.europa.eu/en/rss/pressreleases.ashx',
     regions: ['NATO', 'Russia', 'Trade', 'Analysis'],
     weight: 2
+  },
+  {
+    id: 'csis',
+    name: 'Center for Strategic and International Studies',
+    url: 'https://www.csis.org/rss.xml',
+    regions: ['Americas', 'China', 'NATO', 'Iran', 'Mideast', 'Russia', 'Trade', 'Analysis'],
+    weight: 2
+  },
+  {
+    id: 'ustr',
+    name: 'Office of the U.S. Trade Representative',
+    url: 'https://ustr.gov/rss.xml',
+    regions: ['Trade', 'China', 'Americas', 'Analysis'],
+    weight: 2
   }
 ];
+
+// Wire-service and newspaper feeds. These carry a headline and a one-line
+// summary only, which is all they are used for: corroboration (is anyone else
+// reporting this?) and attributed context. They are never the lead document and
+// their wording is never reproduced.
+const NEWS_SOURCES = [
+  { id: 'bbc-world',      name: 'BBC News',           url: 'https://feeds.bbci.co.uk/news/world/rss.xml' },
+  { id: 'npr-politics',   name: 'NPR',                url: 'https://feeds.npr.org/1004/rss.xml' },
+  { id: 'aljazeera',      name: 'Al Jazeera',         url: 'https://www.aljazeera.com/xml/rss/all.xml' },
+  { id: 'guardian-world', name: 'The Guardian',       url: 'https://www.theguardian.com/world/rss' },
+  { id: 'nyt-world',      name: 'The New York Times', url: 'https://rss.nytimes.com/services/xml/rss/nyt/World.xml' },
+];
+
+async function fetchNews(cache) {
+  const results = await Promise.all(NEWS_SOURCES.map(src => {
+    const key = 'news:' + src.id;
+    if (!cache.has(key)) cache.set(key, fetchFeed({ ...src, weight: 1 }));
+    return cache.get(key);
+  }));
+  return results.flat().filter(i => i.title && i.url).map(i => ({ ...i, text: String(i.text || '').slice(0, 300) }));
+}
+
+// Stems shared between a primary document and a news item. Two or more means
+// they are about the same event; that is the signal for "this actually matters
+// today", which is what ranks the lead.
+const GENERIC_STEMS = new Set(titleStems(
+  'president presidential white house action actions further certain department federal notice rule rules regulation regulations ' +
+  'office agency government official policy administration order determination review request comment public secretary ' +
+  'announces announced statement meeting report update new national international world'
+));
+
+// Headline against headline only: summaries and source names are full of words
+// ("president", "action", "state") that appear in everything, which produced
+// matches between a beef proclamation and a story about a Korean apology.
+function corroborating(doc, news) {
+  const a = new Set(titleStems(doc.title).filter(w => !GENERIC_STEMS.has(w)));
+  return news.filter(n => {
+    let hit = 0;
+    for (const w of titleStems(n.title)) if (a.has(w) && !GENERIC_STEMS.has(w) && ++hit >= 2) return true;
+    return false;
+  });
+}
 
 // Federal Register agency slugs per region. Keyless JSON API, no rate limit.
 const FR_AGENCIES = {
@@ -1254,13 +1312,21 @@ async function generateArticle(env) {
   // different document", not "publish nothing this hour" -- the masthead says
   // Updated Hourly, and the remaining candidates are already in memory and
   // already paid for.
-  let lead = null, context = [], used = [], parsed = null;
+  let lead = null, context = [], used = [], parsed = null, reporting = [];
 
   // The region the rotation settled on. Kept separate because `region` is about
   // to be overwritten with what the document is actually about, and a retry
   // must break the tie against the rotation's answer, not against the previous
   // candidate's.
   const rotationRegion = region;
+
+  // Re-rank the top of the list by whether the wider press is covering the same
+  // event. Only 12 documents are scanned, to stay inside the CPU budget.
+  const news = await fetchNews(sourceCache);
+  const head = scored.slice(0, 12);
+  for (const x of head) x.corr = corroborating(x.doc, news);
+  head.sort((a, b) => (b.score + 10 * b.corr.length) - (a.score + 10 * a.corr.length));
+  scored.splice(0, head.length, ...head);
 
   for (const candidate of scored.slice(0, 3)) {
     lead = candidate.doc;
@@ -1292,7 +1358,14 @@ async function generateArticle(env) {
       ).join('\n\n')
     : '';
 
-  const newsContext = leadBlock + contextBlock;
+  reporting = (candidate.corr || []).slice(0, 3);
+  const reportingBlock = reporting.length
+    ? '\n\n' + reporting.map((n, i) =>
+        `[${i + 2 + context.length}] REPORTING by ${n.source} (headline and summary only; attribute by outlet name, never reproduce wording)\n    ${n.title}\n    ${n.text}\n    URL: ${n.url}`
+      ).join('\n\n')
+    : '';
+
+  const newsContext = leadBlock + contextBlock + reportingBlock;
 
   const types = [
     'breaking news analysis','strategic intelligence briefing',
@@ -1318,30 +1391,39 @@ Focus rules:
 - Do not summarise the supporting documents in turn. This is one argument about one action, not a roundup.
 - If a supporting document is not relevant to the lead, ignore it entirely.
 
-Structure (use ## for section headings, 3-5 words each, descriptive and unique to this piece):
+Reporting rules: where REPORTING blocks appear, say in a clause what the named outlet reported ("BBC News reported ...") and cite it. They are context for why the event matters today, not a source of wording.
+
+Structure (use ## for section headings; the two fixed headings below must appear exactly as written):
+## Key Facts
+4-5 bullet lines, each starting with "- ": one concrete, cited fact each (actor, action, figure, date, authority).
+
 ## [Opening heading]
-2 paragraphs: what document [1] actually does, and the background needed to read it. 3-4 sentences each.
+2-3 paragraphs, 3-4 sentences each: what document [1] actually does, and the background needed to read it.
 
 ## [Analysis heading]
-2 paragraphs: the strategic logic and the dynamics in play. 3-4 sentences each.
+3 paragraphs, 3-4 sentences each: the strategic logic, who gains and who bears the cost, and the dynamics in play.
 
 ## [Implications heading]
-2 paragraphs: consequences for the region and for wider U.S. policy. 3-4 sentences each.
+2-3 paragraphs, 3-4 sentences each: consequences for the region, for markets and trade where relevant, and for wider U.S. policy.
 
-## [Closing heading]
-1-2 paragraphs: what remains unresolved, and what would signal a change. Do not use a fixed template here.
+## What to Watch
+3-4 bullet lines, each starting with "- ": a specific decision point, deadline, reaction or signal that would show where this goes next. Only what the record supports; say so if the record sets no date.
 
-Style: active voice, analytical, no rhetorical questions, no sensationalism, never glorify violence. 700-1000 words.
+Style: active voice, analytical, no rhetorical questions, no sensationalism, never glorify violence. 1,100-1,500 words in total.
 
 Headline rules: 5-9 words, drawn from document [1]. It must name a SPECIFIC actor and a SPECIFIC action — for example "Treasury Designates Three Iranian Shipping Firms", not "Iran Portfolio Faces Mounting Pressure". No colons. Abstract noun-stacks are rejected.
 
 Slug rules: derived from the headline, url-safe, specific enough to be unique, no years, no dates.
 
 Respond ONLY with valid JSON, no markdown:
-{"title":"specific 5-9 word headline about document [1]","region":"${region}","excerpt":"one sentence max 25 words","meta_description":"max 155 chars","slug":"specific-url-slug","body":"## Heading One\\n\\nparagraph\\n\\nparagraph\\n\\n## Heading Two\\n\\nparagraph\\n\\nparagraph\\n\\n## Heading Three\\n\\nparagraph\\n\\nparagraph\\n\\n## Heading Four\\n\\nparagraph"}`;
+{"title":"specific 5-9 word headline about document [1]","region":"${region}","excerpt":"one sentence max 25 words","meta_description":"max 155 chars","slug":"specific-url-slug","body":"## Key Facts\\n\\n- fact [1]\\n- fact [1]\\n\\n## Heading One\\n\\nparagraph\\n\\n## Heading Two\\n\\nparagraph\\n\\n## Heading Three\\n\\nparagraph\\n\\n## What to Watch\\n\\n- signal"}`;
 
     const attempt = await generateArticleJson(env, prompt);
 
+    if (String(attempt.body || '').split(/\s+/).length < 650) {
+      console.log(`[generator] "${attempt.title}" came back under 650 words — trying the next document.`);
+      continue;
+    }
     if (ROUTINE_NOTICE.test(String(attempt.title || ''))) {
       console.log(`[generator] "${attempt.title}" is a routine listing notice — trying the next document.`);
       continue;
@@ -1419,7 +1501,8 @@ Respond ONLY with valid JSON, no markdown:
       // treats only those as covered, so citing a document no longer spends it.
       sources: JSON.stringify([
         { title: lead.title, url: lead.url, lead: true },
-        ...context.map(d => ({ title: d.title, url: d.url, lead: false }))
+        ...context.map(d => ({ title: d.title, url: d.url, lead: false })),
+        ...reporting.map(n => ({ title: n.title, url: n.url, lead: false, outlet: n.source }))
       ])
     })
   });
@@ -1493,6 +1576,90 @@ async function runGeneration(env, source) {
   }
 }
 
+// ── Weekly roundup ───────────────────────────────────────────────────────────
+// One original synthesis a week, written from our own articles rather than from
+// a government document. It is the page that links the week together, which is
+// what a topical-authority signal looks like to a search engine, and it is the
+// kind of page an ad reviewer reads to decide whether there is an editorial
+// voice here at all.
+async function generateWeekly(env) {
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const rows = await sb(env, `articles?select=title,slug,region,excerpt&published_at=gte.${encodeURIComponent(since)}&order=published_at.desc&limit=80`);
+  const items = (rows || []).filter(r => r.slug && !r.slug.startsWith('week-in-') && !ROUTINE_NOTICE.test(r.title || ''));
+  if (items.length < 5) return { status: 'skipped', reason: 'too-few-articles', count: items.length };
+
+  const now = new Date();
+  const day = now.toISOString().slice(0, 10);
+  const slug = `week-in-us-foreign-policy-${day}`;
+  const dup = await sb(env, `articles?select=slug&slug=eq.${slug}&limit=1`);
+  if (dup && dup.length) return { status: 'skipped', reason: 'already-published', slug };
+
+  const list = items.map(r => `- slug: ${r.slug} | ${r.region} | ${r.title} — ${r.excerpt || ''}`).join('\n');
+  const prompt = `You are the editor of POTUS Watch Daily writing the Sunday weekly review of U.S. foreign policy.
+
+Below are the dispatches we published this week. They are the ONLY facts you may use.
+
+${list}
+
+Rules:
+- Every article you mention must be linked with a markdown link in exactly this form: [Headline words](/article/SLUG), using a slug from the list above. Never invent a slug, a fact, a date or a number.
+- Group the week into 3 themes that connect several dispatches. Say what links them and what it adds up to. This is synthesis, not a list.
+- Active voice, analytical, no rhetorical questions, no sensationalism. 1,100-1,400 words.
+
+Structure (## headings; the first and last are fixed):
+## The Week in Brief
+4-5 bullet lines starting with "- ", each one sentence with a link.
+
+## [Theme one heading]
+2-3 paragraphs.
+
+## [Theme two heading]
+2-3 paragraphs.
+
+## [Theme three heading]
+2-3 paragraphs.
+
+## What to Watch Next Week
+3-4 bullet lines starting with "- ", only things the dispatches support.
+
+Respond ONLY with valid JSON, no markdown fences:
+{"title":"5-9 word headline naming the dominant theme of the week","excerpt":"one sentence max 25 words","meta_description":"max 155 chars","body":"## The Week in Brief\\n\\n- ...\\n\\n## ..."}`;
+
+  const parsed = await generateArticleJson(env, prompt);
+  // Strip any link whose slug we did not supply, so a hallucinated URL can never
+  // ship as a 404 link.
+  const valid = new Set(items.map(r => r.slug));
+  const body = parsed.body.replace(/\[([^\]]+)\]\(\/article\/([a-z0-9-]+)\)/g, (m, text, sl) => valid.has(sl) ? m : text);
+
+  const label = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  await sb(env, 'articles', {
+    method: 'POST',
+    headers: { Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      title: `${parsed.title} — Week of ${label}`.slice(0, 140),
+      region: 'Analysis',
+      excerpt: parsed.excerpt || parsed.title,
+      meta_description: parsed.meta_description || parsed.excerpt || parsed.title,
+      slug, body,
+      image: '', hero_image: '',
+      published_at: now.toISOString(),
+      date: now.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' }),
+      time: now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', hourCycle:'h23' }),
+      sources: JSON.stringify(items.slice(0, 12).map(r => ({ title: r.title, url: `https://${SITE_HOST}/article/${r.slug}`, lead: false })))
+    })
+  });
+  console.log(`[weekly] Saved ${slug}`);
+  try {
+    await fetch('https://api.indexnow.org/indexnow', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      body: JSON.stringify({ host: SITE_HOST, key: INDEXNOW_KEY, keyLocation: `https://${SITE_HOST}/${INDEXNOW_KEY}.txt`, urlList: [`https://${SITE_HOST}/article/${slug}`] }),
+      signal: AbortSignal.timeout(10000)
+    });
+  } catch (e) { console.warn('[weekly] IndexNow failed:', e.message); }
+  return { status: 'published', slug };
+}
+
 // ── Worker entrypoints ────────────────────────────────────────────────────────
 export default {
   /** Fired by the Cron Trigger in wrangler.jsonc. */
@@ -1501,6 +1668,7 @@ export default {
     // Return the promise: the runtime waits for it (up to the 15-minute cron
     // duration ceiling) and marks the invocation failed if it rejects, so the
     // failure surfaces in `wrangler tail` and in the Worker's error rate.
+    if (controller.cron === WEEKLY_CRON) return generateWeekly(env);
     return runGeneration(env, 'cron');
   },
 
@@ -1526,7 +1694,7 @@ export default {
         return Response.json({
           // 90, not 180. At 180 an hourly site can miss two consecutive hours
           // and still report healthy, which is exactly what it did.
-          status: minsSinceLast === null || minsSinceLast > 90 ? 'degraded' : 'ok',
+          status: minsSinceLast === null || minsSinceLast > 600 ? 'degraded' : 'ok',
           last_article_minutes_ago: minsSinceLast,
           last_article_title: last?.title ?? null
         }, { headers: { 'Cache-Control': 'no-store' } });
@@ -1552,6 +1720,7 @@ export default {
         return new Response('Forbidden', { status: 403 });
       }
       try {
+        if (url.searchParams.get('job') === 'weekly') return Response.json(await generateWeekly(env));
         const result = await runGeneration(env, 'manual');
         return Response.json(result);
       } catch (e) {

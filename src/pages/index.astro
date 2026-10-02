@@ -3,14 +3,14 @@ import { env } from 'cloudflare:workers';
 import { createClient } from '@supabase/supabase-js';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Footer from '../components/Footer.astro';
-import { dedupeImages } from '../lib/quality';
+import { dedupeImages, sourceLabel } from '../lib/quality';
 
 // env comes from the Workers runtime module (Astro.locals.runtime was removed in adapter v14)
 const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_KEY);
 
 const { data: articles = [] } = await supabase
   .from('articles')
-  .select('id,title,slug,excerpt,region,date,time,image')
+  .select('id,title,slug,excerpt,region,date,time,image,sources')
   .order('id', { ascending: false })
   .limit(24);
 
@@ -120,7 +120,7 @@ const organizationLd = {
         <a class="hero-main" href={`/article/${list[0].slug}`}>
           {list[0].image
             ? <img class="hero-main-img" src={list[0].image} alt="" width="1600" height="480" decoding="async" fetchpriority="high" />
-            : <div class="hero-placeholder" style="height:480px"><span class="hero-placeholder-text">{(list[0].region||'POTUS Watch').toUpperCase()}</span></div>
+            : <div class="hero-placeholder" style="height:480px"><span class="hero-placeholder-text">{sourceLabel(list[0].sources, list[0].region)}</span></div>
           }
           <div class="overlay">
             <div class="tag">{list[0].region || 'World'}</div>
@@ -134,7 +134,7 @@ const organizationLd = {
             <a class="hero-small" href={`/article/${a.slug}`}>
               {a.image
                 ? <img class="hero-small-img" src={a.image} alt="" width="800" height="400" decoding="async" loading="eager" />
-                : <div class="hero-placeholder" style="height:100%;min-height:200px"><span class="hero-placeholder-text" style="font-size:11px">{(a.region||'POTUS Watch').toUpperCase()}</span></div>
+                : <div class="hero-placeholder" style="height:100%;min-height:200px"><span class="hero-placeholder-text" style="font-size:11px">{sourceLabel(a.sources, a.region)}</span></div>
               }
               <div class="overlay">
                 <div class="tag">{a.region || 'World'}</div>
@@ -168,7 +168,7 @@ const organizationLd = {
           >
             {a.image
               ? <img class="card-img" src={a.image} alt="" width="400" height="190" decoding="async" loading={i < 6 ? 'eager' : 'lazy'} />
-              : <div class="card-placeholder"><div class="card-placeholder-inner">{(a.region || 'POTUS Watch').toUpperCase()}</div></div>
+              : <div class="card-placeholder"><div class="card-placeholder-inner">{sourceLabel(a.sources, a.region)}</div></div>
             }
             <div class="card-body">
               <div class="tag">{a.region || 'World'}</div>

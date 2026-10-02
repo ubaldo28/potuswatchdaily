@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Footer from '../../components/Footer.astro';
 import { isRoutineNotice } from '../../lib/quality';
+import { topicsFor } from '../../lib/topics';
 
 // env comes from the Workers runtime module (Astro.locals.runtime was removed in adapter v14)
 const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_KEY);
@@ -40,6 +41,7 @@ const [{ data: related = [] }, { data: prevA }, { data: nextA }] = await Promise
   supabase.from('articles').select('title,slug').gt('id', a.id).order('id', { ascending: true }).limit(1).maybeSingle(),
 ]);
 
+const topics = topicsFor(a.title).slice(0, 2);
 const SITE_URL = 'https://www.potuswatchdaily.com';
 const canonicalUrl = `${SITE_URL}/article/${a.slug}`;
 const img = a.hero_image || a.image || `${SITE_URL}/og-default.jpg`;
@@ -63,11 +65,25 @@ function esc(s: string | null | undefined) {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-const paras = (a.body || '').split(/\n+/).filter(Boolean).map((p: string) => {
-  if (p.startsWith('## ')) return `<h2>${esc(p.slice(3))}</h2>`;
-  if (p.startsWith('# ')) return `<h2>${esc(p.slice(2))}</h2>`;
-  return `<p>${esc(p)}</p>`;
-}).join('');
+// Inline formatting after escaping: **bold**, and links to OTHER articles on
+// this site only (the weekly roundup writes them). Anything else stays text.
+const inline = (t: string) => esc(t)
+  .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+  .replace(/\[([^\]]+)\]\((\/article\/[a-z0-9-]+)\)/g, '<a href="$2">$1</a>');
+
+const lines = (a.body || '').split(/\n+/).filter(Boolean);
+let paras = '';
+for (let i = 0; i < lines.length; i++) {
+  const p = lines[i];
+  if (p.startsWith('## ')) paras += `<h2>${esc(p.slice(3))}</h2>`;
+  else if (p.startsWith('# ')) paras += `<h2>${esc(p.slice(2))}</h2>`;
+  else if (/^[-*] /.test(p)) {
+    const items: string[] = [];
+    while (i < lines.length && /^[-*] /.test(lines[i])) items.push(`<li>${inline(lines[i].slice(2))}</li>`), i++;
+    i--;
+    paras += `<ul class="facts">${items.join('')}</ul>`;
+  } else paras += `<p>${inline(p)}</p>`;
+}
 
 let sources: { url: string; title: string }[] = [];
 try { sources = JSON.parse(a.sources || '[]'); } catch {}
@@ -218,11 +234,15 @@ const creditHref = creditUrl(photoCredit?.url);
       <a href="https://www.buymeacoffee.com/POTUSwatch" target="_blank" rel="noopener" class="btn-coffee">☕ Buy me a coffee</a>
     </div>
 
+    {topics.length > 0 && (
+      <p class="topic-links">Follow this story: {topics.map(t => <a href={`/topic/${t.slug}`}>{t.name}</a>)}</p>
+    )}
+
     {sources.length > 0 && (
       <div class="sources">
         <p class="sources-label">Sources</p>
-        <p class="sources-note">Primary documents this dispatch was written from, cited by number in the text above.</p>
-        {sources.filter(s => safeUrl(s.url)).map(s => <a href={safeUrl(s.url)} target="_blank" rel="noopener">{s.title}</a>)}
+        <p class="sources-note">Documents and reporting this dispatch draws on, cited by number in the text above.</p>
+        {sources.filter(s => safeUrl(s.url)).map(s => <a href={safeUrl(s.url)} target="_blank" rel="noopener">{(s as any).outlet ? `${(s as any).outlet}: ` : ''}{s.title}</a>)}
       </div>
     )}
 
@@ -272,6 +292,11 @@ const creditHref = creditUrl(photoCredit?.url);
 <style>
 .masthead { background: #0a0a0a; border-bottom: 1px solid #1a1a1a; padding: 12px 24px; display: flex; align-items: center; }
 .editorial-bar { background: #1a1a1a; border-bottom: 1px solid #cc0000; padding: 6px 24px; font-size: 10px; color: var(--text-3); letter-spacing: 1px; font-family: Inter, Arial, sans-serif; text-transform: uppercase; }
+.article-body :global(.facts) { margin: 0 0 20px 1.2em; padding: 0; color: #c8c8c8; font-family: Georgia, serif; font-size: 17px; }
+.article-body :global(.facts li) { margin-bottom: 8px; line-height: 1.7; }
+.article-body :global(a) { color: #ff8a8a; }
+.topic-links { margin: 28px 0 0; font-size: 13px; color: #888; font-family: Inter, sans-serif; }
+.topic-links a { color: #ff8a8a; margin-right: 14px; }
 .hero-img { width: 100%; height: 480px; max-height: 480px; aspect-ratio: 5 / 2; object-fit: cover; display: block; }
 @media (max-width: 640px) { .hero-img { height: 220px; } }
 .article-content { max-width: 740px; margin: 0 auto; padding: 40px 24px 80px; }

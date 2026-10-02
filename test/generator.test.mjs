@@ -22,7 +22,7 @@ import { fileURLToPath } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 let src = readFileSync(join(root, 'worker/generator.js'), 'utf8');
 src = src.replace(/^export default \{[\s\S]*$/m, '');
-src += '\nexport { scoreDocument, salvageTruncatedJson, slugify, REGION_TERMS, BASE_SCORE, TOPICAL_SCORE, bestRegionFor, isNoise, regionAffinity, titleStems };\n';
+src += '\nexport { scoreDocument, salvageTruncatedJson, slugify, REGION_TERMS, BASE_SCORE, TOPICAL_SCORE, bestRegionFor, isNoise, regionAffinity, titleStems, corroborating, fetchNews, fetchPrimarySources };\n';
 const scratch = mkdtempSync(join(tmpdir(), 'pw-test-'));
 const modPath = join(scratch, 'generator.mjs');
 writeFileSync(modPath, src);
@@ -34,6 +34,21 @@ const test = (name, fn) => {
   catch (e) { failed++; console.log(`  FAIL ${name}\n       ${e.message}`); }
 };
 const assert = (cond, msg) => { if (!cond) throw new Error(msg || 'assertion failed'); };
+
+console.log('\ncorroborating — is the wider press covering the same event\n');
+test('a document is corroborated by a news item about the same event', () => {
+  const doc = { title: 'Treasury Sanctions Iranian Shipping Network Over Oil Exports', text: 'OFAC sanctions on Iranian shipping firms exporting oil to China.' };
+  const news = [
+    { title: 'US sanctions Iranian shipping firms over oil exports to China', text: 'Treasury announced sanctions.' },
+    { title: 'Cricket: England win the toss', text: 'Sport.' },
+  ];
+  const hit = m.corroborating(doc, news);
+  assert(hit.length === 1 && /Iranian shipping/.test(hit[0].title), `got ${hit.length}`);
+});
+test('an unrelated news item does not corroborate', () => {
+  const doc = { title: 'Proclamation on Flag Display', text: 'Flags at half staff.' };
+  assert(m.corroborating(doc, [{ title: 'Iran nuclear talks resume', text: 'Geneva.' }]).length === 0);
+});
 
 console.log('\nscoreDocument — the outage that made these tests exist\n');
 

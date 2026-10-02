@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { TOPICS } from '../lib/topics';
 
 const SITE_URL = 'https://www.potuswatchdaily.com';
 
@@ -10,6 +11,7 @@ const PATHS = [
   '/explainers/us-china-relations', '/newsletter', '/contact',
   '/privacy', '/terms', '/disclaimer',
   ...REGIONS.map(r => `/region/${r}`),
+  ...TOPICS.map(t => `/topic/${t.slug}`),
 ];
 
 export const GET: APIRoute = () => {
