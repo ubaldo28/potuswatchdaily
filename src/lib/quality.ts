@@ -7,6 +7,7 @@
 // marked noindex".
 const ROUTINE = [
   /\bSDN\b/i,
+  /\bOFAC\b/i,
   /specially designated/i,
   /\bgeneral licen[sc]es?\b/i,
   /\b(GL|GLs)\s?[0-9A-Z]{1,4}\b/,

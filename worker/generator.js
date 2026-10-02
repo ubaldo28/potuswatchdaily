@@ -17,7 +17,7 @@
 
 // ── Config ───────────────────────────────────────────────────────────────────
 // Must match the second entry in worker/wrangler.jsonc.
-const WEEKLY_CRON = '0 16 * * 0';
+const WEEKLY_CRON = '0 16 * * SUN';
 const regions = ['Iran', 'China', 'NATO', 'Americas', 'Mideast', 'Russia', 'Trade', 'Analysis'];
 
 const imageQueries = {
@@ -752,7 +752,7 @@ function isNoise(doc) {
 // List-maintenance filings carry no analysis to write about: a name added to a
 // sanctions list or a general license reissued. Stretching them to 700 words is
 // the scaled-content pattern AdSense rejects, so they are never leads.
-const ROUTINE_NOTICE = /\bSDN\b|specially designated|general licen[sc]e|\bGLs? ?[0-9][0-9A-Z]?\b|designations?\b|recent actions|blocked persons|sanctions list|unblock|delist/i;
+const ROUTINE_NOTICE = /\bOFAC\b|sanctions actions?\b|\bSDN\b|specially designated|general licen[sc]e|\bGLs? ?[0-9][0-9A-Z]?\b|designations?\b|recent actions|blocked persons|sanctions list|unblock|delist/i;
 
 function scoreDocument(doc, region) {
   const title = (doc.title || '').toLowerCase();
