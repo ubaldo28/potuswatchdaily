@@ -39,7 +39,7 @@ export const TOPICS: Topic[] = [
   { slug: 'presidential-actions', name: 'Presidential Actions',
     blurb: 'Executive orders, proclamations and memoranda, and what each one changes.',
     intro: 'Executive orders, proclamations and presidential memoranda are how the White House sets trade, tariff and sanctions policy directly. Each dispatch here starts from the signed document and explains what it does in practice.',
-    keywords: ['president', 'proclamation', 'executive order', 'memorandum'] },
+    keywords: ['presidential', 'proclamation', 'executive order', 'memorandum'] },
   { slug: 'weekly-review', name: 'Weekly Review',
     blurb: 'The week in presidential action on tariffs, trade and sanctions.',
     intro: 'Every Sunday, a review that ties the week together: the biggest actions, the themes connecting them, and what to watch next.',

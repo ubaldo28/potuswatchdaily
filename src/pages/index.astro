@@ -11,13 +11,15 @@ import { presidentialActions, agencyNotices, fmtDate } from '../lib/actions';
 const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_KEY);
 
 const [{ data: articles = [] }, actions, notices] = await Promise.all([
-  supabase.from('articles').select('id,title,slug,excerpt,region,date,time,sources').order('id', { ascending: false }).limit(40),
+  supabase.from('articles').select('id,title,slug,excerpt,region,date,time,sources').order('id', { ascending: false }).limit(80),
   presidentialActions(40),
   agencyNotices(12),
 ]);
 
 // Routine list-maintenance pieces stay on their own pages but do not lead the front page.
-const list = (articles ?? []).filter(a => !isRoutineNotice(a.title));
+// Older general foreign-policy pieces (UN debates and the like) stay in the archive;
+// the front page shows only what fits the tariffs, trade and sanctions focus.
+const list = (articles ?? []).filter(a => !isRoutineNotice(a.title) && (topicsFor(a.title).length > 0 || /whitehouse|ustr/.test(String(a.sources))));
 const lead = list[0];
 const rest = list.slice(1, 16);
 const sidebarActions = actions.filter(a => a.tag !== 'Other').slice(0, 7);
