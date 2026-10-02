@@ -420,7 +420,7 @@ async function getStoryPhoto(env, title, excerpt, region) {
 Candidate photographs (file name and description only):
 ${list}
 
-Pick the ONE that would be a truthful, relevant illustration of this story: the right kind of subject, an actual photograph, and nothing that would mislead a reader about what happened. Never pick a photo whose caption names a different specific event, document or topic than this story (for example a signing about vaccines on a tariff story); a generic scene of the right kind (a container port for a tariff story) is fine. If none is clearly appropriate, answer 0. Respond ONLY with JSON: {"pick": <number>}`, { temperature: 0, max_tokens: 40 });
+Pick the ONE that would be a truthful, relevant illustration of this story: the right kind of subject, an actual photograph, and nothing that would mislead a reader about what happened. Never pick a photo whose caption names a different specific event, document or topic than this story (for example a signing about vaccines on a tariff story); a generic scene of the right kind (a container port for a tariff story) is fine. Prefer photographs taken in the United States, or of U.S. officials and facilities, when the story is about U.S. policy; do not pick a foreign location unless the story is about that place. If none is clearly appropriate, answer 0. Respond ONLY with JSON: {"pick": <number>}`, { temperature: 0, max_tokens: 40 });
     const pick = Number(parseLooseJson(raw)?.pick);
     if (!Number.isInteger(pick) || pick < 1 || pick > shown.length) { console.log('[photo] Editor found nothing suitable.'); return null; }
 
