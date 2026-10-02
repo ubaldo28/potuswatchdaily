@@ -23,6 +23,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # needed to tell whether this push touched the generator
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -200,6 +202,17 @@ jobs:
       # no answer at all, fails the build.
       - name: Make the generator actually generate
         run: |
+          # The free Workers AI allowance (10,000 neurons a day) is for articles.
+          # A site-only deploy has no reason to spend any of it, so the test run
+          # happens only when this push changed the generator itself.
+          if [ "${{ github.event_name }}" = "push" ] \
+             && git cat-file -e "${{ github.event.before }}^{commit}" 2>/dev/null \
+             && git diff --quiet "${{ github.event.before }}" "${{ github.sha }}" -- worker/; then
+            echo "::notice::Generator code unchanged in this push; skipping the test article to save the free AI allowance."
+            rm -f /tmp/run-token
+            exit 0
+          fi
+
           URL=$(node -p "require('./project.config.json').workers.generator.healthUrl" | sed 's#/health$#/run#')
           TOKEN=$(cat /tmp/run-token)
           rm -f /tmp/run-token
