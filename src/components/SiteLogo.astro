@@ -1,0 +1,25 @@
+---
+export interface Props { compact?: boolean }
+const { compact = false } = Astro.props;
+---
+<span class:list={['logo', { compact }]} aria-label="POTUS Watch Daily">
+  <span class="star" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M12 2.6l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4 6.1 20.6l1.2-6.5L2.5 9.5l6.6-.9z"/></svg>
+  </span>
+  <span class="wm">
+    <span class="l1">POTUS <b>Watch</b> Daily</span>
+    {!compact && <span class="l2">Tariffs · Trade · Sanctions</span>}
+  </span>
+</span>
+
+<style>
+.logo { display: inline-flex; align-items: center; gap: 12px; color: #fff; }
+.star { display: grid; place-items: center; width: 40px; height: 40px; background: var(--accent); color: #fff; border-radius: 3px; flex-shrink: 0; }
+.wm { display: grid; line-height: 1; }
+.l1 { font-family: 'Newsreader', Georgia, serif; font-weight: 800; font-size: 26px; letter-spacing: -0.2px; color: #F6F3EB; white-space: nowrap; }
+.l1 b { font-weight: 800; color: #F2B84B; }
+.l2 { font-family: 'IBM Plex Sans', sans-serif; font-weight: 600; font-size: 9.5px; letter-spacing: 2.4px; text-transform: uppercase; color: #AEBBD0; margin-top: 5px; white-space: nowrap; }
+.compact .star { width: 32px; height: 32px; }
+.compact .l1 { font-size: 21px; }
+@media (max-width: 520px) { .l1 { font-size: 20px; } .star { width: 34px; height: 34px; } .l2 { font-size: 8px; letter-spacing: 1.6px; } .logo { gap: 9px; } }
+</style>

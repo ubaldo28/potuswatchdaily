@@ -43,12 +43,12 @@ const page = (heading: string, body: string, status = 200) =>
 <meta name="robots" content="noindex">
 <title>${heading} — POTUS Watch Daily</title>
 <style>
-  body{background:#0a0a0a;color:#e8e8e8;font:16px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',Inter,sans-serif;
+  body{background:#F6F3EB;color:#10141B;font:16px/1.6 'IBM Plex Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
        display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:24px}
   main{max-width:34rem;text-align:center}
-  h1{font-size:22px;margin:0 0 12px;color:#fff}
-  p{color:#b3b3b3;margin:0 0 24px}
-  a{color:#ff5c5c;text-decoration:underline;text-underline-offset:2px}
+  h1{font-size:22px;margin:0 0 12px;color:#0B2545}
+  p{color:#353C4A;margin:0 0 24px}
+  a{color:#144A8C;text-decoration:underline;text-underline-offset:2px}
 </style></head><body><main><h1>${heading}</h1><p>${body}</p>
 <p><a href="/">Back to POTUS Watch Daily</a></p></main></body></html>`,
     { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } }

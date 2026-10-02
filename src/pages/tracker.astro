@@ -76,24 +76,24 @@ const safeJsonLd = (o: unknown) => JSON.stringify(o).replace(/</g, '\\u003c').re
 
 <style>
 .tracker { max-width: 1000px; margin: 0 auto; padding: 48px 24px 96px; }
-h1 { font-family: 'Playfair Display', serif; font-size: 40px; font-weight: 900; color: var(--text); margin: 0 0 12px; }
-h2 { font-family: 'Playfair Display', serif; font-size: 24px; color: var(--text); margin: 56px 0 8px; }
+h1 { font-family: 'Newsreader', serif; font-size: 40px; font-weight: 900; color: var(--text); margin: 0 0 12px; }
+h2 { font-family: 'Newsreader', serif; font-size: 24px; color: var(--text); margin: 56px 0 8px; }
 .eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--accent-text); margin-bottom: 10px; }
 .lead { font-size: 14px; color: var(--text-2); line-height: 1.6; max-width: 680px; margin: 0 0 24px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
-.chip { background: none; border: 1px solid var(--border-ui); color: var(--text-2); font: 600 12px Inter, sans-serif; padding: 7px 14px; border-radius: 999px; cursor: pointer; }
-.chip.on { background: #cc0000; border-color: #cc0000; color: #fff; }
+.chip { background: none; border: 1px solid var(--border-ui); color: var(--text-2); font: 600 12px IBM Plex Sans, sans-serif; padding: 7px 14px; border-radius: 999px; cursor: pointer; }
+.chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 .table { border-top: 1px solid var(--border); }
-.row { display: grid; grid-template-columns: 56px 118px 1fr auto; gap: 16px; align-items: baseline; padding: 14px 0; border-bottom: 1px solid #161616; text-decoration: none; }
+.row { display: grid; grid-template-columns: 56px 118px 1fr auto; gap: 16px; align-items: baseline; padding: 14px 0; border-bottom: 1px solid var(--bg-sunk); text-decoration: none; }
 .row:hover .title { color: var(--accent-text); }
-.date { font: 600 12px Inter, sans-serif; color: var(--text-3); }
-.kind { font: 600 11px Inter, sans-serif; color: var(--text-2); letter-spacing: .3px; }
-.title { font-family: Georgia, serif; font-size: 16px; line-height: 1.4; color: var(--text); }
-.tag { font: 700 10px Inter, sans-serif; letter-spacing: 1px; text-transform: uppercase; padding: 3px 8px; border-radius: 2px; background: #1a1a1a; color: var(--text-2); white-space: nowrap; }
-.tag-tariffs { background: #3a2a00; color: #ffc857; }
-.tag-sanctions { background: #3a0f0f; color: #ff8a8a; }
-.tag-export-controls { background: #102a3a; color: #7cc4ff; }
-.tag-trade { background: #14301f; color: #7ee2a0; }
+.date { font: 600 12px IBM Plex Sans, sans-serif; color: var(--text-3); }
+.kind { font: 600 11px IBM Plex Sans, sans-serif; color: var(--text-2); letter-spacing: .3px; }
+.title { font-family: 'Newsreader', Georgia, serif; font-size: 16px; line-height: 1.4; color: var(--text); }
+.tag { font: 700 10px IBM Plex Sans, sans-serif; letter-spacing: 1px; text-transform: uppercase; padding: 3px 8px; border-radius: 2px; background: var(--bg-sunk); color: var(--text-2); white-space: nowrap; }
+.tag-tariffs { background: #FBEBC8; color: #6B4700; }
+.tag-sanctions { background: #F8D9D1; color: #86250F; }
+.tag-export-controls { background: #D6E6F7; color: #134377; }
+.tag-trade { background: #D5EBDC; color: #14532F; }
 .src { font-size: 11px; color: var(--text-3); margin-top: 24px; }
 @media (max-width: 720px) {
   .row { grid-template-columns: 48px 1fr; row-gap: 4px; }

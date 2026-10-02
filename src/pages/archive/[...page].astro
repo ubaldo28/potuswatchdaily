@@ -84,17 +84,17 @@ for (const a of list) {
 <style>
 .page { max-width: 900px; margin: 0 auto; padding: 56px 24px 100px; }
 .eyebrow { font-size: 9px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--accent-text); margin-bottom: 12px; }
-h1 { font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 900; color: #fff; margin-bottom: 8px; }
+h1 { font-family: 'Newsreader', serif; font-size: 36px; font-weight: 900; color: var(--text); margin-bottom: 8px; }
 .page-sub { font-size: 14px; color: var(--text-3); margin-bottom: 48px; }
 .region-section { margin-bottom: 48px; }
-.region-heading { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--text-3); padding-bottom: 12px; border-bottom: 1px solid #1a1a1a; margin-bottom: 0; font-family: Inter, sans-serif; }
-.archive-item { border-bottom: 1px solid #141414; padding: 16px 0; }
+.region-heading { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--text-3); padding-bottom: 12px; border-bottom: 1px solid var(--bg-sunk); margin-bottom: 0; font-family: IBM Plex Sans, sans-serif; }
+.archive-item { border-bottom: 1px solid var(--border); padding: 16px 0; }
 .archive-link { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; text-decoration: none; margin-bottom: 4px; }
 .archive-link:hover .archive-title { color: var(--accent-text); }
-.archive-title { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700; color: #e0e0e0; line-height: 1.35; transition: color 0.15s; flex: 1; }
-.archive-meta { font-size: 11px; color: var(--text-3); white-space: nowrap; flex-shrink: 0; font-family: Inter, sans-serif; }
-.archive-excerpt { font-size: 13px; color: var(--text-3); line-height: 1.5; margin-top: 2px; font-family: Inter, sans-serif; }
-.pager { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 48px; padding-top: 24px; border-top: 1px solid #1a1a1a; font-family: Inter, sans-serif; font-size: 13px; }
+.archive-title { font-family: 'Newsreader', serif; font-size: 16px; font-weight: 700; color: var(--text); line-height: 1.35; transition: color 0.15s; flex: 1; }
+.archive-meta { font-size: 11px; color: var(--text-3); white-space: nowrap; flex-shrink: 0; font-family: IBM Plex Sans, sans-serif; }
+.archive-excerpt { font-size: 13px; color: var(--text-3); line-height: 1.5; margin-top: 2px; font-family: IBM Plex Sans, sans-serif; }
+.pager { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--bg-sunk); font-family: IBM Plex Sans, sans-serif; font-size: 13px; }
 .pager a { color: var(--accent-text); text-decoration: none; font-weight: 600; }
 .pager a:hover { text-decoration: underline; }
 .pager-count { color: var(--text-3); font-size: 12px; }

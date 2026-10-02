@@ -16,7 +16,7 @@ const organizationLd = {
   "@id": "https://www.potuswatchdaily.com/#org",
   "name": "POTUS Watch Daily",
   "url": "https://www.potuswatchdaily.com",
-  "logo": { "@type": "ImageObject", "url": "https://www.potuswatchdaily.com/logo-v2.png", "width": 600, "height": 104 },
+  "logo": { "@type": "ImageObject", "url": "https://www.potuswatchdaily.com/logo-v3.png", "width": 1200, "height": 208 },
   "sameAs": ["https://twitter.com/POTUSwatch"],
   "description": "Presidential action on tariffs, trade and sanctions, explained from the primary documents.",
   "foundingDate": "2026",
@@ -35,10 +35,10 @@ const organizationLd = {
   </Fragment>
   <Masthead backLink="/" backLabel="← Back to feed" />
 
-  <div style="background:#1a1a1a;border-bottom:1px solid #cc0000;padding:10px 24px;text-align:center">
-    <p style="font-size:12px;color:#999;font-family:Inter,sans-serif;margin:0">
+  <div style="background:var(--bg-sunk);border-bottom:1px solid var(--accent);padding:10px 24px;text-align:center">
+    <p style="font-size:12px;color:var(--text-2);font-family:IBM Plex Sans,sans-serif;margin:0">
       POTUS Watch Daily tracks presidential action on tariffs, trade and sanctions through an analytical lens.
-      <a href="/editorial" style="color:#888;text-decoration:none">Editorial Policy</a>
+      <a href="/editorial" style="color:var(--text-3);text-decoration:none">Editorial Policy</a>
     </p>
   </div>
 
@@ -75,18 +75,18 @@ const organizationLd = {
 <style>
 .page { max-width: 740px; margin: 0 auto; padding: 56px 24px 100px; }
 .eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: var(--accent-text); margin-bottom: 16px; }
-h1 { font-family: 'Playfair Display', serif; font-size: 38px; font-weight: 900; color: #fff; line-height: 1.2; margin-bottom: 20px; }
-.rule { border: none; border-top: 1px solid #1e1e1e; margin: 24px 0; }
-.lead { font-size: 18px; color: #aaa; line-height: 1.7; margin-bottom: 24px; }
+h1 { font-family: 'Newsreader', serif; font-size: 38px; font-weight: 900; color: var(--text); line-height: 1.2; margin-bottom: 20px; }
+.rule { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+.lead { font-size: 18px; color: var(--text-2); line-height: 1.7; margin-bottom: 24px; }
 p { font-size: 15px; color: var(--text-2); line-height: 1.8; margin-bottom: 20px; }
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 36px 0; }
-.stat { background: #111; border: 1px solid #1e1e1e; border-top: 2px solid #cc0000; padding: 20px; text-align: center; }
-.stat-number { display: block; font-family: 'Playfair Display', serif; font-size: 32px; font-weight: 900; color: #fff; }
+.stat { background: var(--bg-card); border: 1px solid var(--border); border-top: 2px solid var(--accent); padding: 20px; text-align: center; }
+.stat-number { display: block; font-family: 'Newsreader', serif; font-size: 32px; font-weight: 900; color: var(--text); }
 .stat-label { display: block; font-size: 11px; color: var(--text-3); margin-top: 4px; letter-spacing: 0.5px; }
-.support-box { background: #111; border: 1px solid #1e1e1e; border-top: 3px solid #cc0000; padding: 32px; margin-top: 40px; border-radius: 3px; }
-.support-box h2 { font-family: 'Playfair Display', serif; font-size: 22px; color: #fff; margin-bottom: 10px; }
+.support-box { background: var(--bg-card); border: 1px solid var(--border); border-top: 3px solid var(--accent); padding: 32px; margin-top: 40px; border-radius: 3px; }
+.support-box h2 { font-family: 'Newsreader', serif; font-size: 22px; color: var(--text); margin-bottom: 10px; }
 .support-box p { color: var(--text-3); font-size: 14px; margin-bottom: 20px; }
 .support-buttons { display: flex; gap: 12px; flex-wrap: wrap; }
-.btn-primary { background: #cc0000; color: #fff; text-decoration: none; padding: 11px 22px; border-radius: 3px; font-size: 13px; font-weight: 600; }
+.btn-primary { background: var(--accent); color: #fff; text-decoration: none; padding: 11px 22px; border-radius: 3px; font-size: 13px; font-weight: 600; }
 .btn-secondary { color: var(--text-3); text-decoration: none; padding: 11px 22px; border: 1px solid var(--border-ui); border-radius: 3px; font-size: 13px; }
 </style>

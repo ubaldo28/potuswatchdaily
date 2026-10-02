@@ -18,43 +18,43 @@ async function signEmail(email: string): Promise<string> {
   return [...new Uint8Array(sig)].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
 }
 
-function buildWelcomeHtml(thuDate: string, unsubUrl: string) {
+function buildWelcomeHtml(sunDate: string, unsubUrl: string) {
   return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Welcome to POTUS Watch Daily</title>
-<style type="text/css">body{margin:0!important;padding:0!important;background-color:#0a0a0a!important}</style>
+<style type="text/css">body{margin:0!important;padding:0!important;background-color:#F6F3EB!important}</style>
 </head>
-<body id="body" bgcolor="#0a0a0a" style="margin:0;padding:0;background-color:#0a0a0a">
-<table width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#0a0a0a" style="background-color:#0a0a0a;min-width:100%">
-<tr><td align="center" bgcolor="#0a0a0a" style="padding:40px 20px">
-<table width="600" border="0" cellpadding="0" cellspacing="0" bgcolor="#0a0a0a" style="max-width:600px;width:100%;background-color:#0a0a0a">
-  <tr><td bgcolor="#cc0000" height="4" style="background-color:#cc0000;height:4px;font-size:0;line-height:0">&nbsp;</td></tr>
-  <tr><td bgcolor="#111111" style="background-color:#111111;padding:28px 36px 24px;border-bottom:1px solid #1e1e1e">
-    <div style="font-family:Georgia,'Times New Roman',serif;font-size:24px;font-weight:900;color:#ffffff">POTUS <span style="color:#cc0000">Watch</span> Daily</div>
-    <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#555555;margin-top:4px;font-family:Arial,Helvetica,sans-serif">Foreign Policy Coverage</div>
+<body id="body" bgcolor="#F6F3EB" style="margin:0;padding:0;background-color:#F6F3EB">
+<table width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#F6F3EB" style="background-color:#F6F3EB;min-width:100%">
+<tr><td align="center" bgcolor="#F6F3EB" style="padding:40px 20px">
+<table width="600" border="0" cellpadding="0" cellspacing="0" bgcolor="#F6F3EB" style="max-width:600px;width:100%;background-color:#F6F3EB">
+  <tr><td bgcolor="#C23B22" height="4" style="background-color:#C23B22;height:4px;font-size:0;line-height:0">&nbsp;</td></tr>
+  <tr><td bgcolor="#0B2545" style="background-color:#0B2545;padding:28px 36px 24px;border-bottom:1px solid #0B2545">
+    <div style="font-family:Georgia,'Times New Roman',serif;font-size:24px;font-weight:900;color:#ffffff">POTUS <span style="color:#F2B84B">Watch</span> Daily</div>
+    <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#AEBBD0;margin-top:4px;font-family:Arial,Helvetica,sans-serif">Tariffs · Trade · Sanctions</div>
   </td></tr>
-  <tr><td bgcolor="#111111" style="background-color:#111111;padding:36px 36px 28px">
-    <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#777777;margin-bottom:14px;font-family:Arial,Helvetica,sans-serif">Welcome</div>
-    <div style="font-family:Georgia,'Times New Roman',serif;font-size:28px;font-weight:900;color:#ffffff;line-height:1.2;margin:0 0 18px">You're in. First issue arrives ${thuDate}.</div>
-    <p style="font-size:15px;color:#999999;line-height:1.8;margin:0 0 14px;font-family:Arial,Helvetica,sans-serif">Every Thursday you'll get a short briefing on what happened in U.S. foreign policy and global affairs that week — what it means, and what to watch going forward.</p>
-    <p style="font-size:15px;color:#999999;line-height:1.8;margin:0 0 28px;font-family:Arial,Helvetica,sans-serif">In the meantime, here's what's on the site right now.</p>
-    <table border="0" cellpadding="0" cellspacing="0"><tr><td bgcolor="#cc0000" style="background-color:#cc0000;border-radius:3px">
-      <a href="https://www.potuswatchdaily.com" style="display:inline-block;background-color:#cc0000;color:#ffffff;text-decoration:none;padding:13px 26px;border-radius:3px;font-size:12px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;font-family:Arial,Helvetica,sans-serif">Read the latest &rarr;</a>
+  <tr><td bgcolor="#FFFFFF" style="background-color:#FFFFFF;padding:36px 36px 28px">
+    <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#5E6474;margin-bottom:14px;font-family:Arial,Helvetica,sans-serif">Welcome</div>
+    <div style="font-family:Georgia,'Times New Roman',serif;font-size:28px;font-weight:900;color:#10141B;line-height:1.2;margin:0 0 18px">You're in. First issue arrives ${sunDate}.</div>
+    <p style="font-size:15px;color:#353C4A;line-height:1.8;margin:0 0 14px;font-family:Arial,Helvetica,sans-serif">Every Sunday you'll get a short briefing on what the President signed on tariffs, trade and sanctions that week — what it changes, and what to watch next.</p>
+    <p style="font-size:15px;color:#353C4A;line-height:1.8;margin:0 0 28px;font-family:Arial,Helvetica,sans-serif">In the meantime, here's what's on the site right now.</p>
+    <table border="0" cellpadding="0" cellspacing="0"><tr><td bgcolor="#C23B22" style="background-color:#C23B22;border-radius:3px">
+      <a href="https://www.potuswatchdaily.com" style="display:inline-block;background-color:#C23B22;color:#ffffff;text-decoration:none;padding:13px 26px;border-radius:3px;font-size:12px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;font-family:Arial,Helvetica,sans-serif">Read the latest &rarr;</a>
     </td></tr></table>
   </td></tr>
-  <tr><td bgcolor="#0d0d0d" style="background-color:#0d0d0d;padding:22px 36px;border-top:1px solid #1a1a1a;text-align:center">
-    <div style="font-size:11px;color:#444444;margin-bottom:7px;font-family:Arial,Helvetica,sans-serif">
-      <a href="https://www.potuswatchdaily.com" style="color:#555555;text-decoration:none">potuswatchdaily.com</a> &nbsp;&middot;&nbsp;
-      <a href="https://www.potuswatchdaily.com/about" style="color:#555555;text-decoration:none">About</a> &nbsp;&middot;&nbsp;
-      <a href="https://www.potuswatchdaily.com/privacy" style="color:#555555;text-decoration:none">Privacy</a>
+  <tr><td bgcolor="#EDE8DA" style="background-color:#EDE8DA;padding:22px 36px;border-top:1px solid #D8D2C2;text-align:center">
+    <div style="font-size:11px;color:#5E6474;margin-bottom:7px;font-family:Arial,Helvetica,sans-serif">
+      <a href="https://www.potuswatchdaily.com" style="color:#5E6474;text-decoration:none">potuswatchdaily.com</a> &nbsp;&middot;&nbsp;
+      <a href="https://www.potuswatchdaily.com/about" style="color:#5E6474;text-decoration:none">About</a> &nbsp;&middot;&nbsp;
+      <a href="https://www.potuswatchdaily.com/privacy" style="color:#5E6474;text-decoration:none">Privacy</a>
     </div>
-    <div style="font-size:10px;color:#333333;font-family:Arial,Helvetica,sans-serif">&copy; 2026 POTUS Watch Daily. Independent foreign policy coverage.</div>
-    <div style="font-size:10px;color:#333333;margin-top:5px;font-family:Arial,Helvetica,sans-serif">You subscribed at potuswatchdaily.com. <a href="${unsubUrl}" style="color:#444444;text-decoration:underline">Unsubscribe</a></div>
+    <div style="font-size:10px;color:#5E6474;font-family:Arial,Helvetica,sans-serif">&copy; 2026 POTUS Watch Daily. Presidential action on tariffs, trade and sanctions.</div>
+    <div style="font-size:10px;color:#5E6474;margin-top:5px;font-family:Arial,Helvetica,sans-serif">You subscribed at potuswatchdaily.com. <a href="${unsubUrl}" style="color:#5E6474;text-decoration:underline">Unsubscribe</a></div>
   </td></tr>
-  <tr><td bgcolor="#cc0000" height="2" style="background-color:#cc0000;height:2px;font-size:0;line-height:0">&nbsp;</td></tr>
+  <tr><td bgcolor="#C23B22" height="2" style="background-color:#C23B22;height:2px;font-size:0;line-height:0">&nbsp;</td></tr>
 </table>
 </td></tr>
 </table>
@@ -167,12 +167,12 @@ async function alreadyMailedToday(key: string): Promise<boolean> {
   }
 }
 
-function nextThursdayStr() {
+function nextSundayStr() {
   const now = new Date();
-  const daysLeft = (4 - now.getDay() + 7) % 7 || 7;
-  const thu = new Date(now);
-  thu.setDate(now.getDate() + daysLeft);
-  return thu.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+  const daysLeft = (0 - now.getDay() + 7) % 7 || 7;
+  const sun = new Date(now);
+  sun.setDate(now.getDate() + daysLeft);
+  return sun.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
 }
 
 export const GET: APIRoute = () => {
@@ -235,7 +235,7 @@ export const POST: APIRoute = async ({ request }) => {
     // Second gate, on the person rather than the caller. See dedupKey().
     if (await alreadyMailedToday(dedupKey(email))) return json({ success: true });
 
-    const thuDate = nextThursdayStr();
+    const sunDate = nextSundayStr();
 
     const audienceResp = await fetch(audience, {
       method: 'POST',
@@ -263,8 +263,8 @@ export const POST: APIRoute = async ({ request }) => {
       body: JSON.stringify({
         from: env.RESEND_FROM_EMAIL || 'POTUS Watch Daily <onboarding@resend.dev>',
         to: email,
-        subject: `Welcome to POTUS Watch Daily — First issue arriving ${thuDate}`,
-        html: buildWelcomeHtml(thuDate, unsubUrl),
+        subject: `Welcome to POTUS Watch Daily — First issue arriving ${sunDate}`,
+        html: buildWelcomeHtml(sunDate, unsubUrl),
         headers: {
           'List-Unsubscribe': `<${unsubUrl}>`,
           'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',

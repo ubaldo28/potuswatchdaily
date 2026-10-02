@@ -1,8 +1,6 @@
 ---
-export interface Props {
-  backLink?: string;
-  backLabel?: string;
-}
+import SiteLogo from './SiteLogo.astro';
+export interface Props { backLink?: string; backLabel?: string; }
 const { backLink, backLabel } = Astro.props;
 const path = Astro.url.pathname;
 const NAV: Array<[string, string]> = [
@@ -18,9 +16,7 @@ const NAV: Array<[string, string]> = [
 ---
 <header class="masthead">
   <div class="masthead-inner">
-    <a href="/" class="logo-link">
-      <img src="/logo-v2.png" width="300" height="52" alt="POTUS Watch Daily" style="display:block">
-    </a>
+    <a href="/" class="logo-link" aria-label="POTUS Watch Daily, home"><SiteLogo /></a>
     <div class="masthead-right">
       {backLink && <a href={backLink} class="back-link">{backLabel ?? '← Back to feed'}</a>}
       <a href="/newsletter" class="btn-subscribe">Subscribe</a>
@@ -36,32 +32,19 @@ const NAV: Array<[string, string]> = [
 </header>
 
 <style>
-.masthead { background: #0a0a0a; border-bottom: 1px solid #1e1e1e; }
-.masthead-inner {
-  max-width: 1280px; margin: 0 auto; padding: 0 24px;
-  display: flex; align-items: center; justify-content: space-between; height: 64px;
-}
-.logo-link { display: flex; align-items: center; text-decoration: none; height: 52px; }
+.masthead { background: var(--navy); color: #fff; }
+.masthead-inner { max-width: 1180px; margin: 0 auto; padding: 18px 24px 14px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.logo-link { text-decoration: none; display: inline-flex; }
 .masthead-right { display: flex; align-items: center; gap: 16px; }
-.btn-subscribe {
-  background: #cc0000; color: #fff; font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
-  text-transform: uppercase; padding: 7px 14px; border-radius: 3px; text-decoration: none; transition: background 0.15s;
-}
-.btn-subscribe:hover { background: #aa0000; }
-.back-link { font-size: 12px; color: var(--text-3); text-decoration: none; transition: color 0.15s; }
+.btn-subscribe { background: var(--accent); color: #fff; font: 700 12px 'IBM Plex Sans', sans-serif; letter-spacing: .6px; text-transform: uppercase; padding: 10px 18px; border-radius: 3px; text-decoration: none; transition: background .15s; }
+.btn-subscribe:hover { background: #A02F1A; }
+.back-link { font: 500 12px 'IBM Plex Sans', sans-serif; color: #AEBBD0; text-decoration: none; }
 .back-link:hover { color: #fff; }
-.sections { border-top: 1px solid #161616; background: #0d0d0d; }
-.sections-inner {
-  max-width: 1280px; margin: 0 auto; padding: 0 24px; display: flex; gap: 4px;
-  overflow-x: auto; scrollbar-width: none;
-}
-.sections a {
-  font-family: Inter, sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 0.4px;
-  color: var(--text-2); text-decoration: none; padding: 12px 12px; white-space: nowrap;
-  border-bottom: 2px solid transparent;
-}
+.sections { border-top: 1px solid rgba(255,255,255,.12); }
+.sections-inner { max-width: 1180px; margin: 0 auto; padding: 0 16px; display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+.sections a { font: 600 12.5px 'IBM Plex Sans', sans-serif; color: #C9D3E3; text-decoration: none; padding: 12px 10px; white-space: nowrap; border-bottom: 3px solid transparent; }
 .sections a:hover { color: #fff; }
-.sections a[aria-current="page"] { color: #fff; border-bottom-color: #cc0000; }
-.sections a:first-child { color: #fff; }
-@media (max-width: 640px) { .masthead-inner { padding: 0 16px; } .sections-inner { padding: 0 8px; } .logo-link img { width: 200px; height: auto; } }
+.sections a[aria-current="page"] { color: #fff; border-bottom-color: #F2B84B; }
+.sections a:first-child { color: #F2B84B; }
+@media (max-width: 640px) { .masthead-inner { padding: 14px 16px 10px; } .btn-subscribe { padding: 8px 12px; font-size: 11px; } }
 </style>

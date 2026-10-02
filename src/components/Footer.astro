@@ -1,5 +1,6 @@
 ---
 import { TOPICS } from '../lib/topics';
+import SiteLogo from './SiteLogo.astro';
 
 export interface Props {
   maxWidth?: string;
@@ -8,9 +9,7 @@ const { maxWidth = '1280px' } = Astro.props;
 ---
 <footer class="footer">
   <div class="footer-inner" style={`max-width: ${maxWidth}`}>
-    <a href="/" class="footer-logo">
-      <img src="/logo-v2.png" width="200" height="35" alt="POTUS Watch Daily" style="display:block">
-    </a>
+    <a href="/" class="footer-logo" aria-label="POTUS Watch Daily, home"><SiteLogo compact /></a>
     <nav class="footer-links footer-regions" aria-label="Coverage areas">
       <a href="/region/americas">Americas</a>
       <a href="/region/china">China</a>
@@ -42,35 +41,13 @@ const { maxWidth = '1280px' } = Astro.props;
 </footer>
 
 <style>
-.footer-regions { margin-bottom: 4px; }
-  /* The !important here was identical to the value it overrode, and it
-     outranked .footer-links a:hover -- so these eight links never lit up on
-     hover or keyboard focus while the ten beside them did. */
-  .footer-regions a { color: var(--text-3); }
-.footer {
-  background: #0d0d0d;
-  border-top: 1px solid #1a1a1a;
-  padding: 32px 24px;
-  margin-top: 40px;
-}
-.footer-inner {
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.footer-logo { display: inline-block; }
-.footer-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 20px;
-}
-.footer-links a { display: inline-flex; align-items: center; min-height: 24px; /* WCAG 2.5.8 */
-  color: var(--text-3);
-  font-size: 12px;
-  text-decoration: none;
-  transition: color 0.15s;
-}
-.footer-links a:hover { color: #fff; }
-.footer-copy { font-size: 11px; color: var(--text-3); }
+.footer { background: var(--navy); color: #C9D3E3; padding: 40px 24px 32px; margin-top: 64px; }
+.footer-inner { margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+.footer-logo { display: inline-block; text-decoration: none; }
+.footer-links { display: flex; flex-wrap: wrap; gap: 8px 22px; }
+.footer-regions { padding-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,.12); }
+.footer-links a { display: inline-flex; align-items: center; min-height: 24px; color: #C9D3E3; font: 500 13px 'IBM Plex Sans', sans-serif; text-decoration: none; }
+.footer-regions a { color: #F6F3EB; font-weight: 600; }
+.footer-links a:hover { color: #F2B84B; }
+.footer-copy { font: 12px 'IBM Plex Sans', sans-serif; color: #98A6BD; }
 </style>

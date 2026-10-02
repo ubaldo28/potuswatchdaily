@@ -3,6 +3,7 @@ import { env } from 'cloudflare:workers';
 import { createClient } from '@supabase/supabase-js';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Footer from '../../components/Footer.astro';
+import Masthead from '../../components/Masthead.astro';
 import { isRoutineNotice } from '../../lib/quality';
 import { topicsFor } from '../../lib/topics';
 
@@ -19,7 +20,7 @@ const { data: a, error } = await supabase
 
 if (error || !a) {
   return new Response(
-    `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Not Found — POTUS Watch Daily</title><meta name="robots" content="noindex"><link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%230a0a0a'/><circle cx='16' cy='16' r='12' fill='none' stroke='%23cc0000' stroke-width='2.5'/><circle cx='16' cy='16' r='4' fill='%23cc0000'/></svg>"></head><body style="background:#0a0a0a;color:#fff;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px;text-align:center"><div style="height:3px;background:#cc0000;position:fixed;top:0;left:0;right:0"></div><h1 style="font-size:72px;font-weight:900;color:#ff5c5c;margin:0">404</h1><p style="font-size:18px;color:#666">Dispatch not found.</p><a href="/" style="color:#ff5c5c;font-size:13px;text-decoration:none;border:1px solid #cc0000;padding:8px 20px;border-radius:3px">← Back to the feed</a></body></html>`,
+    `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Not Found — POTUS Watch Daily</title><meta name="robots" content="noindex"><link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%230B2545'/><circle cx='16' cy='16' r='12' fill='none' stroke='%23C23B22' stroke-width='2.5'/><circle cx='16' cy='16' r='4' fill='%23C23B22'/></svg>"></head><body style="background:#F6F3EB;color:#fff;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px;text-align:center"><div style="height:3px;background:#C23B22;position:fixed;top:0;left:0;right:0"></div><h1 style="font-size:72px;font-weight:900;color:#B3321B;margin:0">404</h1><p style="font-size:18px;color:#5E6474">Dispatch not found.</p><a href="/" style="color:#B3321B;font-size:13px;text-decoration:none;border:1px solid #C23B22;padding:8px 20px;border-radius:3px">← Back to the feed</a></body></html>`,
     { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
   );
 }
@@ -100,7 +101,7 @@ const jsonLd = {
   "datePublished": dateIso,
   "dateModified": a.updated_at || dateIso,
   "author": [{ "@type": "Person", "name": "POTUS Watch Daily Editorial Staff", "url": `${SITE_URL}/about`, "jobTitle": "Editor", "worksFor": { "@type": "NewsMediaOrganization", "name": "POTUS Watch Daily", "url": SITE_URL } }],
-  "publisher": { "@type": "NewsMediaOrganization", "name": "POTUS Watch Daily", "url": SITE_URL, "logo": { "@type": "ImageObject", "url": `${SITE_URL}/logo-v2.png`, "width": 300, "height": 52 } },
+  "publisher": { "@type": "NewsMediaOrganization", "name": "POTUS Watch Daily", "url": SITE_URL, "logo": { "@type": "ImageObject", "url": `${SITE_URL}/logo-v3.png`, "width": 1200, "height": 208 } },
   "mainEntityOfPage": { "@type": "WebPage", "@id": canonicalUrl },
   "articleSection": region,
   "wordCount": words,
@@ -189,12 +190,8 @@ const creditHref = creditUrl(photoCredit?.url);
     <meta name="news_keywords" content={`${region}, foreign policy, diplomacy, geopolitics, POTUS Watch Daily`} />
   </Fragment>
 
-  <header class="masthead">
-    <a href="/" style="display:flex;align-items:center;text-decoration:none">
-      <img src="/logo-v2.png" width="260" height="45" alt="POTUS Watch Daily" style="display:block">
-    </a>
-  </header>
-  <div class="editorial-bar">POTUS Watch Daily covers foreign policy through an analytical lens — policy, diplomacy, economics and strategy.</div>
+  <Masthead />
+  <div class="editorial-bar">Analysis drafted from primary documents and cited to its sources. See <a href="/editorial">how we make this</a>.</div>
 
   {img && img !== `${SITE_URL}/og-default.jpg` && (
   <Fragment>
@@ -221,7 +218,7 @@ const creditHref = creditUrl(photoCredit?.url);
     </nav>
     <div class="eyebrow">
       <span class="tag">{region}</span>
-      <span style="color:#333">·</span>
+      <span style="color:var(--border)">·</span>
       <span class="byline-meta">By <a href="/about" rel="author">POTUS Watch Daily Editorial Staff</a> · <time datetime={dateIso}>{a.date || ''}</time>{a.time ? ` · ${a.time}` : ''} · {readTime}</span>
     </div>
     <h1>{a.title}</h1>
@@ -290,56 +287,55 @@ const creditHref = creditUrl(photoCredit?.url);
 </BaseLayout>
 
 <style>
-.masthead { background: #0a0a0a; border-bottom: 1px solid #1a1a1a; padding: 12px 24px; display: flex; align-items: center; }
-.editorial-bar { background: #1a1a1a; border-bottom: 1px solid #cc0000; padding: 6px 24px; font-size: 10px; color: var(--text-3); letter-spacing: 1px; font-family: Inter, Arial, sans-serif; text-transform: uppercase; }
-.article-body :global(.facts) { margin: 0 0 20px 1.2em; padding: 0; color: #c8c8c8; font-family: Georgia, serif; font-size: 17px; }
+.editorial-bar a { color: var(--link); } .editorial-bar { background: var(--bg-sunk); border-bottom: 1px solid var(--border); padding: 6px 24px; font-size: 10px; color: var(--text-3); letter-spacing: 1px; font-family: IBM Plex Sans, Arial, sans-serif; text-transform: uppercase; }
+.article-body :global(.facts) { margin: 0 0 20px 1.2em; padding: 0; color: var(--text); font-family: 'Newsreader', Georgia, serif; font-size: 17px; }
 .article-body :global(.facts li) { margin-bottom: 8px; line-height: 1.7; }
-.article-body :global(a) { color: #ff8a8a; }
-.topic-links { margin: 28px 0 0; font-size: 13px; color: #888; font-family: Inter, sans-serif; }
-.topic-links a { color: #ff8a8a; margin-right: 14px; }
+.article-body :global(a) { color: var(--accent-text); }
+.topic-links { margin: 28px 0 0; font-size: 13px; color: var(--text-3); font-family: IBM Plex Sans, sans-serif; }
+.topic-links a { color: var(--accent-text); margin-right: 14px; }
 .hero-img { width: 100%; height: 480px; max-height: 480px; aspect-ratio: 5 / 2; object-fit: cover; display: block; }
 @media (max-width: 640px) { .hero-img { height: 220px; } }
 .article-content { max-width: 740px; margin: 0 auto; padding: 40px 24px 80px; }
-.photo-credit { font-family: Inter, Arial, sans-serif; font-size: 11px; color: var(--text-3); margin: 8px auto 0; max-width: 740px; padding: 0 24px; }
+.photo-credit { font-family: IBM Plex Sans, Arial, sans-serif; font-size: 11px; color: var(--text-3); margin: 8px auto 0; max-width: 740px; padding: 0 24px; }
 .photo-credit a { color: var(--text-3); text-decoration: none; }
-.photo-credit a:hover { color:#ff5c5c; text-decoration: underline; }
+.photo-credit a:hover { color:var(--accent-text); text-decoration: underline; }
 .photo-credit-note { color: var(--text-3); }
-.crumbs { font-family: Inter, Arial, sans-serif; font-size: 11px; color: var(--text-3); margin-bottom: 20px; display: flex; gap: 8px; align-items: center; }
+.crumbs { font-family: IBM Plex Sans, Arial, sans-serif; font-size: 11px; color: var(--text-3); margin-bottom: 20px; display: flex; gap: 8px; align-items: center; }
 .crumbs a { color: var(--text-3); text-decoration: none; }
-.crumbs a:hover { color:#ff5c5c; }
-.seq { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 48px; padding-top: 24px; border-top: 1px solid #1e1e1e; }
+.crumbs a:hover { color:var(--accent-text); }
+.seq { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border); }
 .seq-link { display: flex; flex-direction: column; gap: 4px; text-decoration: none; padding: 12px 0; }
 .seq-next { text-align: right; }
-.seq-dir { font-family: Inter, Arial, sans-serif; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color:#ff5c5c; }
-.seq-title { font-family: 'Playfair Display', serif; font-size: 14px; color: #999; line-height: 1.35; }
-.seq-link:hover .seq-title { color: #e0e0e0; }
+.seq-dir { font-family: IBM Plex Sans, Arial, sans-serif; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color:var(--accent-text); }
+.seq-title { font-family: 'Newsreader', serif; font-size: 14px; color: var(--text-2); line-height: 1.35; }
+.seq-link:hover .seq-title { color: var(--text); }
 @media (max-width: 640px) { .seq { grid-template-columns: 1fr; } .seq-next { text-align: left; } }
-.back { color:#ff5c5c; text-decoration: none; font-size: 12px; font-family: Inter, Arial, sans-serif; letter-spacing: 0.5px; display: inline-block; margin-bottom: 20px; }
-.eyebrow { margin: 16px 0 8px; font-size: 12px; font-family: Inter, Arial, sans-serif; color: var(--text-3); display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-.tag { background: #cc0000; color: #fff; padding: 2px 8px; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; font-family: Inter, Arial, sans-serif; }
+.back { color:var(--accent-text); text-decoration: none; font-size: 12px; font-family: IBM Plex Sans, Arial, sans-serif; letter-spacing: 0.5px; display: inline-block; margin-bottom: 20px; }
+.eyebrow { margin: 16px 0 8px; font-size: 12px; font-family: IBM Plex Sans, Arial, sans-serif; color: var(--text-3); display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.tag { background: var(--accent); color: #fff; padding: 2px 8px; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; font-family: IBM Plex Sans, Arial, sans-serif; }
 .byline-meta a { color: var(--text-2); text-decoration: none; }
-h1 { font-size: clamp(22px,4vw,36px); color: #fff; line-height: 1.25; margin: 12px 0 20px; font-family: 'Playfair Display', Georgia, serif; }
-hr { border: none; border-top: 1px solid #1e1e1e; margin: 20px 0; }
-.article-body :global(p) { margin-bottom: 18px; font-size: 17px; color: #c8c8c8; font-family: Georgia, serif; line-height: 1.8; }
-.article-body :global(h2) { font-family: 'Playfair Display', Georgia, serif; font-size: 20px; color: #fff; margin: 32px 0 12px; font-weight: 700; }
-.support-box { margin-top: 48px; padding: 28px 32px; background: #111; border: 1px solid #1e1e1e; border-top: 3px solid #cc0000; border-radius: 3px; }
-.support-title { font-family: 'Playfair Display', Georgia, serif; font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 8px; }
-.support-sub { font-size: 13px; color: var(--text-3); line-height: 1.6; margin-bottom: 20px; font-family: Inter, sans-serif; }
-.btn-coffee { display: inline-flex; align-items: center; gap: 8px; background: #cc0000; color: #fff; text-decoration: none; padding: 10px 20px; border-radius: 3px; font-size: 12px; font-weight: 600; letter-spacing: 0.5px; font-family: Inter, sans-serif; }
-.sources { margin-top: 40px; padding-top: 20px; border-top: 1px solid #1e1e1e; }
-.sources-note { font-size: 11px; color: var(--text-3); line-height: 1.5; margin-bottom: 12px; font-family: Inter, Arial, sans-serif; }
-.sources-label { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-3); font-family: Inter, Arial, sans-serif; margin-bottom: 10px; }
-.sources a { display: block; color: var(--text-3); font-size: 12px; text-decoration: none; margin-bottom: 6px; font-family: Inter, Arial, sans-serif; }
-.sources a:hover { color:#ff5c5c; }
+h1 { font-size: clamp(22px,4vw,36px); color: var(--text); line-height: 1.25; margin: 12px 0 20px; font-family: 'Newsreader', Georgia, serif; }
+hr { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+.article-body :global(p) { margin-bottom: 18px; font-size: 17px; color: var(--text); font-family: 'Newsreader', Georgia, serif; line-height: 1.8; }
+.article-body :global(h2) { font-family: 'Newsreader', Georgia, serif; font-size: 20px; color: var(--text); margin: 32px 0 12px; font-weight: 700; }
+.support-box { margin-top: 48px; padding: 28px 32px; background: var(--bg-card); border: 1px solid var(--border); border-top: 3px solid var(--accent); border-radius: 3px; }
+.support-title { font-family: 'Newsreader', Georgia, serif; font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+.support-sub { font-size: 13px; color: var(--text-3); line-height: 1.6; margin-bottom: 20px; font-family: IBM Plex Sans, sans-serif; }
+.btn-coffee { display: inline-flex; align-items: center; gap: 8px; background: var(--accent); color: #fff; text-decoration: none; padding: 10px 20px; border-radius: 3px; font-size: 12px; font-weight: 600; letter-spacing: 0.5px; font-family: IBM Plex Sans, sans-serif; }
+.sources { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border); }
+.sources-note { font-size: 11px; color: var(--text-3); line-height: 1.5; margin-bottom: 12px; font-family: IBM Plex Sans, Arial, sans-serif; }
+.sources-label { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-3); font-family: IBM Plex Sans, Arial, sans-serif; margin-bottom: 10px; }
+.sources a { display: block; color: var(--text-3); font-size: 12px; text-decoration: none; margin-bottom: 6px; font-family: IBM Plex Sans, Arial, sans-serif; }
+.sources a:hover { color:var(--accent-text); }
 .share-row { margin-top: 32px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.share-label { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-3); font-family: Inter, Arial, sans-serif; margin-right: 4px; }
-.icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: #111; border: 1px solid #222; text-decoration: none; }
-.related-section { margin-top: 56px; padding-top: 32px; border-top: 1px solid #1e1e1e; }
-.related-label { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color:#ff5c5c; margin-bottom: 24px; font-family: Inter, Arial, sans-serif; }
+.share-label { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-3); font-family: IBM Plex Sans, Arial, sans-serif; margin-right: 4px; }
+.icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: var(--bg-card); border: 1px solid var(--border); text-decoration: none; }
+.related-section { margin-top: 56px; padding-top: 32px; border-top: 1px solid var(--border); }
+.related-label { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color:var(--accent-text); margin-bottom: 24px; font-family: IBM Plex Sans, Arial, sans-serif; }
 .related-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
-.related-card { display: block; text-decoration: none; color: inherit; background: #0e0e0e; border: 1px solid #1e1e1e; border-top: 2px solid #cc0000; padding: 16px; }
+.related-card { display: block; text-decoration: none; color: inherit; background: var(--bg-card); border: 1px solid var(--border); border-top: 2px solid var(--accent); padding: 16px; }
 .related-img { width: 100%; height: 120px; object-fit: cover; display: block; margin-bottom: 12px; }
-.related-region { font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color:#ff5c5c; margin-bottom: 6px; font-family: Inter, Arial, sans-serif; }
-.related-title-text { font-family: 'Playfair Display', Georgia, serif; font-size: 15px; font-weight: 700; color: #e0e0e0; line-height: 1.35; margin-bottom: 6px; }
-.related-date { font-size: 11px; color: var(--text-3); font-family: Inter, Arial, sans-serif; }
+.related-region { font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color:var(--accent-text); margin-bottom: 6px; font-family: IBM Plex Sans, Arial, sans-serif; }
+.related-title-text { font-family: 'Newsreader', Georgia, serif; font-size: 15px; font-weight: 700; color: var(--text); line-height: 1.35; margin-bottom: 6px; }
+.related-date { font-size: 11px; color: var(--text-3); font-family: IBM Plex Sans, Arial, sans-serif; }
 </style>
