@@ -754,6 +754,9 @@ function isNoise(doc) {
 // the scaled-content pattern AdSense rejects, so they are never leads.
 const ROUTINE_NOTICE = /\bOFAC\b|sanctions actions?\b|\bSDN\b|specially designated|general licen[sc]e|\bGLs? ?[0-9][0-9A-Z]?\b|designations?\b|recent actions|blocked persons|sanctions list|unblock|delist/i;
 
+const TS_TERMS = /tariff|dut(y|ies)\b|sanction|export control|import|trade|embargo|proclamation|executive order|blocking|licen[sc]e|entity list|quota|antidumping|countervailing|reciprocal/i;
+const GENERAL_SOURCES = /United Nations|UN Meetings|Council of the European Union/i;
+
 function scoreDocument(doc, region) {
   const title = (doc.title || '').toLowerCase();
   // Memoised on the document. This is called up to three times per document per
@@ -770,6 +773,11 @@ function scoreDocument(doc, region) {
   const fpTitle = FOREIGN_POLICY_TERMS.some(t => title.includes(t));
   if (!fpTitle && !FOREIGN_POLICY_TERMS.some(t => body.includes(t))) return -1;
 
+  // The site covers presidential and agency action on tariffs, trade and
+  // sanctions. General UN and EU press releases only qualify when they touch
+  // that; White House documents and trade/sanctions language rank higher.
+  if (GENERAL_SOURCES.test(doc.source || '') && !TS_TERMS.test(title)) return -1;
+
   const terms = REGION_TERMS[region] || REGION_TERMS.Analysis;
   // Baseline, not zero: anything that clears the foreign-policy gate is worth
   // publishing somewhere. A zero used to be indistinguishable from a hard
@@ -780,6 +788,8 @@ function scoreDocument(doc, region) {
     if (title.includes(t)) score += 5;   // the subject of the document
     else if (body.includes(t)) score += 1;
   }
+  if (TS_TERMS.test(title)) score += 4; else if (TS_TERMS.test(body)) score += 1;
+  if (/White House/.test(doc.source || '')) score += 2;
   return score;
 }
 
@@ -1117,7 +1127,7 @@ async function callWorkersAI(env, prompt) {
       // a missed hour.
       const result = await env.AI.run(WORKERS_AI_MODEL, {
         messages: [
-          { role: 'system', content: 'You are a senior foreign policy correspondent. Respond with a single valid JSON object and nothing else - no prose before or after, no markdown code fences.' },
+          { role: 'system', content: 'You are a senior trade and sanctions policy correspondent. Respond with a single valid JSON object and nothing else - no prose before or after, no markdown code fences.' },
           { role: 'user', content: prompt }
         ],
         max_tokens: 4000,
@@ -1379,7 +1389,7 @@ async function generateArticle(env) {
   ];
   const articleType = types[Math.floor(Math.random() * types.length)];
 
-  const prompt = `You are a senior foreign policy correspondent at POTUS Watch Daily writing a ${articleType} on the ${region} portfolio.
+  const prompt = `You are a senior trade and sanctions policy correspondent at POTUS Watch Daily, a publication that tracks presidential and agency action on tariffs, trade and sanctions, writing a ${articleType} on the ${region} portfolio.
 
 Below are PRIMARY SOURCE DOCUMENTS. Document [1] is the LEAD — this article is about that document and nothing else. The others are supporting context you may reference where genuinely relevant, but they must not drive the headline, the opening, or the structure.
 
@@ -1409,7 +1419,7 @@ Structure (use ## for section headings; the two fixed headings below must appear
 3 paragraphs, 3-4 sentences each: the strategic logic, who gains and who bears the cost, and the dynamics in play.
 
 ## [Implications heading]
-2-3 paragraphs, 3-4 sentences each: consequences for the region, for markets and trade where relevant, and for wider U.S. policy.
+2-3 paragraphs, 3-4 sentences each: what changes in practice. Who is affected (importers, exporters, banks, named industries or countries), what takes effect and when, what it costs or permits, and how it fits wider U.S. policy. State plainly when the record does not say.
 
 ## What to Watch
 3-4 bullet lines, each starting with "- ": a specific decision point, deadline, reaction or signal that would show where this goes next. Only what the record supports; say so if the record sets no date.

@@ -6,7 +6,7 @@ const SITE_URL = 'https://www.potuswatchdaily.com';
 const REGIONS = ['americas','china','nato','iran','mideast','russia','trade','analysis'];
 
 const PATHS = [
-  '/', '/archive', '/about', '/editorial', '/explainers/',
+  '/', '/tracker', '/archive', '/about', '/editorial', '/explainers/',
   '/explainers/iran-nuclear-program', '/explainers/nato-article-5',
   '/explainers/us-china-relations', '/newsletter', '/contact',
   '/privacy', '/terms', '/disclaimer',

@@ -1,0 +1,102 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from '../components/Masthead.astro';
+import Footer from '../components/Footer.astro';
+import { presidentialActions, agencyNotices, fmtDate } from '../lib/actions';
+
+const [actions, notices] = await Promise.all([presidentialActions(80), agencyNotices(40)]);
+const SITE_URL = 'https://www.potuswatchdaily.com';
+const TAGS = ['Tariffs', 'Sanctions', 'Export Controls', 'Trade', 'Other'];
+const ld = {
+  '@context': 'https://schema.org', '@type': 'CollectionPage',
+  name: 'Presidential Actions Tracker', url: `${SITE_URL}/tracker`,
+  description: 'Every executive order, proclamation and memorandum, tagged by tariffs, sanctions and trade.',
+  isPartOf: { '@type': 'WebSite', name: 'POTUS Watch Daily', url: SITE_URL },
+};
+const safeJsonLd = (o: unknown) => JSON.stringify(o).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
+---
+<BaseLayout
+  title="Presidential Actions Tracker: Executive Orders, Proclamations and Memoranda | POTUS Watch Daily"
+  description="Every executive order, proclamation and presidential memorandum, tagged by tariffs, sanctions, export controls and trade, with weekly agency notices from Treasury and Commerce."
+  canonical={`${SITE_URL}/tracker`}
+>
+  <Fragment slot="head"><script type="application/ld+json" set:html={safeJsonLd(ld)} /></Fragment>
+  <Masthead />
+  <main id="main" class="tracker" tabindex="-1">
+    <div class="eyebrow">Tracker</div>
+    <h1>Presidential Actions</h1>
+    <p class="lead">Every executive order, proclamation and memorandum from the Federal Register, newest first. Observance proclamations are left out. Updated every 15 minutes.</p>
+
+    <div class="chips" role="group" aria-label="Filter by topic">
+      <button class="chip on" data-tag="all">All</button>
+      {TAGS.map(t => <button class="chip" data-tag={t}>{t}</button>)}
+    </div>
+
+    {actions.length === 0 && <p class="lead">The Federal Register is not answering right now. Try again in a few minutes.</p>}
+    <div class="table" id="actions">
+      {actions.map(a => (
+        <a class="row" href={a.url} target="_blank" rel="noopener" data-tag={a.tag}>
+          <span class="date">{fmtDate(a.signed)}</span>
+          <span class="kind">{a.number || a.kind}</span>
+          <span class="title">{a.title}</span>
+          <span class={`tag tag-${a.tag.replace(' ', '-').toLowerCase()}`}>{a.tag}</span>
+        </a>
+      ))}
+    </div>
+
+    <h2>Agency notices, last two weeks</h2>
+    <p class="lead">Routine filings from Treasury's OFAC and Commerce's BIS and ITA. We analyse the significant ones in our dispatches; the rest are listed here.</p>
+    <div class="table">
+      {notices.map(n => (
+        <a class="row" href={n.url} target="_blank" rel="noopener">
+          <span class="date">{fmtDate(n.date)}</span>
+          <span class="kind">{n.agency}</span>
+          <span class="title">{n.title}</span>
+          <span class={`tag tag-${n.tag.replace(' ', '-').toLowerCase()}`}>{n.tag}</span>
+        </a>
+      ))}
+    </div>
+    <p class="src">Source: Federal Register (federalregister.gov), public domain. Tags are assigned automatically from the title and may be imperfect.</p>
+  </main>
+  <Footer />
+
+  <script is:inline>
+    document.querySelectorAll('.chip').forEach(function (c) {
+      c.addEventListener('click', function () {
+        document.querySelectorAll('.chip').forEach(function (x) { x.classList.remove('on'); });
+        c.classList.add('on');
+        var t = c.getAttribute('data-tag');
+        document.querySelectorAll('#actions .row').forEach(function (r) {
+          r.style.display = (t === 'all' || r.getAttribute('data-tag') === t) ? '' : 'none';
+        });
+      });
+    });
+  </script>
+</BaseLayout>
+
+<style>
+.tracker { max-width: 1000px; margin: 0 auto; padding: 48px 24px 96px; }
+h1 { font-family: 'Playfair Display', serif; font-size: 40px; font-weight: 900; color: var(--text); margin: 0 0 12px; }
+h2 { font-family: 'Playfair Display', serif; font-size: 24px; color: var(--text); margin: 56px 0 8px; }
+.eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--accent-text); margin-bottom: 10px; }
+.lead { font-size: 14px; color: var(--text-2); line-height: 1.6; max-width: 680px; margin: 0 0 24px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.chip { background: none; border: 1px solid var(--border-ui); color: var(--text-2); font: 600 12px Inter, sans-serif; padding: 7px 14px; border-radius: 999px; cursor: pointer; }
+.chip.on { background: #cc0000; border-color: #cc0000; color: #fff; }
+.table { border-top: 1px solid var(--border); }
+.row { display: grid; grid-template-columns: 56px 118px 1fr auto; gap: 16px; align-items: baseline; padding: 14px 0; border-bottom: 1px solid #161616; text-decoration: none; }
+.row:hover .title { color: var(--accent-text); }
+.date { font: 600 12px Inter, sans-serif; color: var(--text-3); }
+.kind { font: 600 11px Inter, sans-serif; color: var(--text-2); letter-spacing: .3px; }
+.title { font-family: Georgia, serif; font-size: 16px; line-height: 1.4; color: var(--text); }
+.tag { font: 700 10px Inter, sans-serif; letter-spacing: 1px; text-transform: uppercase; padding: 3px 8px; border-radius: 2px; background: #1a1a1a; color: var(--text-2); white-space: nowrap; }
+.tag-tariffs { background: #3a2a00; color: #ffc857; }
+.tag-sanctions { background: #3a0f0f; color: #ff8a8a; }
+.tag-export-controls { background: #102a3a; color: #7cc4ff; }
+.tag-trade { background: #14301f; color: #7ee2a0; }
+.src { font-size: 11px; color: var(--text-3); margin-top: 24px; }
+@media (max-width: 720px) {
+  .row { grid-template-columns: 48px 1fr; row-gap: 4px; }
+  .kind { grid-column: 2; } .title { grid-column: 1 / -1; } .tag { grid-column: 1 / -1; justify-self: start; }
+}
+</style>

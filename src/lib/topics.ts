@@ -36,6 +36,14 @@ export const TOPICS: Topic[] = [
     blurb: 'ITAR, Commerce export rules, arms sales and technology transfer.',
     intro: 'Export controls decide which technologies and weapons can cross borders. These dispatches cover rule changes by the State and Commerce Departments, major arms sale notifications and what they signal about U.S. priorities.',
     keywords: ['export', 'itar', 'munitions', 'arms sale', 'military sale', 'entity list', 'semiconductor'] },
+  { slug: 'presidential-actions', name: 'Presidential Actions',
+    blurb: 'Executive orders, proclamations and memoranda, and what each one changes.',
+    intro: 'Executive orders, proclamations and presidential memoranda are how the White House sets trade, tariff and sanctions policy directly. Each dispatch here starts from the signed document and explains what it does in practice.',
+    keywords: ['president', 'proclamation', 'executive order', 'memorandum'] },
+  { slug: 'weekly-review', name: 'Weekly Review',
+    blurb: 'The week in presidential action on tariffs, trade and sanctions.',
+    intro: 'Every Sunday, a review that ties the week together: the biggest actions, the themes connecting them, and what to watch next.',
+    keywords: ['week of'] },
 ];
 
 export const topicBySlug = (slug: string) => TOPICS.find(t => t.slug === slug);
