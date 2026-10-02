@@ -1104,7 +1104,7 @@ function salvageTruncatedJson(text) {
   }
 }
 
-async function callWorkersAI(env, prompt) {
+async function callWorkersAI(env, prompt, opts = {}) {
   if (!env.AI) throw new Error('Workers AI binding "AI" is not configured. Add {"ai":{"binding":"AI"}} to wrangler.jsonc and redeploy.');
 
   // One attempt. The retry loop lives in generateArticleJson, which can also
@@ -1130,8 +1130,8 @@ async function callWorkersAI(env, prompt) {
           { role: 'system', content: 'You are a senior trade and sanctions policy correspondent. Respond with a single valid JSON object and nothing else - no prose before or after, no markdown code fences.' },
           { role: 'user', content: prompt }
         ],
-        max_tokens: 4000,
-        temperature: 0.7
+        max_tokens: opts.max_tokens ?? 4000,
+        temperature: opts.temperature ?? 0.7
       });
 
       const text = extractWorkersAIText(result);
@@ -1160,8 +1160,8 @@ async function callWorkersAI(env, prompt) {
  * was going to keep funded, and a silent fallback meant two possible code paths
  * behind every article with no way to tell which one wrote it.
  */
-async function generateText(env, prompt) {
-  return callWorkersAI(env, prompt);
+async function generateText(env, prompt, opts) {
+  return callWorkersAI(env, prompt, opts);
 }
 
 // ── Main generation routine ───────────────────────────────────────────────────
@@ -1447,7 +1447,12 @@ Respond ONLY with valid JSON, no markdown:
       console.log(`[generator] "${attempt.title}" is too similar to recent content — trying the next document.`);
       continue;
     }
-    parsed = attempt;
+    const checked = await reviewAndRevise(env, attempt, newsContext);
+    if (!checked) {
+      console.log(`[generator] "${attempt.title}" did not pass the source check — trying the next document.`);
+      continue;
+    }
+    parsed = checked;
     break;
   }
 
@@ -1589,6 +1594,86 @@ async function runGeneration(env, source) {
     if (e.stack) console.error('[generator] Stack:', e.stack);
     throw e;
   }
+}
+
+// ── Second pass: check the draft against its sources ──────────────────────────
+// The first prompt forbids inventing facts, and a model told that still does it
+// now and then: a date, a figure, a motive stated as fact. So every draft is
+// read back against the exact documents it was written from. Claims the sources
+// do not support are listed, the draft is rewritten without them, and the
+// rewrite is checked once more. A draft that still fails is dropped, and the
+// run moves to the next document instead of publishing it.
+//
+// Fails OPEN on a malformed verdict (publish, with a warning in the log): an
+// unreadable checker should not silence the site. It fails CLOSED on a clear
+// verdict of several unsupported claims.
+function parseLooseJson(raw) {
+  const t = String(raw || '').replace(/[\x00-\x1F\x7F]/g, ' ').replace(/```json|```/g, '').trim();
+  const a = t.indexOf('{'), b = t.lastIndexOf('}') + 1;
+  if (a === -1 || b <= a) return null;
+  try { return JSON.parse(t.slice(a, b)); } catch { return null; }
+}
+
+async function findUnsupportedClaims(env, draft, sources) {
+  const prompt = `You are a strict fact-checking editor. Below are the ONLY source documents the writer was given, then the draft article.
+
+SOURCES
+${sources}
+
+DRAFT TITLE: ${draft.title}
+DRAFT BODY
+${draft.body}
+
+List every factual claim in the draft that the sources do NOT support: invented numbers, dates, names, quotes, or events; motives or effects stated as fact when the sources do not say so; anything attributed to a source that the source does not contain. Analysis that clearly follows from the sources, and plain statements that the record is silent, are fine. Quote each unsupported claim briefly.
+
+Respond ONLY with JSON: {"unsupported":["short quote of the claim", ...]} . Use an empty array if every claim is supported.`;
+  try {
+    const raw = await generateText(env, prompt, { temperature: 0.1, max_tokens: 900 });
+    const v = parseLooseJson(raw);
+    if (!v || !Array.isArray(v.unsupported)) return null;
+    return v.unsupported.map(x => String(x)).filter(Boolean);
+  } catch (e) {
+    if (/\b(3040|4006)\b/.test(String(e?.message)) || /neuron/i.test(String(e?.message))) throw e;
+    console.warn('[review] Checker failed:', e.message);
+    return null;
+  }
+}
+
+async function reviewAndRevise(env, draft, sources) {
+  const first = await findUnsupportedClaims(env, draft, sources);
+  if (first === null) { console.warn('[review] No usable verdict; publishing unchecked.'); return draft; }
+  if (first.length === 0) { console.log('[review] Draft is fully supported.'); return draft; }
+  console.log(`[review] ${first.length} unsupported claim(s); revising: ${first.join(' | ').slice(0, 400)}`);
+
+  const revisePrompt = `Rewrite the article below. Remove or correct EVERY claim in the "unsupported" list; where a claim cannot be supported, say the record does not address it. Keep everything the sources do support, keep the same headings and structure (Key Facts and What to Watch included), keep the [n] citations, and keep it at 1,100 words or more.
+
+SOURCES
+${sources}
+
+UNSUPPORTED CLAIMS TO FIX
+${first.map(x => `- ${x}`).join('\n')}
+
+CURRENT ARTICLE
+${draft.body}
+
+Respond ONLY with valid JSON: {"title":"${String(draft.title).replace(/"/g, '\\"')}","excerpt":"one sentence max 25 words","meta_description":"max 155 chars","slug":"${String(draft.slug || '').replace(/"/g, '')}","body":"## Key Facts\\n\\n- ..."}`;
+
+  let revised;
+  try { revised = await generateArticleJson(env, revisePrompt); }
+  catch (e) {
+    if (/\b(3040|4006)\b/.test(String(e?.message)) || /neuron/i.test(String(e?.message))) throw e;
+    console.warn('[review] Revision failed:', e.message);
+    return null;
+  }
+  if (String(revised.body || '').split(/\s+/).length < 800) { console.warn('[review] Revision came back too short.'); return null; }
+
+  const second = await findUnsupportedClaims(env, revised, sources);
+  if (second === null || second.length <= 1) {
+    console.log(`[review] Revised draft accepted (${second === null ? 'unchecked' : second.length + ' remaining'}).`);
+    return { ...draft, ...revised, title: draft.title, slug: draft.slug || revised.slug };
+  }
+  console.warn(`[review] Revised draft still has ${second.length} unsupported claims; dropping it.`);
+  return null;
 }
 
 // ── Weekly roundup ───────────────────────────────────────────────────────────

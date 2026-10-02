@@ -22,7 +22,7 @@ import { fileURLToPath } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 let src = readFileSync(join(root, 'worker/generator.js'), 'utf8');
 src = src.replace(/^export default \{[\s\S]*$/m, '');
-src += '\nexport { scoreDocument, salvageTruncatedJson, slugify, REGION_TERMS, BASE_SCORE, TOPICAL_SCORE, bestRegionFor, isNoise, regionAffinity, titleStems, corroborating, fetchNews, fetchPrimarySources };\n';
+src += '\nexport { scoreDocument, salvageTruncatedJson, slugify, REGION_TERMS, BASE_SCORE, TOPICAL_SCORE, bestRegionFor, isNoise, regionAffinity, titleStems, corroborating, fetchNews, fetchPrimarySources, reviewAndRevise, parseLooseJson };\n';
 const scratch = mkdtempSync(join(tmpdir(), 'pw-test-'));
 const modPath = join(scratch, 'generator.mjs');
 writeFileSync(modPath, src);
@@ -34,6 +34,27 @@ const test = (name, fn) => {
   catch (e) { failed++; console.log(`  FAIL ${name}\n       ${e.message}`); }
 };
 const assert = (cond, msg) => { if (!cond) throw new Error(msg || 'assertion failed'); };
+
+console.log('\nreviewAndRevise — the second pass against the sources\n');
+const body = ('word '.repeat(900)).trim();
+const mkEnv = (replies) => { let i = 0; return { AI: { run: async () => ({ response: replies[Math.min(i++, replies.length - 1)] }) } }; };
+const draft = { title: 'Treasury Does A Thing', slug: 'treasury-thing', body };
+await (async () => {
+  const clean = await m.reviewAndRevise(mkEnv(['{"unsupported":[]}']), draft, 'src');
+  test('a fully supported draft is published as written', () => assert(clean === draft));
+  const junk = await m.reviewAndRevise(mkEnv(['not json at all']), draft, 'src');
+  test('an unreadable verdict publishes with a warning rather than silencing the site', () => assert(junk === draft));
+  const fixed = await m.reviewAndRevise(mkEnv([
+    '{"unsupported":["invented figure"]}',
+    JSON.stringify({ title: 'X', excerpt: 'e', meta_description: 'm', slug: 's', body }),
+    '{"unsupported":[]}']), draft, 'src');
+  test('a draft with unsupported claims is rewritten and the title is kept', () => assert(fixed && fixed.title === 'Treasury Does A Thing' && fixed.body === body));
+  const bad = await m.reviewAndRevise(mkEnv([
+    '{"unsupported":["a","b"]}',
+    JSON.stringify({ title: 'X', excerpt: 'e', meta_description: 'm', slug: 's', body }),
+    '{"unsupported":["a","b","c"]}']), draft, 'src');
+  test('a draft that still fails after revision is dropped', () => assert(bad === null));
+})();
 
 console.log('\ncorroborating — is the wider press covering the same event\n');
 test('a document is corroborated by a news item about the same event', () => {
