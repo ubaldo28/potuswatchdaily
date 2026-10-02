@@ -6,6 +6,9 @@ import Footer from '../../components/Footer.astro';
 import Masthead from '../../components/Masthead.astro';
 import { isRoutineNotice } from '../../lib/quality';
 import { topicsFor } from '../../lib/topics';
+import BrandCard from '../../components/BrandCard.astro';
+import { classify } from '../../lib/actions';
+import { sourceLabel } from '../../lib/quality';
 
 // env comes from the Workers runtime module (Astro.locals.runtime was removed in adapter v14)
 const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_KEY);
@@ -202,7 +205,13 @@ const creditHref = creditUrl(photoCredit?.url);
         <span class="photo-credit-note"> — public domain (17 U.S.C. § 105).</span>
       </p>
     )}
-    {photoCredit && photoCredit.src !== 'gov' && creditHref && (
+    {photoCredit && photoCredit.src === 'commons' && creditHref && (
+      <p class="photo-credit">
+        File photo: <a href={creditHref} target="_blank" rel="noopener nofollow">{photoCredit.name}</a>
+        <span class="photo-credit-note"> via Wikimedia Commons. Illustrative; not necessarily taken at the events described.</span>
+      </p>
+    )}
+    {photoCredit && photoCredit.src === 'unsplash' && creditHref && (
       <p class="photo-credit">
         Photo by <a href={creditHref} target="_blank" rel="noopener nofollow">{photoCredit.name}</a>
         {' '}on <a href="https://unsplash.com/?utm_source=potuswatch&utm_medium=referral" target="_blank" rel="noopener nofollow">Unsplash</a>
@@ -210,6 +219,9 @@ const creditHref = creditUrl(photoCredit?.url);
       </p>
     )}
   </Fragment>
+  )}
+  {!(img && img !== `${SITE_URL}/og-default.jpg`) && (
+    <BrandCard size="band" tag={classify(a.title) === 'Other' ? 'Analysis' : classify(a.title)} label={sourceLabel(a.sources, a.region)} />
   )}
 
   <main id="main" class="article-content" tabindex="-1">

@@ -322,6 +322,119 @@ async function commonsSearch(query) {
   }
 }
 
+// ── Story photo: a real photograph that truthfully fits the story ─────────────
+// Buildings alone made every Treasury story look the same, and a bare keyword
+// search once returned a fire boat for a Dead Sea Scrolls story. So the search
+// is split in two. The model proposes what a news photo editor would look for;
+// Wikimedia Commons supplies freely licensed candidates; and the model then
+// looks at each candidate's FILE NAME AND DESCRIPTION and picks one that fits
+// the story, or says none does. No pick means no photo, and the site shows a
+// branded card instead. A wrong photograph is worse than none.
+const TOPIC_PHOTO_QUERIES = [
+  [/executive order|proclamation|signs|signed|presidential/i, ['Donald Trump signing executive order Oval Office', 'President signs proclamation White House']],
+  [/tariff|duty|duties|import|antidumping|countervailing/i,   ['container terminal port cranes ships', 'Port of Long Beach container terminal']],
+  [/steel|aluminum|aluminium/i,                              ['steel mill furnace', 'aluminium rolling mill']],
+  [/auto|vehicle|car\b|cars\b/i,                             ['automobile assembly line factory']],
+  [/semiconductor|chip|export control/i,                     ['semiconductor wafer cleanroom fabrication']],
+  [/oil|petroleum|energy|refiner/i,                          ['oil tanker at sea', 'oil refinery']],
+  [/canad/i,                                                 ['Canada United States border crossing', 'Ambassador Bridge Detroit Windsor']],
+  [/mexic/i,                                                 ['Mexico United States border crossing port of entry']],
+  [/china|chinese|beijing/i,                                 ['Shanghai Yangshan container port', 'Beijing skyline']],
+  [/iran|tehran|hormuz/i,                                    ['Strait of Hormuz tanker', 'Tehran skyline']],
+  [/russia|moscow|kremlin/i,                                 ['Moscow Kremlin']],
+  [/ukrain|kyiv/i,                                           ['Kyiv Maidan Nepalezhnosti']],
+  [/agricult|soy|beef|dairy|farm/i,                          ['combine harvester farm field United States']],
+  [/sanction|treasury|ofac/i,                                ['United States Department of the Treasury building']],
+];
+
+const GOOD_LICENSE = /public domain|^pd\b|pd-|cc0|cc[- ]by(?!-nc)(?!-nd)/i;
+const BAD_LICENSE = /\bnc\b|-nc|\bnd\b|-nd|fair use|non-free/i;
+
+async function commonsCandidates(query) {
+  try {
+    const u = new URL('https://commons.wikimedia.org/w/api.php');
+    u.searchParams.set('action', 'query');
+    u.searchParams.set('format', 'json');
+    u.searchParams.set('formatversion', '2');
+    u.searchParams.set('generator', 'search');
+    u.searchParams.set('gsrsearch', `${query} filetype:bitmap`);
+    u.searchParams.set('gsrnamespace', '6');
+    u.searchParams.set('gsrlimit', '10');
+    u.searchParams.set('prop', 'imageinfo');
+    u.searchParams.set('iiprop', 'url|size|extmetadata');
+    u.searchParams.set('iiurlwidth', '1200');
+    const r = await fetch(u, { headers: FETCH_HEADERS, signal: AbortSignal.timeout(8000) });
+    if (!r.ok) return [];
+    const pages = (await r.json())?.query?.pages || [];
+    const out = [];
+    for (const page of pages) {
+      const info = page?.imageinfo?.[0];
+      if (!info?.thumburl || !info.width || !info.height) continue;
+      if (info.width < 1100 || info.width < info.height * 1.3) continue;           // landscape, big enough
+      const lic = String(info.extmetadata?.LicenseShortName?.value || '');
+      if (!GOOD_LICENSE.test(lic) || BAD_LICENSE.test(lic)) continue;
+      const name = String(page.title || '').replace(/^File:/, '').replace(/\.[a-z]+$/i, '');
+      if (/logo|map of|diagram|chart|flag of|seal of|screenshot|\bsvg\b|coat of arms/i.test(name)) continue;
+      const desc = stripHtml(info.extmetadata?.ImageDescription?.value || '').replace(/\s+/g, ' ').slice(0, 180);
+      const artist = stripHtml(info.extmetadata?.Artist?.value || '').trim().slice(0, 80);
+      out.push({ name, desc, artist, lic, url: info.thumburl, page: info.descriptionurl });
+    }
+    return out;
+  } catch (e) {
+    console.warn('[photo] Commons search failed:', e.message);
+    return [];
+  }
+}
+
+async function getStoryPhoto(env, title, excerpt, region) {
+  try {
+    // 1. What would a photo editor look for?
+    let queries = [];
+    try {
+      const raw = await generateText(env, `A news site needs ONE real photograph to illustrate this story. Propose 3 short search queries for Wikimedia Commons that would find an actual photograph of the real subject: a specific real place, facility, object, industry or public official. No abstract ideas, no charts, no maps. Headline: ${title}. Summary: ${excerpt || ''}. Region: ${region}. Respond ONLY with JSON: {"queries":["...","...","..."]}`, { temperature: 0.3, max_tokens: 200 });
+      const j = parseLooseJson(raw);
+      if (Array.isArray(j?.queries)) queries = j.queries.map(q => String(q).slice(0, 80)).filter(Boolean).slice(0, 3);
+    } catch (e) {
+      if (/\b(3040|4006)\b/.test(String(e?.message)) || /neuron/i.test(String(e?.message))) throw e;
+    }
+    const hay = `${title} ${excerpt || ''}`;
+    for (const [re, qs] of TOPIC_PHOTO_QUERIES) if (re.test(hay)) queries.push(...qs.slice(0, 1));
+    queries = [...new Set(queries)].slice(0, 5);
+    if (!queries.length) return null;
+
+    // 2. Candidates, de-duplicated by file.
+    const seen = new Set(); const cands = [];
+    for (const q of queries) {
+      for (const c of await commonsCandidates(q)) {
+        if (!seen.has(c.name)) { seen.add(c.name); cands.push(c); }
+      }
+      if (cands.length >= 12) break;
+    }
+    if (!cands.length) { console.log('[photo] No candidates.'); return null; }
+    const shown = cands.slice(0, 12);
+
+    // 3. Does any of them truthfully fit the story?
+    const list = shown.map((c, i) => `${i + 1}. ${c.name}${c.desc ? ' — ' + c.desc : ''}`).join('\n');
+    const raw = await generateText(env, `You are a photo editor choosing a picture for a news story. Headline: ${title}. Summary: ${excerpt || ''}
+
+Candidate photographs (file name and description only):
+${list}
+
+Pick the ONE that would be a truthful, relevant illustration of this story: the right kind of subject, an actual photograph, and nothing that would mislead a reader about what happened. Never pick a photo whose caption names a different specific event, document or topic than this story (for example a signing about vaccines on a tariff story); a generic scene of the right kind (a container port for a tariff story) is fine. If none is clearly appropriate, answer 0. Respond ONLY with JSON: {"pick": <number>}`, { temperature: 0, max_tokens: 40 });
+    const pick = Number(parseLooseJson(raw)?.pick);
+    if (!Number.isInteger(pick) || pick < 1 || pick > shown.length) { console.log('[photo] Editor found nothing suitable.'); return null; }
+
+    const c = shown[pick - 1];
+    const credit = `?pw_src=commons&pw_by=${encodeURIComponent(c.artist || 'Wikimedia Commons')}&pw_at=${encodeURIComponent(c.page || 'https://commons.wikimedia.org')}`;
+    console.log(`[photo] Chose "${c.name}" (${c.lic}) for "${title}"`);
+    return { hero: c.url + credit, thumb: c.url.replace('/1200px-', '/600px-') + credit };
+  } catch (e) {
+    if (/\b(3040|4006)\b/.test(String(e?.message)) || /neuron/i.test(String(e?.message))) throw e;
+    console.warn('[photo] Story photo lookup failed:', e.message);
+    return null;
+  }
+}
+
 /**
  * One photograph, resolved once, returned in both renditions the site needs:
  * a 1200px hero and a 600px card. This used to be two independent calls, which
@@ -350,8 +463,8 @@ async function recentImageKeys(env) {
   }
 }
 
-async function getImagePair(env, region, title, source = '') {
-  const pair = await pickImagePair(env, region, title, source);
+async function getImagePair(env, region, title, source = '', excerpt = '') {
+  const pair = await pickImagePair(env, region, title, source, excerpt);
   if (!pair.hero && !pair.thumb) return pair;
   const recent = await recentImageKeys(env);
   const key = String(pair.hero || pair.thumb).split('?')[0];
@@ -362,11 +475,15 @@ async function getImagePair(env, region, title, source = '') {
   return pair;
 }
 
-async function pickImagePair(env, region, title, source = '') {
+async function pickImagePair(env, region, title, source = '', excerpt = '') {
   // Prefer public-domain U.S. government photography when it actually matches
   // the story.
   const gov = await getGovImagePair(titleKeywords(title));
   if (gov) return gov;
+
+  // A real photograph of the story's own subject, vetted against the headline.
+  const story = await getStoryPhoto(env, title, excerpt, region);
+  if (story) return story;
 
   // Then Wikimedia Commons, keyed on the institution that issued the document.
   // Every article on 2026-09-09 -- all twenty-four of them -- published with no
@@ -1488,7 +1605,7 @@ Respond ONLY with valid JSON, no markdown:
   // government feed was fetched and scanned twice for an identical answer.
   // The lead document's source is passed too: which building to photograph is
   // a fact about where the document came from, not a guess from its headline.
-  const picked = await getImagePair(env, region, parsed.title, `${lead.source || ''} ${lead.title || ''}`);
+  const picked = await getImagePair(env, region, parsed.title, `${lead.source || ''} ${lead.title || ''}`, parsed.excerpt || '');
   const heroImage = picked.hero;
   const cardImage = picked.thumb;
   if (!heroImage && !cardImage) console.warn('[generator] No image found; publishing without one.');

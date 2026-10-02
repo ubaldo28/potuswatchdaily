@@ -1,0 +1,24 @@
+---
+// The stand-in for a photograph. It names what the story is and where it came
+// from, so it is always true; a stock photo can only ever look like the story.
+export interface Props { tag?: string; label?: string; size?: 'thumb' | 'lead' | 'band' }
+const { tag = 'Analysis', label = '', size = 'thumb' } = Astro.props;
+const key = tag.toLowerCase().replace(/[^a-z]+/g, '-');
+---
+<div class:list={['bc', size, `k-${key}`]} role="img" aria-label={`${tag}${label ? ', ' + label : ''}`}>
+  <svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2.6l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4 6.1 20.6l1.2-6.5L2.5 9.5l6.6-.9z"/></svg>
+  <span class="bc-tag">{tag}</span>
+  {label && <span class="bc-src">{label}</span>}
+</div>
+
+<style>
+.bc { position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; background: var(--navy); color: #F6F3EB; border-top: 4px solid var(--accent); padding: 12px 14px; width: 100%; height: 100%; min-height: 100px; }
+.mark { position: absolute; right: -14px; top: -14px; width: 120px; height: 120px; color: rgba(255,255,255,.07); }
+.bc-tag { font: 800 clamp(15px, 2.2vw, 22px) var(--serif); letter-spacing: -.2px; position: relative; }
+.bc-src { font: 600 10px var(--sans); letter-spacing: 1.6px; text-transform: uppercase; color: #AEBBD0; position: relative; }
+.k-tariffs { border-top-color: #F2B84B; } .k-sanctions { border-top-color: #E4573D; }
+.k-export-controls { border-top-color: #6AA9E8; } .k-trade { border-top-color: #5CC28A; }
+.lead { min-height: 220px; padding: 20px 22px; } .lead .bc-tag { font-size: 30px; } .lead .mark { width: 220px; height: 220px; right: -30px; top: -30px; }
+.band { min-height: 120px; height: 120px; padding: 18px max(24px, calc((100vw - 740px) / 2)); } .band .bc-tag { font-size: 28px; }
+.thumb .bc-tag { font-size: 16px; } .thumb .bc-src { font-size: 9px; letter-spacing: 1.2px; }
+</style>
