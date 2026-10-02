@@ -1740,6 +1740,12 @@ export default {
         return Response.json(result);
       } catch (e) {
         console.error('[run] Manual generation failed:', e.message);
+        // The free Workers AI allowance (10,000 neurons/day) is spent by the
+        // deploy-time test run as well as by real articles. Running out is a
+        // quota, not a fault, so it must not turn a deploy red.
+        if (/\b(3040|4006)\b/.test(String(e?.message)) || /neuron/i.test(String(e?.message))) {
+          return Response.json({ status: 'skipped', reason: 'ai-allowance-exhausted' });
+        }
         return Response.json({ status: 'error' }, { status: 500 });
       }
     }
