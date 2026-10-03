@@ -391,7 +391,7 @@ async function getStoryPhoto(env, title, excerpt, region) {
     // 1. What would a photo editor look for?
     let queries = [];
     try {
-      const raw = await generateText(env, `A news site needs ONE real photograph to illustrate this story. Propose 3 short search queries for Wikimedia Commons that would find an actual photograph of the real subject: a specific real place, facility, object, industry or public official. No abstract ideas, no charts, no maps. Headline: ${title}. Summary: ${excerpt || ''}. Region: ${region}. Respond ONLY with JSON: {"queries":["...","...","..."]}`, { temperature: 0.3, max_tokens: 200 });
+      const raw = await generateText(env, `A news site needs ONE real photograph to illustrate this story. Propose 3 short search queries for Wikimedia Commons that would find an actual photograph of the real subject: a specific real place, facility, object, industry or public official. No abstract ideas, no charts, no maps. Headline: ${title}. Summary: ${excerpt || ''}. Region: ${region}. Respond ONLY with JSON: {"queries":["...","...","..."]}`, { temperature: 0.3, max_tokens: 1500 });
       const j = parseLooseJson(raw);
       if (Array.isArray(j?.queries)) queries = j.queries.map(q => String(q).slice(0, 80)).filter(Boolean).slice(0, 3);
     } catch (e) {
@@ -420,7 +420,7 @@ async function getStoryPhoto(env, title, excerpt, region) {
 Candidate photographs (file name and description only):
 ${list}
 
-Pick the ONE that would be a truthful, relevant illustration of this story: the right kind of subject, an actual photograph, and nothing that would mislead a reader about what happened. Never pick a photo whose caption names a different specific event, document or topic than this story (for example a signing about vaccines on a tariff story); a generic scene of the right kind (a container port for a tariff story) is fine. Prefer photographs taken in the United States, or of U.S. officials and facilities, when the story is about U.S. policy; do not pick a foreign location unless the story is about that place. If none is clearly appropriate, answer 0. Respond ONLY with JSON: {"pick": <number>}`, { temperature: 0, max_tokens: 40 });
+Pick the ONE that would be a truthful, relevant illustration of this story: the right kind of subject, an actual photograph, and nothing that would mislead a reader about what happened. Never pick a photo whose caption names a different specific event, document or topic than this story (for example a signing about vaccines on a tariff story); a generic scene of the right kind (a container port for a tariff story) is fine. Prefer photographs taken in the United States, or of U.S. officials and facilities, when the story is about U.S. policy; do not pick a foreign location unless the story is about that place. If none is clearly appropriate, answer 0. Respond ONLY with JSON: {"pick": <number>}`, { temperature: 0, max_tokens: 1200 });
     const pick = Number(parseLooseJson(raw)?.pick);
     if (!Number.isInteger(pick) || pick < 1 || pick > shown.length) { console.log('[photo] Editor found nothing suitable.'); return null; }
 
@@ -1247,7 +1247,7 @@ async function callWorkersAI(env, prompt, opts = {}) {
           { role: 'system', content: 'You are a senior trade and sanctions policy correspondent. Respond with a single valid JSON object and nothing else - no prose before or after, no markdown code fences.' },
           { role: 'user', content: prompt }
         ],
-        max_tokens: opts.max_tokens ?? 4000,
+        max_tokens: opts.max_tokens ?? 6000,
         temperature: opts.temperature ?? 0.7
       });
 
@@ -1277,8 +1277,21 @@ async function callWorkersAI(env, prompt, opts = {}) {
  * was going to keep funded, and a silent fallback meant two possible code paths
  * behind every article with no way to tell which one wrote it.
  */
-async function generateText(env, prompt, opts) {
-  return callWorkersAI(env, prompt, opts);
+// gpt-oss is a reasoning model: its "thinking" tokens count against max_tokens, so a
+// small budget can be spent entirely on reasoning and return no answer at all
+// (finish_reason "length", content null). That silently disabled the photo
+// editor and the fact check. Retry once with a bigger budget before giving up.
+async function generateText(env, prompt, opts = {}) {
+  try {
+    return await callWorkersAI(env, prompt, opts);
+  } catch (e) {
+    if (/finish_reason":"length|response shape/.test(String(e?.message))) {
+      const bigger = Math.min((opts.max_tokens ?? 6000) * 2, 9000);
+      console.warn(`[workers-ai] Ran out of tokens while reasoning; retrying with ${bigger}.`);
+      return callWorkersAI(env, prompt, { ...opts, max_tokens: bigger });
+    }
+    throw e;
+  }
 }
 
 // ── Main generation routine ───────────────────────────────────────────────────
@@ -1761,7 +1774,7 @@ List every factual claim in the draft that the sources do NOT support: invented 
 
 Respond ONLY with JSON: {"unsupported":["short quote of the claim", ...]} . Use an empty array if every claim is supported.`;
   try {
-    const raw = await generateText(env, prompt, { temperature: 0.1, max_tokens: 900 });
+    const raw = await generateText(env, prompt, { temperature: 0.1, max_tokens: 3500 });
     const v = parseLooseJson(raw);
     if (!v || !Array.isArray(v.unsupported)) return null;
     return v.unsupported.map(x => String(x)).filter(Boolean);
