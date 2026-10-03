@@ -135,3 +135,12 @@ See `RUNBOOK.md` for step-by-step disaster recovery.
 - **Free-tier budget:** Workers AI free plan is 10,000 neurons/day (resets 00:00 UTC). The owner does NOT want to pay; never suggest the paid plan. Deploys only run a test article when `worker/` changed.
 - **Cron syntax:** Cloudflare wants `SUN`, not `0`, for day-of-week.
 - Newsletter email is Sundays. Resend secrets are still unset, so signup cannot store subscribers.
+
+## Weekly email (set up 2026-10-03)
+
+- Sunday briefing, Ledger-styled, real logo image header. Layout lives in `worker/email.js` (shared by the generator and `scripts/build-weekly-email.mjs` for previews).
+- Platform: **Resend** (domain potuswatchdaily.com verified), audience segment "General". beehiiv is no longer used.
+- **Automatic from 2026-10-11**: the weekly review is written Sunday 12:00 UTC (5 AM Pacific), then the generator builds the email and schedules it in Resend for 14:00 UTC (7 AM Pacific). Needs the `RESEND_API_KEY` secret on the generator Worker (set). `WEEKLY_EMAIL=off` in `worker/wrangler.jsonc` stops it. The 2026-10-04 send was scheduled by hand.
+- Editorial only: no ads, affiliate links, sponsors or tip jar, so no postal address is required. If any promotion is ever added, set an address (P.O. box) first.
+- Sender `briefing@potuswatchdaily.com`; replies forward to the project Gmail through Cloudflare Email Routing (the old registrar forwarding records were removed from Cloudflare DNS).
+- Site signup form still needs `RESEND_API_KEY`, `RESEND_AUDIENCE_ID`, `SUBSCRIBE_SECRET` on the SITE Worker (`potuswatchdaily-site`) to work.
