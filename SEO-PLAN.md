@@ -44,10 +44,12 @@ Goal: be the top result for the questions people ask about what the President si
 ## Status 2026-10-03
 Done: NewsArticle JSON-LD and max-image-preview verified; per-order pages with official text (`/order/<doc>`, own sitemap, IndexNow pinged); primary-document lists on policy hubs; Corrections page; trailing-slash redirects removed so URLs match canonicals; sitemap.xml and news-sitemap.xml read by Google.
 
+Also done: /timeline/tariffs, /timeline/sanctions, /timeline/export-controls (live evergreen pages built from the Federal Register).
+
 ## Next actions
 1. (done) sitemaps submitted, show Success.
 2. (done) JSON-LD and robots verified.
 3. (done) per-order pages.
-4. Add evergreen "Current US tariffs by country" and "Sanctions timeline" pages.
+4. (done) timeline pages. Remaining: country pages (China, Iran, Russia) combining timeline + coverage.
 5. (done) Corrections page.
 6. Early to mid November: AdSense reapply.
