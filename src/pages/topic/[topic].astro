@@ -40,6 +40,8 @@ const canonical = `${SITE_URL}/topic/${meta?.slug}`;
 // A hub with almost nothing on it is thin content; keep it out of the index
 // until it has real coverage.
 const thin = articles.length < 4 && docs.length < 4;
+const COUNTRY: Record<string, string> = { 'us-china-trade-technology': 'china', 'iran-nuclear-sanctions': 'iran', 'russia-ukraine-sanctions': 'russia' };
+const country = meta ? COUNTRY[meta.slug] : undefined;
 
 const collectionLd = meta ? {
   '@context': 'https://schema.org', '@type': 'CollectionPage',
@@ -103,6 +105,8 @@ if (!meta) Astro.response.status = 404;
           <h2>Our analysis</h2>
         </section>
       )}
+
+      {country && <p class="page-sub"><a href={`/timeline/${country}`}>Every presidential order on this topic, from the Federal Register →</a></p>}
 
       {articles.length === 0 && <p class="page-sub">No dispatches filed on this topic yet.</p>}
 

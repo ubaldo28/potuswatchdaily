@@ -31,6 +31,27 @@ const PAGES: Record<string, { term: string; h1: string; title: string; desc: str
     intro: 'Every executive order, proclamation and memorandum that mentions export controls, from the Federal Register and updated as new ones are published.',
     hub: 'export-controls-defense-trade', tag: 'Export Controls',
   },
+  china: {
+    term: 'China', h1: 'U.S. Presidential Actions on China: Every Order, Newest First',
+    title: 'U.S. Presidential Actions on China: Tariffs, Trade and Technology Timeline',
+    desc: 'Every presidential executive order, proclamation and memorandum that mentions China, from the Federal Register, with the official text of each.',
+    intro: 'Every executive order, proclamation and memorandum that mentions China, from the Federal Register and updated as new ones are published. Open any entry for the official text.',
+    hub: 'us-china-trade-technology', tag: 'Trade',
+  },
+  iran: {
+    term: 'Iran', h1: 'U.S. Presidential Actions on Iran: Every Order, Newest First',
+    title: 'U.S. Presidential Actions on Iran: Sanctions and Nuclear Policy Timeline',
+    desc: 'Every presidential executive order, proclamation and memorandum that mentions Iran, from the Federal Register, with the official text of each.',
+    intro: 'Every executive order, proclamation and memorandum that mentions Iran, from the Federal Register and updated as new ones are published. Open any entry for the official text.',
+    hub: 'iran-nuclear-sanctions', tag: 'Sanctions',
+  },
+  russia: {
+    term: 'Russia', h1: 'U.S. Presidential Actions on Russia: Every Order, Newest First',
+    title: 'U.S. Presidential Actions on Russia: Sanctions and Ukraine Timeline',
+    desc: 'Every presidential executive order, proclamation and memorandum that mentions Russia, from the Federal Register, with the official text of each.',
+    intro: 'Every executive order, proclamation and memorandum that mentions Russia, from the Federal Register and updated as new ones are published. Open any entry for the official text.',
+    hub: 'russia-ukraine-sanctions', tag: 'Sanctions',
+  },
 };
 const key = String(Astro.params.topic || '');
 const cfg = PAGES[key];
