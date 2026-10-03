@@ -1,0 +1,108 @@
+---
+import { env } from 'cloudflare:workers';
+import { createClient } from '@supabase/supabase-js';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Masthead from '../../components/Masthead.astro';
+import Footer from '../../components/Footer.astro';
+import { searchActions, fmtDate } from '../../lib/actions';
+import { topicBySlug, topicFilter } from '../../lib/topics';
+import { isRoutineNotice } from '../../lib/quality';
+
+const SITE_URL = 'https://www.potuswatchdaily.com';
+const PAGES: Record<string, { term: string; h1: string; title: string; desc: string; intro: string; hub: string; tag: string }> = {
+  tariffs: {
+    term: 'tariffs', h1: 'U.S. Tariff Actions: Every Presidential Order, Newest First',
+    title: 'U.S. Tariff Actions Timeline: Every Executive Order and Proclamation',
+    desc: 'A running timeline of every presidential executive order, proclamation and memorandum on tariffs and import duties, from the Federal Register, with the official text of each.',
+    intro: 'Every executive order, proclamation and memorandum that mentions tariffs, straight from the Federal Register and updated as new ones are published. Open any entry for the official text.',
+    hub: 'tariffs-trade-policy', tag: 'Tariffs',
+  },
+  sanctions: {
+    term: 'sanctions', h1: 'U.S. Sanctions Actions: Every Presidential Order, Newest First',
+    title: 'U.S. Sanctions Timeline: Every Executive Order and Proclamation',
+    desc: 'A running timeline of every presidential executive order, proclamation and memorandum on sanctions and national emergencies, from the Federal Register, with the official text of each.',
+    intro: 'Every executive order, proclamation and memorandum that mentions sanctions, from the Federal Register and updated as new ones are published. Open any entry for the official text.',
+    hub: 'sanctions-policy', tag: 'Sanctions',
+  },
+  'export-controls': {
+    term: '"export controls"', h1: 'U.S. Export Controls: Every Presidential Order, Newest First',
+    title: 'U.S. Export Controls Timeline: Every Executive Order and Proclamation',
+    desc: 'A running timeline of presidential executive orders, proclamations and memoranda on export controls, from the Federal Register, with the official text of each.',
+    intro: 'Every executive order, proclamation and memorandum that mentions export controls, from the Federal Register and updated as new ones are published.',
+    hub: 'export-controls-defense-trade', tag: 'Export Controls',
+  },
+};
+const key = String(Astro.params.topic || '');
+const cfg = PAGES[key];
+if (!cfg) return new Response('Not found', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+
+const all = await searchActions(cfg.term, 100);
+const years = [...new Set(all.map(a => (a.signed || '').slice(0, 4)).filter(Boolean))];
+const byYear = years.map(y => ({ y, items: all.filter(a => (a.signed || '').startsWith(y)) }));
+
+const meta = topicBySlug(cfg.hub);
+let coverage: any[] = [];
+if (meta) {
+  try {
+    const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_KEY);
+    const { data } = await supabase.from('articles').select('title,slug,excerpt,date')
+      .or(topicFilter(meta)).is('removed_at', null).order('id', { ascending: false }).limit(12);
+    coverage = (data ?? []).filter(a => !isRoutineNotice(a.title)).slice(0, 6);
+  } catch {}
+}
+const canonical = `${SITE_URL}/timeline/${key}`;
+const ld = {
+  '@context': 'https://schema.org', '@type': 'CollectionPage', name: cfg.h1, url: canonical, description: cfg.desc,
+  isPartOf: { '@type': 'WebSite', name: 'POTUS Watch Daily', url: SITE_URL },
+  mainEntity: { '@type': 'ItemList', itemListElement: all.slice(0, 50).map((a, i) => ({
+    '@type': 'ListItem', position: i + 1, url: `${SITE_URL}/order/${a.doc}`, name: `${a.number || a.kind}: ${a.title}` })) },
+};
+const safeJsonLd = (o: unknown) => JSON.stringify(o).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
+---
+<BaseLayout title={`${cfg.title} | POTUS Watch Daily`} description={cfg.desc} canonical={canonical} noIndex={all.length < 5}>
+  <Fragment slot="head"><script type="application/ld+json" set:html={safeJsonLd(ld)} /></Fragment>
+  <Masthead />
+  <main id="main" class="tl" tabindex="-1">
+    <div class="eyebrow">Timeline</div>
+    <h1>{cfg.h1}</h1>
+    <p class="lead">{cfg.intro}</p>
+    <p class="lead small">{all.length} documents. Source: Federal Register. Updated every hour. <a href={`/topic/${cfg.hub}`}>Our analysis hub</a> · <a href="/tracker">All presidential actions</a></p>
+
+    {coverage.length > 0 && (
+      <section>
+        <h2>Latest analysis</h2>
+        {coverage.map(a => (
+          <a class="row" href={`/article/${a.slug}`}><span class="d">{a.date || ''}</span><span class="t">{a.title}</span></a>
+        ))}
+      </section>
+    )}
+
+    {byYear.map(g => (
+      <section>
+        <h2>{g.y}</h2>
+        {g.items.map(a => (
+          <a class="row" href={`/order/${a.doc}`}>
+            <span class="d">{fmtDate(a.signed)}</span>
+            <span class="t">{a.number ? <b>{a.number}: </b> : <b>{a.kind}: </b>}{a.title}</span>
+          </a>
+        ))}
+      </section>
+    ))}
+    {all.length === 0 && <p class="lead">The Federal Register is not answering right now. Try again in a few minutes.</p>}
+  </main>
+  <Footer />
+</BaseLayout>
+
+<style>
+.tl { max-width: 860px; margin: 0 auto; padding: 44px 24px 96px; }
+.eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--accent-text); margin-bottom: 10px; }
+h1 { font-family: 'Newsreader', serif; font-size: 38px; font-weight: 900; line-height: 1.15; color: var(--text); margin: 0 0 14px; }
+h2 { font-family: 'Newsreader', serif; font-size: 26px; color: var(--text); margin: 40px 0 8px; border-bottom: 2px solid var(--text); padding-bottom: 6px; }
+.lead { font-size: 16px; line-height: 1.6; color: var(--text-2); margin: 0 0 12px; max-width: 700px; }
+.lead.small { font-size: 12px; color: var(--text-3); }
+.lead a { color: var(--accent-text); }
+.row { display: grid; grid-template-columns: 64px 1fr; gap: 14px; padding: 11px 0; border-bottom: 1px solid var(--bg-sunk); text-decoration: none; }
+.row:hover .t { color: var(--accent-text); }
+.d { font: 600 12px IBM Plex Sans, sans-serif; color: var(--text-3); padding-top: 3px; }
+.t { font-family: 'Newsreader', serif; font-size: 17px; line-height: 1.4; color: var(--text); }
+</style>

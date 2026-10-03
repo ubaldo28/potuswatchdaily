@@ -124,3 +124,22 @@ export async function recentOrderDocs(limit = 150): Promise<Array<{ doc: string;
   const rows = await presidentialActions(limit, 100);
   return rows.filter(a => a.doc).map(a => ({ doc: a.doc, date: a.signed }));
 }
+
+// Every presidential document matching a search term, newest first. Powers the
+// timeline pages: a page that is current by construction because it is the
+// Federal Register's own record, not a hand-written summary that goes stale.
+export async function searchActions(term: string, limit = 100): Promise<PresAction[]> {
+  const batches = await Promise.all(KINDS.map(async ([k, label]) => {
+    const rows = await frJson(
+      `per_page=${limit}&order=newest&conditions[term]=${encodeURIComponent(term)}&conditions[presidential_document_type][]=${k}` +
+      '&fields[]=title&fields[]=html_url&fields[]=publication_date&fields[]=signing_date&fields[]=executive_order_number&fields[]=proclamation_number&fields[]=document_number');
+    return rows.map(r => ({
+      title: String(r.title || ''), url: r.html_url, date: r.publication_date,
+      signed: r.signing_date || r.publication_date, kind: label,
+      number: r.executive_order_number ? `EO ${r.executive_order_number}` : r.proclamation_number ? `Proc. ${r.proclamation_number}` : '',
+      doc: String(r.document_number || ''), tag: classify(String(r.title || '')),
+    } as PresAction));
+  }));
+  return batches.flat().filter(a => a.title && a.url && a.doc && !(a.kind === 'Proclamation' && /,\s*20\d\d$/.test(a.title)))
+    .sort((a, b) => (b.signed || '').localeCompare(a.signed || ''));
+}

@@ -99,7 +99,7 @@ if (!meta) Astro.response.status = 404;
               </a>
             </div>
           ))}
-          <p class="page-sub"><a href="/tracker">All presidential actions →</a></p>
+          <p class="page-sub"><a href="/tracker">All presidential actions →</a>{meta.slug === 'tariffs-trade-policy' && <> · <a href="/timeline/tariffs">Full tariff timeline →</a></>}{meta.slug === 'sanctions-policy' && <> · <a href="/timeline/sanctions">Full sanctions timeline →</a></>}{meta.slug === 'export-controls-defense-trade' && <> · <a href="/timeline/export-controls">Full export controls timeline →</a></>}</p>
           <h2>Our analysis</h2>
         </section>
       )}
