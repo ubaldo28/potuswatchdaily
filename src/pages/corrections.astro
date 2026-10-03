@@ -1,0 +1,26 @@
+---
+export const prerender = true;
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from '../components/Masthead.astro';
+import Footer from '../components/Footer.astro';
+---
+<BaseLayout
+  title="Corrections Policy — POTUS Watch Daily"
+  description="How to report an error on POTUS Watch Daily and what we do when an article is wrong: verify, correct on the page, or remove it."
+  canonical="https://www.potuswatchdaily.com/corrections"
+>
+  <Masthead backLink="/" backLabel="← Back to feed" />
+  <main id="main" class="page" tabindex="-1">
+    <div class="eyebrow">Transparency</div>
+    <h1>Corrections</h1>
+    <hr class="rule">
+    <p class="lead">Our articles are drafted by an automated system from primary documents and checked by a second automated pass. That process is good, not perfect. When something is wrong we fix it in the open.</p>
+    <h2>Report an error</h2>
+    <p>Email <a href="mailto:briefing@potuswatchdaily.com">briefing@potuswatchdaily.com</a> or use the <a href="/contact">contact page</a>. Include the article address, the sentence that is wrong, and a source (ideally the official document) that shows what is right. Replies are read by a person.</p>
+    <h2>What happens next</h2>
+    <p>We check the claim against the source documents. If the article is wrong, we correct it on the page and the page's modified date changes. If the article cannot be fixed, or its central claim is unsupported, we remove it; the address then returns a "removed" notice so search engines drop it.</p>
+    <h2>Our standard</h2>
+    <p>Every factual claim must trace to a cited document. We do not invent quotes, figures or dates. See <a href="/editorial">Editorial Standards</a> for the full process.</p>
+  </main>
+  <Footer />
+</BaseLayout>

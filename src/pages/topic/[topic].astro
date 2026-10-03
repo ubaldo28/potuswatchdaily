@@ -6,6 +6,7 @@ import Masthead from '../../components/Masthead.astro';
 import Footer from '../../components/Footer.astro';
 import { topicBySlug, topicFilter } from '../../lib/topics';
 import { isRoutineNotice } from '../../lib/quality';
+import { presidentialActions, fmtDate } from '../../lib/actions';
 
 const SITE_URL = 'https://www.potuswatchdaily.com';
 const meta = topicBySlug(String(Astro.params.topic || ''));
@@ -23,10 +24,22 @@ if (meta) {
   articles = (data ?? []).filter(a => !isRoutineNotice(a.title));
 }
 
+// Primary documents for the hubs that map onto a tracker tag: the orders
+// themselves, newest first, each linking to its own page with the official text.
+const TAG_FOR: Record<string, string | null> = {
+  'tariffs-trade-policy': 'Tariffs', 'sanctions-policy': 'Sanctions',
+  'export-controls-defense-trade': 'Export Controls', 'presidential-actions': null,
+};
+let docs: Awaited<ReturnType<typeof presidentialActions>> = [];
+if (meta && meta.slug in TAG_FOR) {
+  const all = await presidentialActions(80, 60);
+  const tag = TAG_FOR[meta.slug];
+  docs = all.filter(a => a.doc && (tag === null || a.tag === tag)).slice(0, 15);
+}
 const canonical = `${SITE_URL}/topic/${meta?.slug}`;
 // A hub with almost nothing on it is thin content; keep it out of the index
 // until it has real coverage.
-const thin = articles.length < 4;
+const thin = articles.length < 4 && docs.length < 4;
 
 const collectionLd = meta ? {
   '@context': 'https://schema.org', '@type': 'CollectionPage',
@@ -73,6 +86,23 @@ if (!meta) Astro.response.status = 404;
       <div class="eyebrow">Topic</div>
       <h1>{meta.name}</h1>
       <p class="page-sub">{meta.intro}</p>
+
+      {docs.length > 0 && (
+        <section class="docs">
+          <h2>Primary documents</h2>
+          <p class="page-sub">The orders themselves, from the Federal Register, with the official text on each page.</p>
+          {docs.map(a => (
+            <div class="archive-item">
+              <a href={`/order/${a.doc}`} class="archive-link">
+                <span class="archive-title">{a.number ? `${a.number}: ` : `${a.kind}: `}{a.title}</span>
+                <span class="archive-meta">{fmtDate(a.signed)}</span>
+              </a>
+            </div>
+          ))}
+          <p class="page-sub"><a href="/tracker">All presidential actions →</a></p>
+          <h2>Our analysis</h2>
+        </section>
+      )}
 
       {articles.length === 0 && <p class="page-sub">No dispatches filed on this topic yet.</p>}
 
