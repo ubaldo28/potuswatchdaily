@@ -28,6 +28,12 @@
   // coin toss. See RUNBOOK.md.
   "workers_dev": true,
 
+  // Not secrets. Newsletter signups are added to the "General" list in Resend. The API
+  // key and SUBSCRIBE_SECRET are secrets: set them in the dashboard, never here.
+  "vars": {
+    "RESEND_AUDIENCE_ID": "b5a76e2c-fbf4-43e7-8d01-e43b5e5e1162"
+  },
+
   "observability": {
     "enabled": true
   }
