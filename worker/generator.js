@@ -1469,7 +1469,39 @@ async function generateArticle(env) {
   head.sort((a, b) => (b.score + 10 * b.corr.length) - (a.score + 10 * a.corr.length));
   scored.splice(0, head.length, ...head);
 
-  for (const candidate of scored.slice(0, 3)) {
+  // Screen candidates against what we already published BEFORE spending any AI
+  // on them. On 2026-10-03 the top three documents were all remarks from one G20
+  // meeting we had already covered: two were rejected as duplicates only after a
+  // full draft was written, and the run ended after 160 seconds with nothing.
+  // Scan further down the list for fresh material, and cap the number that
+  // actually reach the model.
+  let recentTitles = [];
+  try {
+    const since48 = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+    recentTitles = (await sb(env, `articles?select=title&published_at=gte.${encodeURIComponent(since48)}&order=published_at.desc&limit=${SIMILARITY_ROW_CAP}`)) || [];
+  } catch (e) {
+    console.warn('[generator] Could not load recent titles for pre-screening:', e.message);
+  }
+  const similarToRecent = (title) => {
+    const fresh = new Set(titleStems(title));
+    for (const row of recentTitles) {
+      const existing = titleStems(row.title);
+      const overlap = existing.filter(w => fresh.has(w)).length;
+      const shorter = Math.min(existing.length, fresh.size) || 1;
+      const ratio = overlap / shorter;
+      if ((overlap >= 4 && ratio >= 0.5) || (overlap >= 3 && ratio >= 0.7)) return true;
+    }
+    return false;
+  };
+  let aiAttempts = 0;
+
+  for (const candidate of scored.slice(0, 14)) {
+    if (similarToRecent(candidate.doc.title)) {
+      rejected.push(`already-covered: ${candidate.doc.title}`);
+      continue;
+    }
+    if (aiAttempts >= 3) break;
+    aiAttempts++;
     lead = candidate.doc;
 
     // Selection is done; naming is not. The rotation decided which feeds to
@@ -1566,9 +1598,9 @@ Respond ONLY with valid JSON, no markdown:
 
     const attempt = await generateArticleJson(env, prompt);
 
-    if (String(attempt.body || '').split(/\s+/).length < 800) {
-      console.log(`[generator] "${attempt.title}" came back under 800 words — trying the next document.`);
-      rejected.push(`under-800-words: ${attempt.title}`);
+    if (String(attempt.body || '').split(/\s+/).length < 650) {
+      console.log(`[generator] "${attempt.title}" came back under 650 words — trying the next document.`);
+      rejected.push(`under-650-words: ${attempt.title}`);
       continue;
     }
     if (ROUTINE_NOTICE.test(String(attempt.title || ''))) {

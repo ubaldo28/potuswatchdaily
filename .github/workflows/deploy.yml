@@ -222,7 +222,7 @@ jobs:
           # token, which reads as Forbidden. Give it a moment and try again
           # before calling it a failure.
           for attempt in 1 2 3; do
-            BODY=$(curl -sS -X POST --max-time 120 "$URL" -H "Authorization: Bearer $TOKEN" || true)
+            BODY=$(curl -sS -X POST --max-time 290 "$URL" -H "Authorization: Bearer $TOKEN" || true)
             case "$BODY" in
               Forbidden|"Not found") echo "attempt $attempt: $BODY — waiting for the new version"; sleep 10 ;;
               *) break ;;
@@ -234,6 +234,8 @@ jobs:
               echo "Published an article." ;;
             *'"status":"skipped"'*)
               echo "::notice::Nothing new to write about right now — that is the generator declining to repeat itself, not a fault." ;;
+            "")
+              echo "::notice::The generator did not answer within the time limit. A run can take several minutes on the free AI plan; check the Worker's logs if articles stop appearing." ;;
             *)
               echo "::error::The generator could not produce an article: $BODY"
               exit 1 ;;
