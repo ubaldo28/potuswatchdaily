@@ -143,3 +143,19 @@ export async function searchActions(term: string, limit = 100): Promise<PresActi
   return batches.flat().filter(a => a.title && a.url && a.doc && !(a.kind === 'Proclamation' && /,\s*20\d\d$/.test(a.title)))
     .sort((a, b) => (b.signed || '').localeCompare(a.signed || ''));
 }
+
+// A White House "presidential actions" page and its Federal Register document
+// are the same text under the same title, but the White House URL carries no
+// document number. Find the Federal Register copy by title so the article can
+// link to its order page. A document signed in the last few days may not be in
+// the Federal Register yet; that is a miss, not an error.
+export async function findOrderByTitle(title: string): Promise<string | null> {
+  const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const want = norm(title);
+  if (want.length < 12) return null;
+  const rows = await frJson(
+    `per_page=10&order=newest&conditions[term]=${encodeURIComponent(`"${title}"`)}&conditions[type][]=PRESDOCU` +
+    '&fields[]=title&fields[]=document_number&fields[]=subtype');
+  const hit = rows.find(r => norm(String(r.title || '')) === want && ['Executive Order', 'Proclamation', 'Memorandum'].includes(r.subtype));
+  return hit?.document_number ?? null;
+}

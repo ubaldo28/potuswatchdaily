@@ -7,7 +7,7 @@ import Masthead from '../../components/Masthead.astro';
 import { isRoutineNotice } from '../../lib/quality';
 import { topicsFor } from '../../lib/topics';
 import BrandCard from '../../components/BrandCard.astro';
-import { classify, getOrder } from '../../lib/actions';
+import { classify, getOrder, findOrderByTitle } from '../../lib/actions';
 import { sourceLabel } from '../../lib/quality';
 
 // env comes from the Workers runtime module (Astro.locals.runtime was removed in adapter v14)
@@ -113,6 +113,11 @@ try { sources = JSON.parse(a.sources || '[]'); } catch {}
 // A source that is a presidential document also has its own page here, with the
 // official text. Link it, so the article and the order reinforce each other.
 const frDocs = [...new Set(sources.map(s => (String(s.url).match(/federalregister\.gov\/documents\/\d{4}\/\d\d\/\d\d\/(\d{4}-\d{4,6})\//) || [])[1]).filter(Boolean))].slice(0, 3) as string[];
+if (frDocs.length === 0) {
+  const wh = sources.find(x => /whitehouse\.gov\/presidential-actions\//.test(String(x.url)));
+  const found = wh ? await findOrderByTitle(String(wh.title || '')) : null;
+  if (found) frDocs.push(found);
+}
 const orders = (await Promise.all(frDocs.map(d => getOrder(d)))).filter(Boolean) as NonNullable<Awaited<ReturnType<typeof getOrder>>>[];
 
 const encodedUrl = encodeURIComponent(canonicalUrl);
