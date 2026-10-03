@@ -13,5 +13,8 @@ export default defineConfig({
   // for the SESSION binding on every deploy.
   session: false,
   site: 'https://www.potuswatchdaily.com',
-  build: { inlineStylesheets: 'always' },
+  // 'file' writes about.html, which Cloudflare serves at /about with no redirect.
+  // 'directory' wrote about/index.html, so /about answered 307 to /about/ while
+  // every canonical tag and sitemap entry says /about.
+  build: { inlineStylesheets: 'always', format: 'file' },
 });
