@@ -113,14 +113,13 @@ try { sources = JSON.parse(a.sources || '[]'); } catch {}
 // A source that is a presidential document also has its own page here, with the
 // official text. Link it, so the article and the order reinforce each other.
 const frDocs = [...new Set(sources.map(s => (String(s.url).match(/federalregister\.gov\/documents\/\d{4}\/\d\d\/\d\d\/(\d{4}-\d{4,6})\//) || [])[1]).filter(Boolean))].slice(0, 3) as string[];
-let dbg = '';
-if (frDocs.length === 0) {
+let orders = (await Promise.all(frDocs.map(d => getOrder(d)))).filter(Boolean) as NonNullable<Awaited<ReturnType<typeof getOrder>>>[];
+if (orders.length === 0) {
   const wh = sources.find(x => /whitehouse\.gov\/presidential-actions\//.test(String(x.url)));
   const found = wh ? await findOrderByTitle(String(wh.title || '')) : null;
-  dbg = `wh=${!!wh} title=${wh?.title} found=${found}`;
-  if (found) frDocs.push(found);
+  const o = found ? await getOrder(found) : null;
+  if (o) orders = [o];
 }
-const orders = (await Promise.all(frDocs.map(d => getOrder(d)))).filter(Boolean) as NonNullable<Awaited<ReturnType<typeof getOrder>>>[];
 
 const encodedUrl = encodeURIComponent(canonicalUrl);
 const encodedTitle = encodeURIComponent(a.title || '');
@@ -224,7 +223,6 @@ const creditHref = creditUrl(photoCredit?.url);
   </Fragment>
 
   <Masthead />
-  <Fragment set:html={`<!-- dbg ${dbg.replace(/-/g, "")} -->`} />
   <div class="editorial-bar">Analysis drafted from primary documents and cited to its sources. See <a href="/editorial">how we make this</a>.</div>
 
   {img && img !== `${SITE_URL}/og-default.jpg` && (
