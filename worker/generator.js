@@ -1996,7 +1996,12 @@ Respond ONLY with valid JSON, no markdown fences:
     const review = { slug, title: `${parsed.title} \u2014 Week of ${label}`, excerpt: parsed.excerpt, body };
     const built = buildWeeklyEmail({ stories: pickStories(rows), docs: await presidentialDocs(7), review, date: now });
     const sendAt = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 14, 0, 0)).toISOString();
-    email = await scheduleWeeklyBroadcast(env, built, sendAt);
+    // The first automatic send is next Sunday: the 2026-10-04 email was scheduled by
+    // hand in Resend, and a second one would reach every reader twice.
+    const firstAuto = String(env.WEEKLY_EMAIL_FROM || '2026-10-11');
+    email = day < firstAuto
+      ? { status: 'skipped', reason: `automatic sends start ${firstAuto}` }
+      : await scheduleWeeklyBroadcast(env, built, sendAt);
   } catch (e) {
     email = { status: 'error', detail: String(e?.message || e) };
   }

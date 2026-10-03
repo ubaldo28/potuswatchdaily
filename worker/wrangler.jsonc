@@ -28,7 +28,8 @@
   // The Resend API key itself is a secret: set RESEND_API_KEY in the dashboard.
   "vars": {
     "RESEND_SEGMENT_ID": "b5a76e2c-fbf4-43e7-8d01-e43b5e5e1162",
-    "WEEKLY_EMAIL": "on"
+    "WEEKLY_EMAIL": "on",
+    "WEEKLY_EMAIL_FROM": "2026-10-11"
   },
 
   "triggers": {
