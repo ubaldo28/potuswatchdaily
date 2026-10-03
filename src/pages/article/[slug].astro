@@ -7,7 +7,7 @@ import Masthead from '../../components/Masthead.astro';
 import { isRoutineNotice } from '../../lib/quality';
 import { topicsFor } from '../../lib/topics';
 import BrandCard from '../../components/BrandCard.astro';
-import { classify } from '../../lib/actions';
+import { classify, getOrder } from '../../lib/actions';
 import { sourceLabel } from '../../lib/quality';
 
 // env comes from the Workers runtime module (Astro.locals.runtime was removed in adapter v14)
@@ -105,6 +105,11 @@ for (let i = 0; i < lines.length; i++) {
 
 let sources: { url: string; title: string }[] = [];
 try { sources = JSON.parse(a.sources || '[]'); } catch {}
+
+// A source that is a presidential document also has its own page here, with the
+// official text. Link it, so the article and the order reinforce each other.
+const frDocs = [...new Set(sources.map(s => (String(s.url).match(/federalregister\.gov\/documents\/\d{4}\/\d\d\/\d\d\/(\d{4}-\d{4,6})\//) || [])[1]).filter(Boolean))].slice(0, 3) as string[];
+const orders = (await Promise.all(frDocs.map(d => getOrder(d)))).filter(Boolean) as NonNullable<Awaited<ReturnType<typeof getOrder>>>[];
 
 const encodedUrl = encodeURIComponent(canonicalUrl);
 const encodedTitle = encodeURIComponent(a.title || '');
@@ -263,7 +268,10 @@ const creditHref = creditUrl(photoCredit?.url);
 
     {sources.length > 0 && (
       <div class="sources">
-        <p class="sources-label">Sources</p>
+        {orders.length > 0 && <p class="sources-label">Official text on this site</p>}
+        {orders.map(o => <a href={`/order/${o.doc}`}>{o.label}: {o.title}</a>)}
+        {orders.length > 0 && <p class="sources-label" style="margin-top:18px">Sources</p>}
+        {orders.length === 0 && <p class="sources-label">Sources</p>}
         <p class="sources-note">Documents and reporting this dispatch draws on, cited by number in the text above.</p>
         {sources.filter(s => safeUrl(s.url)).map(s => <a href={safeUrl(s.url)} target="_blank" rel="noopener">{(s as any).outlet ? `${(s as any).outlet}: ` : ''}{s.title}</a>)}
       </div>
