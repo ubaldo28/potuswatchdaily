@@ -50,6 +50,6 @@ Also done: /timeline/tariffs, /timeline/sanctions, /timeline/export-controls (li
 1. (done) sitemaps submitted, show Success.
 2. (done) JSON-LD and robots verified.
 3. (done) per-order pages.
-4. (done) timeline pages. Remaining: country pages (China, Iran, Russia) combining timeline + coverage.
+4. (done) timeline pages. Country timelines (China, Iran, Russia) also done.
 5. (done) Corrections page.
 6. Early to mid November: AdSense reapply.

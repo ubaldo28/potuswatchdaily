@@ -153,3 +153,4 @@ See `RUNBOOK.md` for step-by-step disaster recovery.
 - Strategy and next steps: `SEO-PLAN.md`.
 
 - Timeline pages (2026-10-03): `/timeline/tariffs`, `/timeline/sanctions`, `/timeline/export-controls` list every presidential document matching the term from the Federal Register (`searchActions()` in `src/lib/actions.ts`), grouped by year, each linking to its `/order/<doc>` page, plus latest analysis. In the sitemap, footer and hubs. Live data, so they never go stale.
+- Country timelines: `/timeline/china`, `/timeline/iran`, `/timeline/russia` (same route and data as the topic timelines; config in `src/pages/timeline/[topic].astro`). Footer region links point to them.
