@@ -261,7 +261,7 @@ export const POST: APIRoute = async ({ request }) => {
       method: 'POST',
       headers: auth,
       body: JSON.stringify({
-        from: env.RESEND_FROM_EMAIL || 'POTUS Watch Daily <onboarding@resend.dev>',
+        from: env.RESEND_FROM_EMAIL || 'POTUS Watch Daily <briefing@potuswatchdaily.com>',
         to: email,
         subject: `Welcome to POTUS Watch Daily — First issue arriving ${sunDate}`,
         html: buildWelcomeHtml(sunDate, unsubUrl),
