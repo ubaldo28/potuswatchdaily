@@ -1525,7 +1525,7 @@ Focus rules:
 
 Reporting rules: where REPORTING blocks appear, say in a clause what the named outlet reported ("BBC News reported ...") and cite it. They are context for why the event matters today, not a source of wording.
 
-Structure (use ## for section headings; the two fixed headings below must appear exactly as written):
+Structure (use ## for section headings). "Key Facts" and "What to Watch" must appear exactly as written. Every OTHER heading below is a placeholder in square brackets: you must replace it with your own 3-6 word heading specific to this article. NEVER output the square brackets or the words 'Opening heading', 'Analysis heading' or 'Implications heading':
 ## Key Facts
 4-5 bullet lines, each starting with "- ": one concrete, cited fact each (actor, action, figure, date, authority).
 
@@ -1564,6 +1564,7 @@ Respond ONLY with valid JSON, no markdown:
       console.log(`[generator] "${attempt.title}" is too similar to recent content — trying the next document.`);
       continue;
     }
+    attempt.body = fixPlaceholderHeadings(attempt.body);
     const checked = await reviewAndRevise(env, attempt, newsContext);
     if (!checked) {
       console.log(`[generator] "${attempt.title}" did not pass the source check — trying the next document.`);
@@ -1713,6 +1714,21 @@ async function runGeneration(env, source) {
   }
 }
 
+// The model sometimes copies the bracketed placeholders from the prompt
+// ("## [Opening heading]") into the article. Replace any that survive with
+// plain, honest headings rather than publish the template.
+function fixPlaceholderHeadings(body) {
+  const names = [
+    [/^##\s*\[?\s*opening[^\n]*heading[^\n]*$/gim, '## What the Record Shows'],
+    [/^##\s*\[?\s*analysis[^\n]*heading[^\n]*$/gim, '## Why It Matters'],
+    [/^##\s*\[?\s*implications?[^\n]*heading[^\n]*$/gim, '## What Changes in Practice'],
+    [/^##\s*\[?\s*closing[^\n]*heading[^\n]*$/gim, '## What Remains Unresolved'],
+  ];
+  let out = String(body || '');
+  for (const [re, h] of names) out = out.replace(re, h);
+  return out;
+}
+
 // ── Second pass: check the draft against its sources ──────────────────────────
 // The first prompt forbids inventing facts, and a model told that still does it
 // now and then: a date, a figure, a motive stated as fact. So every draft is
@@ -1787,7 +1803,7 @@ Respond ONLY with valid JSON: {"title":"${String(draft.title).replace(/"/g, '\\"
   const second = await findUnsupportedClaims(env, revised, sources);
   if (second === null || second.length <= 1) {
     console.log(`[review] Revised draft accepted (${second === null ? 'unchecked' : second.length + ' remaining'}).`);
-    return { ...draft, ...revised, title: draft.title, slug: draft.slug || revised.slug };
+    return { ...draft, ...revised, body: fixPlaceholderHeadings(revised.body), title: draft.title, slug: draft.slug || revised.slug };
   }
   console.warn(`[review] Revised draft still has ${second.length} unsupported claims; dropping it.`);
   return null;

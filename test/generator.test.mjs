@@ -22,7 +22,7 @@ import { fileURLToPath } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 let src = readFileSync(join(root, 'worker/generator.js'), 'utf8');
 src = src.replace(/^export default \{[\s\S]*$/m, '');
-src += '\nexport { scoreDocument, salvageTruncatedJson, slugify, REGION_TERMS, BASE_SCORE, TOPICAL_SCORE, bestRegionFor, isNoise, regionAffinity, titleStems, corroborating, fetchNews, fetchPrimarySources, reviewAndRevise, parseLooseJson };\n';
+src += '\nexport { scoreDocument, salvageTruncatedJson, slugify, REGION_TERMS, BASE_SCORE, TOPICAL_SCORE, bestRegionFor, isNoise, regionAffinity, titleStems, corroborating, fetchNews, fetchPrimarySources, reviewAndRevise, parseLooseJson, fixPlaceholderHeadings };\n';
 const scratch = mkdtempSync(join(tmpdir(), 'pw-test-'));
 const modPath = join(scratch, 'generator.mjs');
 writeFileSync(modPath, src);
@@ -34,6 +34,16 @@ const test = (name, fn) => {
   catch (e) { failed++; console.log(`  FAIL ${name}\n       ${e.message}`); }
 };
 const assert = (cond, msg) => { if (!cond) throw new Error(msg || 'assertion failed'); };
+
+console.log('\nfixPlaceholderHeadings — never publish the template\n');
+test('bracketed placeholder headings are replaced with real ones', () => {
+  const out = m.fixPlaceholderHeadings('## Key Facts\n\n- a\n\n## [Opening heading]\n\ntext\n\n## [Analysis heading]\n\ntext\n\n## [Implications heading]\n\ntext\n\n## What to Watch');
+  assert(!/\[/.test(out) && /## What the Record Shows/.test(out) && /## Why It Matters/.test(out) && /## What Changes in Practice/.test(out) && /## Key Facts/.test(out) && /## What to Watch/.test(out), out);
+});
+test('real headings are left alone', () => {
+  const b = '## Key Facts\n\n## Greer Sets Agenda\n\ntext';
+  assert(m.fixPlaceholderHeadings(b) === b);
+});
 
 console.log('\nreviewAndRevise — the second pass against the sources\n');
 const body = ('word '.repeat(900)).trim();
