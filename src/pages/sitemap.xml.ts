@@ -24,6 +24,7 @@ export const GET: APIRoute = async () => {
 
     const entries = [
       `<sitemap><loc>${SITE_URL}/sitemap-pages.xml</loc><lastmod>${now}</lastmod></sitemap>`,
+      `<sitemap><loc>${SITE_URL}/sitemap-orders.xml</loc><lastmod>${now}</lastmod></sitemap>`,
       `<sitemap><loc>${SITE_URL}/news-sitemap.xml</loc><lastmod>${now}</lastmod></sitemap>`,
       ...Array.from({ length: pages }, (_, i) =>
         `<sitemap><loc>${SITE_URL}/sitemap-articles-${i + 1}.xml</loc><lastmod>${now}</lastmod></sitemap>`),

@@ -35,7 +35,7 @@ const safeJsonLd = (o: unknown) => JSON.stringify(o).replace(/</g, '\\u003c').re
     {actions.length === 0 && <p class="lead">The Federal Register is not answering right now. Try again in a few minutes.</p>}
     <div class="table" id="actions">
       {actions.map(a => (
-        <a class="row" href={a.url} target="_blank" rel="noopener" data-tag={a.tag}>
+        <a class="row" href={a.doc ? `/order/${a.doc}` : a.url} data-tag={a.tag}>
           <span class="date">{fmtDate(a.signed)}</span>
           <span class="kind">{a.number || a.kind}</span>
           <span class="title">{a.title}</span>

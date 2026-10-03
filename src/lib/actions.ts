@@ -5,7 +5,7 @@
 const FR = 'https://www.federalregister.gov/api/v1/documents.json';
 
 export type Tag = 'Tariffs' | 'Sanctions' | 'Export Controls' | 'Trade' | 'Other';
-export interface PresAction { title: string; url: string; date: string; signed: string; kind: string; number: string; tag: Tag }
+export interface PresAction { title: string; url: string; date: string; signed: string; kind: string; number: string; tag: Tag; doc: string }
 export interface Notice { title: string; url: string; date: string; agency: string; tag: Tag }
 
 export function classify(title: string): Tag {
@@ -34,15 +34,16 @@ const KINDS: Array<[string, string]> = [
   ['executive_order', 'Executive Order'], ['proclamation', 'Proclamation'], ['memorandum', 'Memorandum'],
 ];
 
-export async function presidentialActions(limit = 60): Promise<PresAction[]> {
+export async function presidentialActions(limit = 60, perKind = 30): Promise<PresAction[]> {
   const batches = await Promise.all(KINDS.map(async ([k, label]) => {
     const rows = await frJson(
-      `per_page=30&order=newest&conditions[presidential_document_type][]=${k}` +
-      '&fields[]=title&fields[]=html_url&fields[]=publication_date&fields[]=signing_date&fields[]=executive_order_number');
+      `per_page=${perKind}&order=newest&conditions[presidential_document_type][]=${k}` +
+      '&fields[]=title&fields[]=html_url&fields[]=publication_date&fields[]=signing_date&fields[]=executive_order_number&fields[]=proclamation_number&fields[]=document_number');
     return rows.map(r => ({
       title: String(r.title || ''), url: r.html_url, date: r.publication_date,
       signed: r.signing_date || r.publication_date, kind: label,
-      number: r.executive_order_number ? `EO ${r.executive_order_number}` : '', tag: classify(String(r.title || '')),
+      number: r.executive_order_number ? `EO ${r.executive_order_number}` : r.proclamation_number ? `Proc. ${r.proclamation_number}` : '',
+      doc: String(r.document_number || ''), tag: classify(String(r.title || '')),
     } as PresAction));
   }));
   // Observance proclamations ("Gold Star Mother's Day, 2026") carry a year suffix;
@@ -73,3 +74,56 @@ export const fmtDate = (iso: string) => {
   const d = new Date(`${iso}T12:00:00Z`);
   return isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 };
+
+export interface Order {
+  doc: string; title: string; kind: string; label: string; signed: string; published: string;
+  citation: string; abstract: string; htmlUrl: string; pdfUrl: string; text: string; tag: Tag;
+}
+
+const KIND_LABEL: Record<string, string> = { executive_order: 'Executive Order', proclamation: 'Proclamation', memorandum: 'Memorandum' };
+
+// One presidential document, with its official text. Federal Register text is a
+// US government work in the public domain; the page adds structure, context and
+// links, it does not claim the words.
+export async function getOrder(doc: string): Promise<Order | null> {
+  if (!/^[0-9]{4}-[0-9]{4,6}$/.test(doc)) return null;
+  try {
+    const r = await fetch(
+      `https://www.federalregister.gov/api/v1/documents/${doc}.json?fields[]=title&fields[]=abstract&fields[]=signing_date&fields[]=publication_date` +
+      '&fields[]=citation&fields[]=html_url&fields[]=pdf_url&fields[]=raw_text_url&fields[]=presidential_document_type' +
+      '&fields[]=executive_order_number&fields[]=proclamation_number&fields[]=type',
+      {
+        headers: { 'User-Agent': 'POTUSWatchDaily/1.0 (+https://www.potuswatchdaily.com)' },
+        // @ts-ignore Cloudflare-specific fetch option
+        cf: { cacheTtl: 3600, cacheEverything: true },
+        signal: AbortSignal.timeout(8000),
+      });
+    if (!r.ok) return null;
+    const d: any = await r.json();
+    const kind = String(d.presidential_document_type || '');
+    if (!KIND_LABEL[kind]) return null;
+    let text = '';
+    if (d.raw_text_url) {
+      const t = await fetch(d.raw_text_url, {
+        // @ts-ignore Cloudflare-specific fetch option
+        cf: { cacheTtl: 3600, cacheEverything: true }, signal: AbortSignal.timeout(8000),
+      });
+      if (t.ok) text = (await t.text()).replace(/\r/g, '').trim();
+    }
+    const number = d.executive_order_number || d.proclamation_number;
+    const kindLabel = KIND_LABEL[kind];
+    return {
+      doc, title: String(d.title || ''), kind: kindLabel,
+      label: number ? `${kindLabel} ${number}` : kindLabel,
+      signed: d.signing_date || d.publication_date || '', published: d.publication_date || '',
+      citation: d.citation || '', abstract: d.abstract || '', htmlUrl: d.html_url, pdfUrl: d.pdf_url || '',
+      text, tag: classify(String(d.title || '')),
+    };
+  } catch { return null; }
+}
+
+// Recent documents for the sitemap: policy documents only, no observances.
+export async function recentOrderDocs(limit = 150): Promise<Array<{ doc: string; date: string }>> {
+  const rows = await presidentialActions(limit, 100);
+  return rows.filter(a => a.doc).map(a => ({ doc: a.doc, date: a.signed }));
+}
