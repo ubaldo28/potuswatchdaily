@@ -22,7 +22,7 @@ import { fileURLToPath } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 let src = readFileSync(join(root, 'worker/generator.js'), 'utf8');
 src = src.replace(/^export default \{[\s\S]*$/m, '');
-src += '\nexport { scoreDocument, salvageTruncatedJson, slugify, REGION_TERMS, BASE_SCORE, TOPICAL_SCORE, bestRegionFor, isNoise, regionAffinity, titleStems, corroborating, fetchNews, fetchPrimarySources, reviewAndRevise, parseLooseJson, fixPlaceholderHeadings };\n';
+src += '\nexport { scoreDocument, salvageTruncatedJson, slugify, REGION_TERMS, BASE_SCORE, TOPICAL_SCORE, bestRegionFor, isNoise, regionAffinity, titleStems, corroborating, fetchNews, fetchPrimarySources, reviewAndRevise, parseLooseJson, fixPlaceholderHeadings, cleanArtist, joinQuery };\n';
 const scratch = mkdtempSync(join(tmpdir(), 'pw-test-'));
 const modPath = join(scratch, 'generator.mjs');
 writeFileSync(modPath, src);
@@ -47,6 +47,13 @@ console.log('\nscoreDocument — thin and stale leads\n');
 test('a title-only document can never lead', () => assert(m.scoreDocument({ title: 'Trade Sanctions on Iran', text: 'x', thinText: true }, 'Iran') === -1));
 test('a three-month-old feed item can never lead', () => assert(m.scoreDocument({ title: 'Treasury sanctions on Iran oil', text: 'x'.repeat(400), date: new Date(Date.now() - 90*864e5).toUTCString() }, 'Iran') === -1));
 test('a CSIS conference page is noise', () => assert(m.isNoise({ title: 'CSIS Hosts Defense360 Conference on FY2017 Budget', text: '' })));
+
+console.log('\nphoto credits — clean names, valid URLs\n');
+test('the Commons boilerplate sentence is reduced to a name', () => {
+  assert(m.cleanArtist('This image or media was taken or created by Matt H. Wade . To see his entire portfolio, click here.') === 'Matt H. Wade', m.cleanArtist('This image or media was taken or created by Matt H. Wade . To see his entire portfolio, click here.'));
+});
+test('a linked artist name is used as is', () => assert(m.cleanArtist('<a href="//x">Frank Schulenburg</a>') === 'Frank Schulenburg'));
+test('a second query string is joined with & not ?', () => assert(m.joinQuery('https://a/b.jpg?x=1', 'pw_src=commons') === 'https://a/b.jpg?x=1&pw_src=commons' && m.joinQuery('https://a/b.jpg', 'pw_src=commons') === 'https://a/b.jpg?pw_src=commons'));
 
 console.log('\nfixPlaceholderHeadings — never publish the template\n');
 test('bracketed placeholder headings are replaced with real ones', () => {

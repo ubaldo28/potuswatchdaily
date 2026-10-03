@@ -64,7 +64,11 @@ const img = a.hero_image || a.image || `${SITE_URL}/og-default.jpg`;
 // articles table has no column for it). Unsplash ignores the extra params.
 let photoCredit: { name: string; url: string; src: string } | null = null;
 try {
-  const q = new URL(img).searchParams;
+  // Older rows have "?pw_src=" appended to a URL that already had a query, so the
+  // credit parameters hide inside the previous value. Re-join them.
+  const first = img.indexOf('?');
+  const fixed = first !== -1 && img.indexOf('?pw_src=') > first ? img.replace('?pw_src=', '&pw_src=') : img;
+  const q = new URL(fixed).searchParams;
   const by = q.get('pw_by'), at = q.get('pw_at'), src = q.get('pw_src') || 'unsplash';
   if (by && at) photoCredit = { name: by, url: at, src };
 } catch {}

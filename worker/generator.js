@@ -304,14 +304,14 @@ async function commonsSearch(query) {
       const agreed = wanted.filter(w => fileName.includes(w)).length;
       if (agreed < 2) continue;
 
-      const artist = stripHtml(info.extmetadata?.Artist?.value || '').trim().slice(0, 80);
-      const credit = `?pw_src=commons&pw_by=${encodeURIComponent(artist || 'Wikimedia Commons')}` +
+      const artist = cleanArtist(info.extmetadata?.Artist?.value || '');
+      const credit = `pw_src=commons&pw_by=${encodeURIComponent(artist || 'Wikimedia Commons')}` +
                      `&pw_at=${encodeURIComponent(info.descriptionurl || 'https://commons.wikimedia.org')}`;
 
       console.log(`[image] commons "${query}" -> ${page.title}`);
       return {
-        hero:  thumb + credit,
-        thumb: thumb.replace('/1200px-', '/600px-') + credit
+        hero:  joinQuery(thumb, credit),
+        thumb: joinQuery(thumb.replace(/\/\d+px-/, '/500px-'), credit)
       };
     }
     console.warn(`[image] commons "${query}" returned nothing landscape and on topic.`);
@@ -350,6 +350,19 @@ const TOPIC_PHOTO_QUERIES = [
 const GOOD_LICENSE = /public domain|^pd\b|pd-|cc0|cc[- ]by(?!-nc)(?!-nd)/i;
 const BAD_LICENSE = /\bnc\b|-nc|\bnd\b|-nd|fair use|non-free/i;
 
+// Wikimedia thumbnail URLs already carry a query string, so a second "?" turned
+// pw_src into part of utm_content and the page lost the credit. Join properly.
+const joinQuery = (url, query) => `${url}${url.includes('?') ? '&' : '?'}${query}`;
+
+// The Commons Artist field is HTML and often includes boilerplate sentences.
+function cleanArtist(html) {
+  const link = String(html || '').match(/<a[^>]*>([^<]{2,60})<\/a>/i);
+  let name = (link ? link[1] : stripHtml(html || '')).replace(/\s+/g, ' ').trim();
+  if (/taken or created by/i.test(name)) name = name.replace(/^.*taken or created by\s*/i, '');
+  name = name.split(/\s\.\s|\.?\s*\bTo see\b/i)[0].trim().slice(0, 60);
+  return name.length >= 2 ? name : 'Wikimedia Commons contributor';
+}
+
 async function commonsCandidates(query) {
   try {
     const u = new URL('https://commons.wikimedia.org/w/api.php');
@@ -376,7 +389,7 @@ async function commonsCandidates(query) {
       const name = String(page.title || '').replace(/^File:/, '').replace(/\.[a-z]+$/i, '');
       if (/logo|map of|diagram|chart|flag of|seal of|screenshot|\bsvg\b|coat of arms/i.test(name)) continue;
       const desc = stripHtml(info.extmetadata?.ImageDescription?.value || '').replace(/\s+/g, ' ').slice(0, 180);
-      const artist = stripHtml(info.extmetadata?.Artist?.value || '').trim().slice(0, 80);
+      const artist = cleanArtist(info.extmetadata?.Artist?.value || '');
       out.push({ name, desc, artist, lic, url: info.thumburl, page: info.descriptionurl });
     }
     return out;
@@ -425,9 +438,10 @@ Pick the ONE that would be a truthful, relevant illustration of this story: the 
     if (!Number.isInteger(pick) || pick < 1 || pick > shown.length) { console.log('[photo] Editor found nothing suitable.'); return null; }
 
     const c = shown[pick - 1];
-    const credit = `?pw_src=commons&pw_by=${encodeURIComponent(c.artist || 'Wikimedia Commons')}&pw_at=${encodeURIComponent(c.page || 'https://commons.wikimedia.org')}`;
+    const credit = `pw_src=commons&pw_by=${encodeURIComponent(c.artist || 'Wikimedia Commons')}&pw_at=${encodeURIComponent(c.page || 'https://commons.wikimedia.org')}`;
     console.log(`[photo] Chose "${c.name}" (${c.lic}) for "${title}"`);
-    return { hero: c.url + credit, thumb: c.url.replace('/1200px-', '/600px-') + credit };
+    // 500px is one of the widths Wikimedia serves; 600 is not.
+    return { hero: joinQuery(c.url, credit), thumb: joinQuery(c.url.replace(/\/\d+px-/, '/500px-'), credit) };
   } catch (e) {
     if (/\b(3040|4006)\b/.test(String(e?.message)) || /neuron/i.test(String(e?.message))) throw e;
     console.warn('[photo] Story photo lookup failed:', e.message);
@@ -1511,6 +1525,13 @@ async function generateArticle(env) {
       rejected.push(`already-covered: ${candidate.doc.title}`);
       continue;
     }
+    // The site covers tariffs, trade and sanctions. A White House memo about a
+    // government website scored 4 in the Iran slot and got published; require
+    // the document itself to be about the focus.
+    if (!TS_TERMS.test(`${candidate.doc.title} ${String(candidate.doc.text || '').slice(0, 700)}`)) {
+      rejected.push(`off-focus: ${candidate.doc.title}`);
+      continue;
+    }
     if (aiAttempts >= 3) break;
     aiAttempts++;
     lead = candidate.doc;
@@ -1808,7 +1829,7 @@ function parseLooseJson(raw) {
   try { return JSON.parse(t.slice(a, b)); } catch { return null; }
 }
 
-async function findUnsupportedClaims(env, draft, sources) {
+async function findUnsupportedClaims(env, draft, sources, temperature = 0.1) {
   const prompt = `You are a strict fact-checking editor. Below are the ONLY source documents the writer was given, then the draft article.
 
 SOURCES
@@ -1822,7 +1843,7 @@ List every factual claim in the draft that the sources do NOT support: invented 
 
 Respond ONLY with JSON: {"unsupported":["short quote of the claim", ...]} . Use an empty array if every claim is supported.`;
   try {
-    const raw = await generateText(env, prompt, { temperature: 0.1, max_tokens: 3500 });
+    const raw = await generateText(env, prompt, { temperature, max_tokens: 3500 });
     const v = parseLooseJson(raw);
     if (!v || !Array.isArray(v.unsupported)) return null;
     return v.unsupported.map(x => String(x)).filter(Boolean);
@@ -1835,7 +1856,9 @@ Respond ONLY with JSON: {"unsupported":["short quote of the claim", ...]} . Use 
 
 async function reviewAndRevise(env, draft, sources, leadChars = 0) {
   let first = await findUnsupportedClaims(env, draft, sources);
-  if (first === null) first = await findUnsupportedClaims(env, draft, sources);   // one retry
+  // One retry at a different temperature: the model sometimes degenerates into a
+  // string of "!" at one setting and answers normally at another.
+  if (first === null) first = await findUnsupportedClaims(env, draft, sources, 0.5);
   if (first === null) {
     // An unreadable checker must not silence the site, but it must not wave
     // through a draft written from almost nothing either.
