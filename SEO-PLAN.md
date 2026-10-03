@@ -26,7 +26,7 @@ Goal: be the top result for the questions people ask about what the President si
 - Every article shows its sources. Never publish unsupported claims (the fact-check pass drops them).
 
 ## 5. Google surfaces beyond blue links
-- Google News Publisher Center: apply once there are 3+ weeks of steady, clean publishing (target late October).
+- Google News: no application needed (since March 2025 Google News includes eligible sites automatically). The publication already exists in Publisher Center; keep news-sitemap.xml fresh and publishing steady.
 - Top Stories eligibility: news-sitemap fresh, clear dates, no paywall, consistent publishing.
 - Discover: strong photo (vetted) at 1200px wide, large-image meta robots tag (check it is set).
 
@@ -50,4 +50,4 @@ Done: NewsArticle JSON-LD and max-image-preview verified; per-order pages with o
 3. (done) per-order pages.
 4. Add evergreen "Current US tariffs by country" and "Sanctions timeline" pages.
 5. (done) Corrections page.
-6. Late October: Google News Publisher Center. Early to mid November: AdSense reapply.
+6. Early to mid November: AdSense reapply.
