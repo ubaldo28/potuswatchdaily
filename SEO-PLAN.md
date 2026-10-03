@@ -46,6 +46,8 @@ Done: NewsArticle JSON-LD and max-image-preview verified; per-order pages with o
 
 Also done: /timeline/tariffs, /timeline/sanctions, /timeline/export-controls (live evergreen pages built from the Federal Register).
 
+Also done: pruned 3,368 old unsourced articles (they were the 'crawled/discovered, not indexed' pile); only fact-checked, primary-sourced articles remain (518).
+
 ## Next actions
 1. (done) sitemaps submitted, show Success.
 2. (done) JSON-LD and robots verified.
