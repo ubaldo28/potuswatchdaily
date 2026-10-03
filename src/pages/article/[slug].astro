@@ -56,6 +56,10 @@ const [{ data: related = [] }, { data: prevA }, { data: nextA }] = await Promise
 ]);
 
 const topics = topicsFor(a.title).slice(0, 2);
+const TIMELINE: Record<string, string> = {
+  'tariffs-trade-policy': 'tariffs', 'sanctions-policy': 'sanctions', 'export-controls-defense-trade': 'export-controls',
+  'us-china-trade-technology': 'china', 'iran-nuclear-sanctions': 'iran', 'russia-ukraine-sanctions': 'russia',
+};
 const SITE_URL = 'https://www.potuswatchdaily.com';
 const canonicalUrl = `${SITE_URL}/article/${a.slug}`;
 const img = a.hero_image || a.image || `${SITE_URL}/og-default.jpg`;
@@ -263,7 +267,7 @@ const creditHref = creditUrl(photoCredit?.url);
     </div>
 
     {topics.length > 0 && (
-      <p class="topic-links">Follow this story: {topics.map(t => <a href={`/topic/${t.slug}`}>{t.name}</a>)}</p>
+      <p class="topic-links">Follow this story: {topics.map(t => <a href={`/topic/${t.slug}`}>{t.name}</a>)}{topics.map(t => TIMELINE[t.slug]).filter(Boolean).slice(0, 1).map(l => <> · <a href={`/timeline/${l}`}>Every presidential order on this</a></>)}</p>
     )}
 
     {sources.length > 0 && (
