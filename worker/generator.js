@@ -1,3 +1,4 @@
+import { buildWeeklyEmail, pickStories, presidentialDocs, scheduleWeeklyBroadcast } from './email.js';
 /**
  * POTUS Watch — hourly article generator (Cloudflare Worker, Cron Trigger).
  *
@@ -1986,7 +1987,21 @@ Respond ONLY with valid JSON, no markdown fences:
       signal: AbortSignal.timeout(10000)
     });
   } catch (e) { console.warn('[weekly] IndexNow failed:', e.message); }
-  return { status: 'published', slug };
+
+  // The Sunday email: build it from the week's articles plus the review we just
+  // wrote, and schedule it in Resend for 14:00 UTC (7 AM Pacific) the same day.
+  // It can never undo the article; failures only land in the log.
+  let email = { status: 'skipped', reason: 'not-attempted' };
+  try {
+    const review = { slug, title: `${parsed.title} \u2014 Week of ${label}`, excerpt: parsed.excerpt, body };
+    const built = buildWeeklyEmail({ stories: pickStories(rows), docs: await presidentialDocs(7), review, date: now });
+    const sendAt = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 14, 0, 0)).toISOString();
+    email = await scheduleWeeklyBroadcast(env, built, sendAt);
+  } catch (e) {
+    email = { status: 'error', detail: String(e?.message || e) };
+  }
+  console.log(`[weekly] Email: ${JSON.stringify(email)}`);
+  return { status: 'published', slug, email };
 }
 
 // ── Worker entrypoints ────────────────────────────────────────────────────────

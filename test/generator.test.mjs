@@ -21,6 +21,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 let src = readFileSync(join(root, 'worker/generator.js'), 'utf8');
+src = src.replace("from './email.js'", `from '${join(root, 'worker/email.js')}'`);
 src = src.replace(/^export default \{[\s\S]*$/m, '');
 src += '\nexport { scoreDocument, salvageTruncatedJson, slugify, REGION_TERMS, BASE_SCORE, TOPICAL_SCORE, bestRegionFor, isNoise, regionAffinity, titleStems, corroborating, fetchNews, fetchPrimarySources, reviewAndRevise, parseLooseJson, fixPlaceholderHeadings, cleanArtist, joinQuery };\n';
 const scratch = mkdtempSync(join(tmpdir(), 'pw-test-'));
@@ -47,6 +48,38 @@ console.log('\nscoreDocument — thin and stale leads\n');
 test('a title-only document can never lead', () => assert(m.scoreDocument({ title: 'Trade Sanctions on Iran', text: 'x', thinText: true }, 'Iran') === -1));
 test('a three-month-old feed item can never lead', () => assert(m.scoreDocument({ title: 'Treasury sanctions on Iran oil', text: 'x'.repeat(400), date: new Date(Date.now() - 90*864e5).toUTCString() }, 'Iran') === -1));
 test('a CSIS conference page is noise', () => assert(m.isNoise({ title: 'CSIS Hosts Defense360 Conference on FY2017 Budget', text: '' })));
+
+console.log('\nweekly email — layout and scheduling\n');
+const em = await import(join(root, 'worker/email.js'));
+const sample = em.buildWeeklyEmail({
+  stories: [{ title: 'President Bans Select Canadian Alcohol \u2014 Imports', slug: 'president-bans', excerpt: 'The White House announced a \u201Cban\u201D.' }],
+  docs: [{ title: 'Inaugurating the Era of Super Intelligence', url: 'https://x/y', date: '2026-09-29', kind: 'EO 14434' }],
+  review: { slug: 'week-in-us-foreign-policy-2026-10-04', title: 'Trade Week \u2014 Week of October 4, 2026', excerpt: 'A busy week.', body: '## What to Watch\n\n- Tariff deadline\n- UN vote' },
+  date: new Date('2026-10-04T12:00:00Z'),
+});
+test('the email is pure ASCII so it survives any copy or encoding step', () => assert(!/[^\x00-\x7F]/.test(sample.html)));
+test('the email carries the unsubscribe merge tag and no placeholder text', () => assert(sample.html.includes('{{{RESEND_UNSUBSCRIBE_URL}}}') && !/\[Mailing address/.test(sample.html)));
+test('the email has no ads, affiliate links, sponsor or tip jar', () => assert(!/amzn|affiliate|sponsor|buymeacoffee|adsbygoogle/i.test(sample.html)));
+test('the weekly review headline and what-to-watch items appear', () => assert(sample.html.includes('Trade Week') && sample.html.includes('Tariff deadline')));
+const calls = [];
+const realFetch = globalThis.fetch;
+const fakeFetch = (replies) => async (url, init) => { calls.push([String(url), init?.method]); const r = replies.shift(); return { ok: r.ok, status: r.status ?? (r.ok ? 200 : 400), json: async () => r.body }; };
+await (async () => {
+  const noKey = await em.scheduleWeeklyBroadcast({}, sample, '2099-01-01T14:00:00Z');
+  test('without a Resend key nothing is attempted', () => assert(noKey.status === 'skipped' && noKey.reason === 'no-resend-key'));
+  globalThis.fetch = fakeFetch([{ ok: true, body: { id: 'b1' } }, { ok: true, body: { id: 'b1' } }]);
+  const ok = await em.scheduleWeeklyBroadcast({ RESEND_API_KEY: 'k', RESEND_SEGMENT_ID: 's' }, sample, '2099-01-01T14:00:00Z');
+  test('a good run creates then schedules the broadcast', () => assert(ok.status === 'scheduled' && calls.length === 2 && calls[1][0].endsWith('/b1/send')));
+  globalThis.fetch = fakeFetch([{ ok: true, body: { id: 'b2' } }]);
+  const late = await em.scheduleWeeklyBroadcast({ RESEND_API_KEY: 'k', RESEND_SEGMENT_ID: 's' }, sample, '2000-01-01T14:00:00Z');
+  test('a send time that has already passed is left as a draft, never sent', () => assert(late.status === 'draft'));
+  globalThis.fetch = fakeFetch([{ ok: false, status: 422, body: { message: 'bad' } }]);
+  const bad = await em.scheduleWeeklyBroadcast({ RESEND_API_KEY: 'k', RESEND_SEGMENT_ID: 's' }, sample, '2099-01-01T14:00:00Z');
+  test('a Resend error is reported, not thrown', () => assert(bad.status === 'error' && bad.step === 'create'));
+  const off = await em.scheduleWeeklyBroadcast({ RESEND_API_KEY: 'k', RESEND_SEGMENT_ID: 's', WEEKLY_EMAIL: 'off' }, sample, '2099-01-01T14:00:00Z');
+  test('the off switch stops the send', () => assert(off.reason === 'switched-off'));
+  globalThis.fetch = realFetch;
+})();
 
 console.log('\nphoto credits — clean names, valid URLs\n');
 test('the Commons boilerplate sentence is reduced to a name', () => {
