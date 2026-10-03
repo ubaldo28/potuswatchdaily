@@ -93,14 +93,8 @@ export function buildWeeklyEmail({ stories, docs, review, date = new Date(), add
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F6F3EB" style="background:#F6F3EB"><tr><td align="center" style="padding:24px 12px">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#FFFFFF;border:1px solid #D8D2C2">
 
-  <tr><td bgcolor="#0B2545" style="background:#0B2545;padding:22px 32px">
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-      <td width="44" height="44" align="center" valign="middle" bgcolor="#C23B22" style="background:#C23B22;color:#FFFFFF;font-size:24px;line-height:44px;border-radius:3px">&#9733;</td>
-      <td style="padding-left:14px">
-        <div style="font-family:Georgia,'Times New Roman',serif;font-size:26px;font-weight:700;color:#F6F3EB;line-height:1">POTUS <span style="color:#F2B84B">Watch</span> Daily</div>
-        <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:700;letter-spacing:2.4px;color:#AEBBD0;margin-top:6px">TARIFFS &middot; TRADE &middot; SANCTIONS</div>
-      </td>
-    </tr></table>
+  <tr><td bgcolor="#0B2545" style="background:#0B2545;padding:0">
+    <a href="${esc(link('/'))}" style="text-decoration:none"><img src="${SITE}/logo-v3.png" width="600" alt="POTUS Watch Daily - Tariffs, Trade, Sanctions" style="display:block;width:100%;max-width:600px;height:auto;border:0;color:#F6F3EB;font-family:Georgia,'Times New Roman',serif;font-size:24px;font-weight:700;padding:22px 32px;box-sizing:border-box"></a>
   </td></tr>
   <tr><td bgcolor="#C23B22" height="4" style="background:#C23B22;height:4px;font-size:0;line-height:0">&nbsp;</td></tr>
 
