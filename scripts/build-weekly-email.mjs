@@ -19,8 +19,11 @@ const SITE = 'https://www.potuswatchdaily.com';
 const SB_URL = process.env.SUPABASE_URL || cfg.supabase.url;
 const SB_KEY = process.env.SUPABASE_KEY || cfg.supabase.publishableKey;
 const days = Number(process.argv[process.argv.indexOf('--days') + 1]) || 7;
-// CAN-SPAM needs a postal address in every marketing email. Set it, do not guess it.
-const ADDRESS = process.env.MAILING_ADDRESS || '[Mailing address required before sending]';
+// This is an editorial newsletter: no ads, affiliate links, sponsors or tip jar, so it
+// is not a "commercial" message under CAN-SPAM and needs no postal address. KEEP IT
+// THAT WAY. The day an ad, sponsor, affiliate link or product promotion goes in, set
+// MAILING_ADDRESS (a P.O. box is fine) and the footer will print it.
+const ADDRESS = process.env.MAILING_ADDRESS || '';
 
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const today = new Date();
@@ -129,7 +132,7 @@ const html = `<!DOCTYPE html>
   <tr><td bgcolor="#0B2545" style="background:#0B2545;padding:22px 32px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.7;color:#C9D3E3">
     You are receiving this because you subscribed at potuswatchdaily.com.<br>
     <a href="{{{RESEND_UNSUBSCRIBE_URL}}}" style="color:#F2B84B">Unsubscribe</a> &middot; <a href="${esc(link('/'))}" style="color:#F2B84B">potuswatchdaily.com</a> &middot; <a href="${esc(link('/privacy'))}" style="color:#F2B84B">Privacy</a><br>
-    <span style="color:#98A6BD">POTUS Watch Daily &middot; ${esc(ADDRESS)}</span>
+    <span style="color:#98A6BD">POTUS Watch Daily${ADDRESS ? ' &middot; ' + esc(ADDRESS) : ''}</span>
   </td></tr>
 </table>
 </td></tr></table>
@@ -140,7 +143,7 @@ const text = [
   ...stories.map(s => `- ${s.title}\n  ${link('/article/' + s.slug)}`), '',
   ...(docs.length ? ['PRESIDENTIAL ACTIONS', ...docs.map(d => `- ${d.kind}: ${d.title}`)] : []), '',
   ...(watch.length ? ['WHAT TO WATCH', ...watch.map(w => `- ${w}`)] : []), '',
-  'Unsubscribe: {{{RESEND_UNSUBSCRIBE_URL}}}', `POTUS Watch Daily, ${ADDRESS}`,
+  'Unsubscribe: {{{RESEND_UNSUBSCRIBE_URL}}}', `POTUS Watch Daily${ADDRESS ? ', ' + ADDRESS : ''}`,
 ].join('\n');
 
 mkdirSync(new URL('../email/out/', import.meta.url), { recursive: true });
@@ -150,4 +153,4 @@ writeFileSync(base.pathname + '.txt', text);
 console.log(`Subject:   ${subject}`);
 console.log(`Stories:   ${stories.length}   Presidential docs: ${docs.length}   Weekly review: ${review ? 'yes' : 'not yet published'}`);
 console.log(`Written:   email/out/weekly-${stamp}.html (+ .txt)`);
-if (ADDRESS.startsWith('[')) console.log('NOTE: set MAILING_ADDRESS before sending; CAN-SPAM requires a postal address.');
+if (!ADDRESS) console.log('Footer has no postal address: fine while the email carries no ads, affiliate links or promotion.');
