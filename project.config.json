@@ -45,6 +45,7 @@
   },
 
   "supabase": {
+    "url": "https://wvuydfupjpjmanqccdax.supabase.co",
     "$comment": [
       "Not a secret, and deliberately not a GitHub Secret. Supabase publishable",
       "keys are designed to be shipped in browser code; this one grants exactly",

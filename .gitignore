@@ -43,3 +43,6 @@ public/d8a95a427bb64d83b7a64c4e17a9d133.txt
 public/e7d7dce91b634bc5bf610ae2367c52c7.txt
 scripts/migrate-dump.mjs
 MIGRATION.md
+
+# Generated weekly emails
+email/out/
