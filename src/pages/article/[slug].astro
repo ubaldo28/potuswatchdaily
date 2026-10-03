@@ -117,7 +117,7 @@ const jsonLd = {
   "image": [img],
   "datePublished": dateIso,
   "dateModified": a.updated_at || dateIso,
-  "author": [{ "@type": "Person", "name": "POTUS Watch Daily Editorial Staff", "url": `${SITE_URL}/about`, "jobTitle": "Editor", "worksFor": { "@type": "NewsMediaOrganization", "name": "POTUS Watch Daily", "url": SITE_URL } }],
+  "author": [{ "@type": "NewsMediaOrganization", "name": "POTUS Watch Daily", "url": SITE_URL, "description": "Automated analysis drafted from primary documents and cited to its sources." }],
   "publisher": { "@type": "NewsMediaOrganization", "name": "POTUS Watch Daily", "url": SITE_URL, "logo": { "@type": "ImageObject", "url": `${SITE_URL}/logo-v3.png`, "width": 1200, "height": 208 } },
   "mainEntityOfPage": { "@type": "WebPage", "@id": canonicalUrl },
   "articleSection": region,
@@ -245,7 +245,7 @@ const creditHref = creditUrl(photoCredit?.url);
     <div class="eyebrow">
       <span class="tag">{region}</span>
       <span style="color:var(--border)">·</span>
-      <span class="byline-meta">By <a href="/about" rel="author">POTUS Watch Daily Editorial Staff</a> · <time datetime={dateIso}>{a.date || ''}</time>{a.time ? ` · ${a.time}` : ''} · {readTime}</span>
+      <span class="byline-meta"><a href="/about" rel="author">POTUS Watch Daily</a> · automated analysis · <time datetime={dateIso}>{a.date || ''}</time>{a.time ? ` · ${a.time}` : ''} · {readTime}</span>
     </div>
     <h1>{a.title}</h1>
     <hr>

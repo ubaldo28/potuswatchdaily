@@ -41,7 +41,7 @@ export const GET: APIRoute = async () => {
   <link>${url}</link>
   <guid isPermaLink="true">${url}</guid>
   <pubDate>${pubDate}</pubDate>
-  <dc:creator><![CDATA[POTUS Watch Editorial]]></dc:creator>
+  <dc:creator><![CDATA[POTUS Watch Daily]]></dc:creator>
   <category>${esc(a.region || 'World')}</category>
   <description>${esc(a.excerpt || '')}</description>
   <content:encoded>${esc(heroImg + paragraphs)}</content:encoded>
