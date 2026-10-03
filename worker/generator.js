@@ -1453,6 +1453,7 @@ async function generateArticle(env) {
   // Updated Hourly, and the remaining candidates are already in memory and
   // already paid for.
   let lead = null, context = [], used = [], parsed = null, reporting = [];
+  const rejected = [];   // why each candidate was turned down, returned so a skip is never a mystery
 
   // The region the rotation settled on. Kept separate because `region` is about
   // to be overwritten with what the document is actually about, and a retry
@@ -1567,20 +1568,24 @@ Respond ONLY with valid JSON, no markdown:
 
     if (String(attempt.body || '').split(/\s+/).length < 800) {
       console.log(`[generator] "${attempt.title}" came back under 800 words — trying the next document.`);
+      rejected.push(`under-800-words: ${attempt.title}`);
       continue;
     }
     if (ROUTINE_NOTICE.test(String(attempt.title || ''))) {
       console.log(`[generator] "${attempt.title}" is a routine listing notice — trying the next document.`);
+      rejected.push(`routine-notice: ${attempt.title}`);
       continue;
     }
     if (await isTooSimilar(env, attempt.title)) {
       console.log(`[generator] "${attempt.title}" is too similar to recent content — trying the next document.`);
+      rejected.push(`too-similar: ${attempt.title}`);
       continue;
     }
     attempt.body = fixPlaceholderHeadings(attempt.body);
     const checked = await reviewAndRevise(env, attempt, newsContext);
     if (!checked) {
       console.log(`[generator] "${attempt.title}" did not pass the source check — trying the next document.`);
+      rejected.push(`failed-source-check: ${attempt.title}`);
       continue;
     }
     parsed = checked;
@@ -1588,7 +1593,7 @@ Respond ONLY with valid JSON, no markdown:
   }
 
   if (!parsed) {
-    return { status: 'skipped', reason: 'too-similar', tried };
+    return { status: 'skipped', reason: rejected.length ? 'all-candidates-rejected' : 'too-similar', rejected, tried };
   }
 
   const slug = (parsed.slug && parsed.slug.length > 3) ? slugify(parsed.slug) : slugify(parsed.title);
@@ -1790,6 +1795,7 @@ async function reviewAndRevise(env, draft, sources) {
   if (first === null) { console.warn('[review] No usable verdict; publishing unchecked.'); return draft; }
   if (first.length === 0) { console.log('[review] Draft is fully supported.'); return draft; }
   console.log(`[review] ${first.length} unsupported claim(s); revising: ${first.join(' | ').slice(0, 400)}`);
+  if (first.length > 10) { console.warn('[review] Far too many unsupported claims; dropping this draft.'); return null; }
 
   const revisePrompt = `Rewrite the article below. Remove or correct EVERY claim in the "unsupported" list; where a claim cannot be supported, say the record does not address it. Keep everything the sources do support, keep the same headings and structure (Key Facts and What to Watch included), keep the [n] citations, and keep it at 1,100 words or more.
 
@@ -1811,10 +1817,10 @@ Respond ONLY with valid JSON: {"title":"${String(draft.title).replace(/"/g, '\\"
     console.warn('[review] Revision failed:', e.message);
     return null;
   }
-  if (String(revised.body || '').split(/\s+/).length < 800) { console.warn('[review] Revision came back too short.'); return null; }
+  if (String(revised.body || '').split(/\s+/).length < 650) { console.warn('[review] Revision came back too short.'); return null; }
 
   const second = await findUnsupportedClaims(env, revised, sources);
-  if (second === null || second.length <= 1) {
+  if (second === null || second.length <= 2) {
     console.log(`[review] Revised draft accepted (${second === null ? 'unchecked' : second.length + ' remaining'}).`);
     return { ...draft, ...revised, body: fixPlaceholderHeadings(revised.body), title: draft.title, slug: draft.slug || revised.slug };
   }
