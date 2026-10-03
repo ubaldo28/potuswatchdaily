@@ -24,7 +24,7 @@
   // per account. An interval of >= 1 hour also gets the most generous
   // duration ceiling on paid plans, should you ever upgrade.
   "triggers": {
-    "crons": ["0 7,11,15,19,23 * * *", "0 16 * * SUN"]
+    "crons": ["0 7,11,15,19,23 * * *", "0 12 * * SUN"]
   },
 
   // Sends console.log/warn/error to the dashboard's Workers Logs as well as

@@ -17,7 +17,7 @@
 
 // ── Config ───────────────────────────────────────────────────────────────────
 // Must match the second entry in worker/wrangler.jsonc.
-const WEEKLY_CRON = '0 16 * * SUN';
+const WEEKLY_CRON = '0 12 * * SUN';   // 5 AM Pacific: ready before the 7 AM Pacific email
 const regions = ['Iran', 'China', 'NATO', 'Americas', 'Mideast', 'Russia', 'Trade', 'Analysis'];
 
 const imageQueries = {
