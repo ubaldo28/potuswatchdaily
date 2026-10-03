@@ -41,10 +41,13 @@ Goal: be the top result for the questions people ask about what the President si
 - Track: indexed pages, impressions, clicks, average position, newsletter signups.
 - Rule: never add pages just for volume. Thin or duplicate output is what got AdSense to reject the old site.
 
+## Status 2026-10-03
+Done: NewsArticle JSON-LD and max-image-preview verified; per-order pages with official text (`/order/<doc>`, own sitemap, IndexNow pinged); primary-document lists on policy hubs; Corrections page; trailing-slash redirects removed so URLs match canonicals; sitemap.xml and news-sitemap.xml read by Google.
+
 ## Next actions
-1. Confirm sitemap.xml and news-sitemap.xml are submitted in Search Console and show "Success".
-2. Verify NewsArticle JSON-LD and robots max-image-preview on article pages.
-3. Build per-order tracker pages (biggest exact-match opportunity).
+1. (done) sitemaps submitted, show Success.
+2. (done) JSON-LD and robots verified.
+3. (done) per-order pages.
 4. Add evergreen "Current US tariffs by country" and "Sanctions timeline" pages.
-5. Corrections page.
+5. (done) Corrections page.
 6. Late October: Google News Publisher Center. Early to mid November: AdSense reapply.

@@ -144,3 +144,10 @@ See `RUNBOOK.md` for step-by-step disaster recovery.
 - Editorial only: no ads, affiliate links, sponsors or tip jar, so no postal address is required. If any promotion is ever added, set an address (P.O. box) first.
 - Sender `briefing@potuswatchdaily.com`; replies forward to the project Gmail through Cloudflare Email Routing (the old registrar forwarding records were removed from Cloudflare DNS).
 - Site signup form works. On the SITE Worker (`potuswatchdaily-site`): `RESEND_API_KEY` and `SUBSCRIBE_SECRET` are encrypted secrets (set in the dashboard; must be type Secret or a deploy wipes them), `RESEND_AUDIENCE_ID` is a var in `wrangler.jsonc` (the General segment id). Welcome email sends from `briefing@potuswatchdaily.com` (default in `src/pages/subscribe.ts`; the old default was Resend's sandbox sender, which only delivers to the account owner). Already-subscribed addresses get a silent success and no email: test with a new address (a Gmail dot variant lands in the same inbox). SEO strategy: `SEO-PLAN.md`.
+
+## Per-order pages (added 2026-10-03, SEO)
+- `/order/<federal-register-document-number>` (e.g. `/order/2026-20321`) is a page for each executive order, proclamation and memorandum: metadata, abstract or lead paragraph, our coverage matched by document number, and the full official text (Federal Register, public domain). Code: `src/pages/order/[doc].astro`, `getOrder()` in `src/lib/actions.ts` (uses the Federal Register `subtype` field; `presidential_document_type` is not a valid field on the single-document endpoint). Pages under 150 words of text are `noindex`.
+- `/sitemap-orders.xml` lists the 150 newest; it is part of the sitemap index. Tracker rows and the four policy topic hubs (tariffs, sanctions, export controls, presidential actions) link to these pages.
+- `/corrections` page added and linked in the footer.
+- Static pages now build as `about.html` etc. (`build.format: 'file'` in `astro.config.mjs`) so `/about` serves with 200 and no redirect to `/about/`. Do not link static pages with a trailing slash.
+- Strategy and next steps: `SEO-PLAN.md`.
