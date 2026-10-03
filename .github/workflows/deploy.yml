@@ -205,6 +205,11 @@ jobs:
           # The free Workers AI allowance (10,000 neurons a day) is for articles.
           # A site-only deploy has no reason to spend any of it, so the test run
           # happens only when this push changed the generator itself.
+          if git log -1 --format=%B | grep -q '\[no-generate\]'; then
+            echo "::notice::Commit asks to skip the test article ([no-generate])."
+            rm -f /tmp/run-token
+            exit 0
+          fi
           if [ "${{ github.event_name }}" = "push" ] \
              && git cat-file -e "${{ github.event.before }}^{commit}" 2>/dev/null \
              && git diff --quiet "${{ github.event.before }}" "${{ github.sha }}" -- worker/; then

@@ -852,7 +852,12 @@ const NOISE_PATTERNS = [
   /advisory (committee|board|panel|group)|request for nominations|solicit\w* nominations|(public|open) meeting|notice of meeting|information collection|paperwork reduction|privacy act of 1974|records schedule|agency information/i,
   // Domestic spending, grants and contract awards.
   /\binvests? \$|\bawarded? (a )?\$|contract award|scholarship|internship|apprenticeship|spouse|\bcommission on\b/i,
-  /\bSTEM\b/   // the acronym, not "stem the flow of"
+  /defense360|schieffer series|\bpodcast\b|\bwebinar\b|\bwatch (now|live)\b|\b(hosts?|convenes?|launches?) .{0,40}(conference|dialogue|forum|panel|series|summit meeting)\b|\bsave the date\b/i,
+  /\bSTEM\b/,   // the acronym, not "stem the flow of"
+  // Internal administrative paperwork: who is allowed to sign what, corrections
+  // to earlier notices, comment-period housekeeping, per-diem tables. A lead like
+  // "Delegation of Authority ... USAID Administrator" cannot carry an analysis.
+  /delegat(ion|es|ed) of (authority|functions)|\bredelegation\b|delegates? .*(authority|waiver)|technical amendments?|\bcorrect(ion|ing|s) (to|of)?\b.*(rule|notice)|correcting amendment|(extension|reopening) of comment|per diem|restricted area|genealog|biographic information|marine mammal|visa bond/i
 ];
 
 // ...unless the document is one of the few procurement or licensing actions
@@ -886,6 +891,12 @@ function scoreDocument(doc, region) {
   if (CEREMONIAL.test(title)) return -1;                       // hard reject
   if (ROUTINE_NOTICE.test(title)) return -1;                   // hard reject
   if (isNoise(doc)) return -1;                                 // hard reject
+  // A bare headline cannot carry an analysis: the model has nothing to read, so it
+  // invents (the fact check caught 18 and 24 unsupported claims on two such leads).
+  if (doc.thinText) return -1;
+  // Feeds sometimes carry very old items (a CSIS page about the FY2017 budget).
+  const published = Date.parse(doc.date || '');
+  if (published && Date.now() - published > 21 * 24 * 3600 * 1000) return -1;
 
   const fpTitle = FOREIGN_POLICY_TERMS.some(t => title.includes(t));
   if (!fpTitle && !FOREIGN_POLICY_TERMS.some(t => body.includes(t))) return -1;
@@ -1614,7 +1625,7 @@ Respond ONLY with valid JSON, no markdown:
       continue;
     }
     attempt.body = fixPlaceholderHeadings(attempt.body);
-    const checked = await reviewAndRevise(env, attempt, newsContext);
+    const checked = await reviewAndRevise(env, attempt, newsContext, String(lead.text || '').length);
     if (!checked) {
       console.log(`[generator] "${attempt.title}" did not pass the source check — trying the next document.`);
       rejected.push(`failed-source-check: ${attempt.title}`);
@@ -1822,9 +1833,16 @@ Respond ONLY with JSON: {"unsupported":["short quote of the claim", ...]} . Use 
   }
 }
 
-async function reviewAndRevise(env, draft, sources) {
-  const first = await findUnsupportedClaims(env, draft, sources);
-  if (first === null) { console.warn('[review] No usable verdict; publishing unchecked.'); return draft; }
+async function reviewAndRevise(env, draft, sources, leadChars = 0) {
+  let first = await findUnsupportedClaims(env, draft, sources);
+  if (first === null) first = await findUnsupportedClaims(env, draft, sources);   // one retry
+  if (first === null) {
+    // An unreadable checker must not silence the site, but it must not wave
+    // through a draft written from almost nothing either.
+    if (leadChars >= 600) { console.warn('[review] No usable verdict; lead has real text, publishing unchecked.'); return draft; }
+    console.warn('[review] No usable verdict and the lead is thin; dropping this draft.');
+    return null;
+  }
   if (first.length === 0) { console.log('[review] Draft is fully supported.'); return draft; }
   console.log(`[review] ${first.length} unsupported claim(s); revising: ${first.join(' | ').slice(0, 400)}`);
   if (first.length > 10) { console.warn('[review] Far too many unsupported claims; dropping this draft.'); return null; }

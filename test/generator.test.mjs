@@ -35,6 +35,19 @@ const test = (name, fn) => {
 };
 const assert = (cond, msg) => { if (!cond) throw new Error(msg || 'assertion failed'); };
 
+console.log('\nisNoise — administrative paperwork never leads\n');
+test('a delegation-of-authority notice is noise', () => {
+  assert(m.isNoise({ title: 'Delegation of Authority by the Secretary of State to the Official Performing the Duties of the Administrator of USAID', text: '' }));
+});
+test('a real tariff action is not noise', () => {
+  assert(!m.isNoise({ title: 'Adjusting Imports of Steel Into the United States', text: '' }));
+});
+
+console.log('\nscoreDocument — thin and stale leads\n');
+test('a title-only document can never lead', () => assert(m.scoreDocument({ title: 'Trade Sanctions on Iran', text: 'x', thinText: true }, 'Iran') === -1));
+test('a three-month-old feed item can never lead', () => assert(m.scoreDocument({ title: 'Treasury sanctions on Iran oil', text: 'x'.repeat(400), date: new Date(Date.now() - 90*864e5).toUTCString() }, 'Iran') === -1));
+test('a CSIS conference page is noise', () => assert(m.isNoise({ title: 'CSIS Hosts Defense360 Conference on FY2017 Budget', text: '' })));
+
 console.log('\nfixPlaceholderHeadings — never publish the template\n');
 test('bracketed placeholder headings are replaced with real ones', () => {
   const out = m.fixPlaceholderHeadings('## Key Facts\n\n- a\n\n## [Opening heading]\n\ntext\n\n## [Analysis heading]\n\ntext\n\n## [Implications heading]\n\ntext\n\n## What to Watch');
@@ -52,8 +65,10 @@ const draft = { title: 'Treasury Does A Thing', slug: 'treasury-thing', body };
 await (async () => {
   const clean = await m.reviewAndRevise(mkEnv(['{"unsupported":[]}']), draft, 'src');
   test('a fully supported draft is published as written', () => assert(clean === draft));
-  const junk = await m.reviewAndRevise(mkEnv(['not json at all']), draft, 'src');
-  test('an unreadable verdict publishes with a warning rather than silencing the site', () => assert(junk === draft));
+  const junk = await m.reviewAndRevise(mkEnv(['not json at all']), draft, 'src', 2000);
+  test('an unreadable verdict still publishes when the lead has real text', () => assert(junk === draft));
+  const thin = await m.reviewAndRevise(mkEnv(['not json at all']), draft, 'src', 80);
+  test('an unreadable verdict does NOT publish a draft built on a bare headline', () => assert(thin === null));
   const fixed = await m.reviewAndRevise(mkEnv([
     '{"unsupported":["invented figure"]}',
     JSON.stringify({ title: 'X', excerpt: 'e', meta_description: 'm', slug: 's', body }),
