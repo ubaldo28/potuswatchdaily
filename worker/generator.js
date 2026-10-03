@@ -891,6 +891,7 @@ function isNoise(doc) {
 const ROUTINE_NOTICE = /\bOFAC\b|sanctions actions?\b|\bSDN\b|specially designated|general licen[sc]e|\bGLs? ?[0-9][0-9A-Z]?\b|designations?\b|recent actions|blocked persons|sanctions list|unblock|delist/i;
 
 const TS_TERMS = /tariff|dut(y|ies)\b|sanction|export control|import|trade|embargo|proclamation|executive order|blocking|licen[sc]e|entity list|quota|antidumping|countervailing|reciprocal/i;
+const PRESIDENT_TERMS = /\bpresident\b|presidential|executive order|proclamation|memorandum|oval office|white house/i;
 const GENERAL_SOURCES = /United Nations|UN Meetings|Council of the European Union/i;
 
 function scoreDocument(doc, region) {
@@ -1525,10 +1526,13 @@ async function generateArticle(env) {
       rejected.push(`already-covered: ${candidate.doc.title}`);
       continue;
     }
-    // The site covers tariffs, trade and sanctions. A White House memo about a
-    // government website scored 4 in the Iran slot and got published; require
-    // the document itself to be about the focus.
-    if (!TS_TERMS.test(`${candidate.doc.title} ${String(candidate.doc.text || '').slice(0, 700)}`)) {
+    // The site is POTUS Watch Daily: anything the President does belongs, with
+    // tariffs, trade and sanctions as the emphasis. What does not belong is
+    // material that is about neither, such as a conference page or paperwork
+    // from an agency the President is not acting through.
+    const leadSample = `${candidate.doc.title} ${String(candidate.doc.text || '').slice(0, 700)}`;
+    const aboutPresident = /White House/i.test(candidate.doc.source || '') || PRESIDENT_TERMS.test(leadSample);
+    if (!aboutPresident && !TS_TERMS.test(leadSample)) {
       rejected.push(`off-focus: ${candidate.doc.title}`);
       continue;
     }

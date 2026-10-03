@@ -127,7 +127,7 @@ See `RUNBOOK.md` for step-by-step disaster recovery.
 
 ## 2026-10 direction change (read this first)
 
-- **Focus:** presidential and agency action on tariffs, trade and sanctions. Brand and domain stay POTUS Watch Daily / potuswatchdaily.com on purpose.
+- **Focus:** everything the President does, with tariffs, trade and sanctions as the emphasis. Anything presidential belongs (the name is POTUS). Brand and domain stay POTUS Watch Daily / potuswatchdaily.com on purpose.
 - **Design:** "The Ledger" -- paper background, ink text, navy chrome, vermilion accent, gold highlight. Tokens live in `BaseLayout.astro` (`:root`). Fonts: Newsreader, IBM Plex Sans/Mono. Logo is `src/components/SiteLogo.astro` (live text, no image); `public/logo-v3.png` and `og-default.jpg` are raster copies for Google/social.
 - **Front page** is text-first with a live sidebar from the Federal Register (`src/lib/actions.ts`); `/tracker` lists every executive order, proclamation and memorandum.
 - **Generator** (`worker/generator.js`): 5 articles/day (07, 11, 15, 19, 23 UTC) plus a Sunday 16:00 UTC weekly review. Sources: White House, Federal Register, Treasury/Commerce/USTR, CSIS, plus BBC/NPR/Al Jazeera/Guardian/NYT headlines for corroboration only. Every draft is fact-checked against its sources and rewritten or dropped (`reviewAndRevise`). Routine OFAC/SDN notices are never articles.
