@@ -12,7 +12,7 @@ import { presidentialActions, agencyNotices, fmtDate, classify } from '../lib/ac
 const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_KEY);
 
 const [{ data: articles = [] }, actions, notices] = await Promise.all([
-  supabase.from('articles').select('id,title,slug,excerpt,region,date,time,sources,image,hero_image').order('id', { ascending: false }).limit(80),
+  supabase.from('articles').select('id,title,slug,excerpt,region,date,time,sources,image,hero_image').is('removed_at', null).order('id', { ascending: false }).limit(80),
   presidentialActions(40),
   agencyNotices(12),
 ]);

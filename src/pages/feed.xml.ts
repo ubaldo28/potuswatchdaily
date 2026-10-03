@@ -19,6 +19,7 @@ export const GET: APIRoute = async () => {
       .from('articles')
       .select('slug,title,excerpt,body,region,hero_image,published_at,date')
       .not('slug', 'is', null)
+      .is('removed_at', null)
       .order('published_at', { ascending: false })
       .limit(50);
 

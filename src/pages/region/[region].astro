@@ -32,6 +32,7 @@ if (meta) {
     .from('articles')
     .select('title,slug,excerpt,region,date,time')
     .in('region', meta.aliases)
+    .is('removed_at', null)
     .order('id', { ascending: false })
     .limit(100);
   articles = data ?? [];

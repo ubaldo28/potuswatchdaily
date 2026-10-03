@@ -27,6 +27,7 @@ export const GET: APIRoute = async ({ params, locals }) => {
       .from('articles')
       .select('slug,title,hero_image,image,date,published_at')
       .not('slug', 'is', null)
+      .is('removed_at', null)
       .order('id', { ascending: false })
       .range(from, from + PAGE_SIZE - 1);
 

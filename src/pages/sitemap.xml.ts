@@ -16,7 +16,8 @@ export const GET: APIRoute = async () => {
     const { count } = await supabase
       .from('articles')
       .select('id', { count: 'exact', head: true })
-      .not('slug', 'is', null);
+      .not('slug', 'is', null)
+      .is('removed_at', null);
 
     const pages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE));
     const now = new Date().toISOString();

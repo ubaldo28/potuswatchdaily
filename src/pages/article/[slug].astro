@@ -28,6 +28,15 @@ if (error || !a) {
   );
 }
 
+// Taken off the site on purpose: say so (410 Gone) instead of pretending it never existed,
+// so search engines drop the URL. Restore by clearing removed_at in the database.
+if (a.removed_at) {
+  return new Response(
+    `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Removed — POTUS Watch Daily</title><meta name="robots" content="noindex"></head><body style="background:#F6F3EB;color:#10141B;font-family:system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px;text-align:center;padding:24px"><div style="height:4px;background:#C23B22;position:fixed;top:0;left:0;right:0"></div><h1 style="font-size:40px;margin:0">Removed</h1><p style="font-size:17px;color:#353C4A;max-width:30rem">This article is no longer on POTUS Watch Daily.</p><a href="/" style="color:#fff;background:#0B2545;font-size:14px;text-decoration:none;padding:10px 22px;border-radius:3px">Back to the front page</a></body></html>`,
+    { status: 410, headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-Robots-Tag': 'noindex' } }
+  );
+}
+
 const REGION_ALIASES: Record<string, string[]> = { 'Mideast': ['Mideast', 'Middle East'], 'Middle East': ['Mideast', 'Middle East'] };
 const aliases = a.region ? (REGION_ALIASES[a.region] ?? [a.region]) : null;
 
@@ -35,14 +44,15 @@ const relatedQuery = supabase
   .from('articles')
   .select('title,slug,region,image,date')
   .neq('slug', slug ?? '')
+  .is('removed_at', null)
   .order('id', { ascending: false })
   .limit(6);
 if (aliases) relatedQuery.in('region', aliases);
 
 const [{ data: related = [] }, { data: prevA }, { data: nextA }] = await Promise.all([
   relatedQuery,
-  supabase.from('articles').select('title,slug').lt('id', a.id).order('id', { ascending: false }).limit(1).maybeSingle(),
-  supabase.from('articles').select('title,slug').gt('id', a.id).order('id', { ascending: true }).limit(1).maybeSingle(),
+  supabase.from('articles').select('title,slug').is('removed_at', null).lt('id', a.id).order('id', { ascending: false }).limit(1).maybeSingle(),
+  supabase.from('articles').select('title,slug').is('removed_at', null).gt('id', a.id).order('id', { ascending: true }).limit(1).maybeSingle(),
 ]);
 
 const topics = topicsFor(a.title).slice(0, 2);

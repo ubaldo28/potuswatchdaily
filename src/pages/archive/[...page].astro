@@ -21,6 +21,7 @@ const { data: articles, count } = await supabase
   .from('articles')
   .select('title,slug,excerpt,region,date,time', { count: 'exact' })
   .not('slug', 'is', null)
+  .is('removed_at', null)
   .order('id', { ascending: false })
   .range((page - 1) * PER, page * PER - 1);
 
