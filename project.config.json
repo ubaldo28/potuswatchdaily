@@ -41,6 +41,19 @@
     "$servedBy": [
       "potuswatchdaily.com and www.potuswatchdaily.com are custom domains of the",
       "Worker 'potuswatchdaily-site', which CI deploys on every push to main."
+    ]
+  },
+
+  "supabase": {
+    "$comment": [
+      "Not a secret, and deliberately not a GitHub Secret. Supabase publishable",
+      "keys are designed to be shipped in browser code; this one grants exactly",
+      "what an anonymous visitor already has -- read access to published",
+      "articles, bounded by row-level security. Treating it as a secret bought",
+      "nothing and cost a manual step on every environment.",
+      "",
+      "The site reads with this. The generator writes with SUPABASE_WRITE_KEY,",
+      "which is a real secret and lives only in GitHub Secrets."
     ],
     "publishableKey": "sb_publishable_dwzndGsc-tK1ZVzivAKjWA_NgG9BL5z"
   },

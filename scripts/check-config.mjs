@@ -41,6 +41,14 @@ const { accountId, workersDevSubdomain } = cfg.cloudflare;
 const failures = [];
 const fail = (file, msg) => failures.push({ file, msg });
 
+/* ---- 0. The sections other tooling reads must exist. CI reads
+        supabase.publishableKey to provision the live site's read key; a
+        hand edit that dropped it once failed the deploy only at its last step. */
+if (!/^sb_publishable_/.test(String(cfg.supabase?.publishableKey ?? ''))) {
+  fail('project.config.json', 'supabase.publishableKey is missing or not a sb_publishable_ key; CI needs it to provision the site');
+}
+if (!cfg.site?.domain) fail('project.config.json', 'site.domain is missing');
+
 /* ---- 1. Both wrangler configs pin the one account, with the right names ---- */
 
 for (const [role, w] of Object.entries(cfg.workers)) {
