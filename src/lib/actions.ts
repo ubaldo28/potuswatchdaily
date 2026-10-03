@@ -80,8 +80,6 @@ export interface Order {
   citation: string; abstract: string; htmlUrl: string; pdfUrl: string; text: string; tag: Tag;
 }
 
-const KIND_LABEL: Record<string, string> = { executive_order: 'Executive Order', proclamation: 'Proclamation', memorandum: 'Memorandum' };
-
 // One presidential document, with its official text. Federal Register text is a
 // US government work in the public domain; the page adds structure, context and
 // links, it does not claim the words.
@@ -90,7 +88,7 @@ export async function getOrder(doc: string): Promise<Order | null> {
   try {
     const r = await fetch(
       `https://www.federalregister.gov/api/v1/documents/${doc}.json?fields[]=title&fields[]=abstract&fields[]=signing_date&fields[]=publication_date` +
-      '&fields[]=citation&fields[]=html_url&fields[]=pdf_url&fields[]=raw_text_url&fields[]=presidential_document_type' +
+      '&fields[]=citation&fields[]=html_url&fields[]=pdf_url&fields[]=raw_text_url&fields[]=subtype' +
       '&fields[]=executive_order_number&fields[]=proclamation_number&fields[]=type',
       {
         headers: { 'User-Agent': 'POTUSWatchDaily/1.0 (+https://www.potuswatchdaily.com)' },
@@ -100,8 +98,8 @@ export async function getOrder(doc: string): Promise<Order | null> {
       });
     if (!r.ok) return null;
     const d: any = await r.json();
-    const kind = String(d.presidential_document_type || '');
-    if (!KIND_LABEL[kind]) return null;
+    const kindLabel = String(d.subtype || '');
+    if (d.type !== 'Presidential Document' || !['Executive Order', 'Proclamation', 'Memorandum'].includes(kindLabel)) return null;
     let text = '';
     if (d.raw_text_url) {
       const t = await fetch(d.raw_text_url, {
@@ -111,7 +109,6 @@ export async function getOrder(doc: string): Promise<Order | null> {
       if (t.ok) text = (await t.text()).replace(/\r/g, '').trim();
     }
     const number = d.executive_order_number || d.proclamation_number;
-    const kindLabel = KIND_LABEL[kind];
     return {
       doc, title: String(d.title || ''), kind: kindLabel,
       label: number ? `${kindLabel} ${number}` : kindLabel,
