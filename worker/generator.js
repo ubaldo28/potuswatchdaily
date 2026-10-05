@@ -698,6 +698,23 @@ const RSS_SOURCES = [
     weight: 3   // full document text — the most valuable input we have
   },
   {
+    // Fact sheets and statements carry the full text too. Added 2026-10-05: the
+    // presidential-actions feed alone ran dry for 35 hours and every other
+    // candidate was a routine notice. Anything the President does is on-topic.
+    id: 'whitehouse-factsheets',
+    name: 'White House Fact Sheets',
+    url: 'https://www.whitehouse.gov/fact-sheets/feed/',
+    regions: ['Americas', 'Analysis', 'Trade', 'China', 'Iran', 'Russia', 'NATO', 'Mideast'],
+    weight: 3
+  },
+  {
+    id: 'whitehouse-briefings',
+    name: 'White House Briefings and Statements',
+    url: 'https://www.whitehouse.gov/briefings-statements/feed/',
+    regions: ['Americas', 'Analysis', 'Trade', 'China', 'Iran', 'Russia', 'NATO', 'Mideast'],
+    weight: 2
+  },
+  {
     id: 'war-releases',
     name: 'U.S. Department of War Releases',
     url: 'https://www.war.gov/DesktopModules/ArticleCS/RSS.ashx?ContentType=9&Site=945&max=10',
