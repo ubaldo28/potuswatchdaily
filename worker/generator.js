@@ -1671,7 +1671,7 @@ Respond ONLY with valid JSON, no markdown:
     const checked = await reviewAndRevise(env, attempt, newsContext, String(lead.text || '').length);
     if (!checked) {
       console.log(`[generator] "${attempt.title}" did not pass the source check — trying the next document.`);
-      rejected.push(`failed-source-check: ${attempt.title}`);
+      rejected.push(`failed-source-check (${lastReviewNote || 'unknown'}): ${attempt.title}`);
       continue;
     }
     parsed = checked;
@@ -1891,7 +1891,12 @@ Respond ONLY with JSON: {"unsupported":["short quote of the claim", ...]} . Use 
   }
 }
 
+// Why the last review dropped a draft. Surfaces in the run log, so a rejection
+// reads "revision-still-3-unsupported" and not just "failed".
+let lastReviewNote = '';
+
 async function reviewAndRevise(env, draft, sources, leadChars = 0) {
+  lastReviewNote = '';
   let first = await findUnsupportedClaims(env, draft, sources);
   // One retry at a different temperature: the model sometimes degenerates into a
   // string of "!" at one setting and answers normally at another.
@@ -1901,11 +1906,12 @@ async function reviewAndRevise(env, draft, sources, leadChars = 0) {
     // through a draft written from almost nothing either.
     if (leadChars >= 600) { console.warn('[review] No usable verdict; lead has real text, publishing unchecked.'); return draft; }
     console.warn('[review] No usable verdict and the lead is thin; dropping this draft.');
+    lastReviewNote = 'no-verdict-thin-lead';
     return null;
   }
   if (first.length === 0) { console.log('[review] Draft is fully supported.'); return draft; }
   console.log(`[review] ${first.length} unsupported claim(s); revising: ${first.join(' | ').slice(0, 400)}`);
-  if (first.length > 10) { console.warn('[review] Far too many unsupported claims; dropping this draft.'); return null; }
+  if (first.length > 10) { console.warn('[review] Far too many unsupported claims; dropping this draft.'); lastReviewNote = `first-pass-${first.length}-unsupported: ${first.slice(0, 2).join(' | ').slice(0, 200)}`; return null; }
 
   const revisePrompt = `Rewrite the article below. Remove or correct EVERY claim in the "unsupported" list; where a claim cannot be supported, say the record does not address it. Keep everything the sources do support, keep the same headings and structure (Key Facts and What to Watch included), keep the [n] citations, and keep it at 1,100 words or more.
 
@@ -1925,9 +1931,10 @@ Respond ONLY with valid JSON: {"title":"${String(draft.title).replace(/"/g, '\\"
   catch (e) {
     if (/\b(3040|4006)\b/.test(String(e?.message)) || /neuron/i.test(String(e?.message))) throw e;
     console.warn('[review] Revision failed:', e.message);
+    lastReviewNote = `revision-error: ${String(e.message).slice(0, 100)}`;
     return null;
   }
-  if (String(revised.body || '').split(/\s+/).length < 650) { console.warn('[review] Revision came back too short.'); return null; }
+  if (String(revised.body || '').split(/\s+/).length < 650) { console.warn('[review] Revision came back too short.'); lastReviewNote = 'revision-too-short'; return null; }
 
   const second = await findUnsupportedClaims(env, revised, sources);
   if (second === null || second.length <= 2) {
@@ -1935,6 +1942,7 @@ Respond ONLY with valid JSON: {"title":"${String(draft.title).replace(/"/g, '\\"
     return { ...draft, ...revised, body: fixPlaceholderHeadings(revised.body), title: draft.title, slug: draft.slug || revised.slug };
   }
   console.warn(`[review] Revised draft still has ${second.length} unsupported claims; dropping it.`);
+  lastReviewNote = `revision-still-${second.length}-unsupported: ${second.slice(0, 2).join(' | ').slice(0, 200)}`;
   return null;
 }
 
