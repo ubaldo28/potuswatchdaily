@@ -2041,9 +2041,11 @@ export default {
           ? Math.floor((Date.now() - new Date(last.published_at).getTime()) / 60000)
           : null;
         return Response.json({
-          // 90, not 180. At 180 an hourly site can miss two consecutive hours
-          // and still report healthy, which is exactly what it did.
-          status: minsSinceLast === null || minsSinceLast > 600 ? 'degraded' : 'ok',
+          // 1200 (20 h). Articles are only written from qualifying presidential or
+          // trade documents, so a quiet weekend legitimately goes 17 h without one
+          // (2026-10-04); at 600 that paged as an outage. A dead generator still
+          // trips this inside a day.
+          status: minsSinceLast === null || minsSinceLast > 1200 ? 'degraded' : 'ok',
           last_article_minutes_ago: minsSinceLast,
           last_article_title: last?.title ?? null
         }, { headers: { 'Cache-Control': 'no-store' } });
