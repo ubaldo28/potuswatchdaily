@@ -1823,7 +1823,7 @@ async function runGeneration(env, source) {
   try {
     const result = await generateArticle(env);
     console.log(`[generator] Done (${source}) in ${Date.now() - started}ms:`, JSON.stringify(result));
-    await recordRun(env, source, result?.status === 'published', { ...result, ms: Date.now() - started });
+    await recordRun(env, source, ['ok', 'published'].includes(result?.status), { ...result, ms: Date.now() - started });
     return result;
   } catch (e) {
     console.error(`[generator] FAILED (${source}) after ${Date.now() - started}ms: ${e.message}`);
