@@ -1788,15 +1788,30 @@ Respond ONLY with valid JSON, no markdown:
 }
 
 /** Wrap generateArticle so every failure is logged loudly for `wrangler tail`. */
+// One row per run, so "why has nothing published" is a query and not a hunt
+// through logs nobody can read. Never lets a logging failure break a run.
+async function recordRun(env, source, ok, outcome) {
+  try {
+    await sb(env, 'generator_runs', {
+      method: 'POST', headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ source, ok, outcome: JSON.parse(JSON.stringify(outcome).slice(0, 6000)) }),
+    });
+  } catch (e) {
+    console.error('[generator] could not record run:', e.message);
+  }
+}
+
 async function runGeneration(env, source) {
   const started = Date.now();
   try {
     const result = await generateArticle(env);
     console.log(`[generator] Done (${source}) in ${Date.now() - started}ms:`, JSON.stringify(result));
+    await recordRun(env, source, result?.status === 'published', { ...result, ms: Date.now() - started });
     return result;
   } catch (e) {
     console.error(`[generator] FAILED (${source}) after ${Date.now() - started}ms: ${e.message}`);
     if (e.stack) console.error('[generator] Stack:', e.stack);
+    await recordRun(env, source, false, { error: String(e.message).slice(0, 500), ms: Date.now() - started });
     throw e;
   }
 }
@@ -2040,7 +2055,12 @@ export default {
         const minsSinceLast = last
           ? Math.floor((Date.now() - new Date(last.published_at).getTime()) / 60000)
           : null;
+        let runs = [];
+        try {
+          runs = (await sb(env, 'generator_runs?select=ran_at,source,ok,outcome&order=id.desc&limit=3')) || [];
+        } catch {}
         return Response.json({
+          recent_runs: runs,
           // 1200 (20 h). Articles are only written from qualifying presidential or
           // trade documents, so a quiet weekend legitimately goes 17 h without one
           // (2026-10-04); at 600 that paged as an outage. A dead generator still
