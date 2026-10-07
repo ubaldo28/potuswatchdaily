@@ -9,6 +9,10 @@ import { isRoutineNotice } from '../../lib/quality';
 
 const SITE_URL = 'https://www.potuswatchdaily.com';
 const doc = String(Astro.params.doc || '');
+// A corrected reprint (R1-2026-03829) is the same order as 2026-03829. Send
+// readers and Google to the original instead of a 404 or a duplicate page.
+const reprint = doc.match(/^R\d+-(\d{4}-\d{4,6})$/);
+if (reprint) return Astro.redirect(`/order/${reprint[1]}`, 301);
 const o = await getOrder(doc);
 if (!o) return new Response('Not found', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
 

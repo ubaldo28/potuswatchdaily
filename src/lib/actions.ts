@@ -122,7 +122,7 @@ export async function getOrder(doc: string): Promise<Order | null> {
 // Recent documents for the sitemap: policy documents only, no observances.
 export async function recentOrderDocs(limit = 150): Promise<Array<{ doc: string; date: string }>> {
   const rows = await presidentialActions(limit, 100);
-  return rows.filter(a => a.doc).map(a => ({ doc: a.doc, date: a.signed }));
+  return rows.filter(a => a.doc && !/^R\d+-/.test(a.doc)).map(a => ({ doc: a.doc, date: a.signed }));
 }
 
 // Every presidential document matching a search term, newest first. Powers the
