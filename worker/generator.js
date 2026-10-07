@@ -1616,7 +1616,7 @@ Hard rules on accuracy:
 - Every factual claim must come from the documents above. Cite them inline by bracket number, e.g. [1].
 - Name the specific actors, dates, dollar figures, entity names and legal authorities that appear in the documents. Specificity is the point of the piece.
 - If the documents do not establish something, write that it is not addressed in the record. Never invent a fact, a quote, a date or a number.
-- Analysis and implications are yours to draw, but must follow from what the documents say.
+- Analysis and implications are yours to draw, but each one must follow directly from a specific sentence in the documents, and you must say which one by citing it [n]. Do NOT state motives, intentions or private reasoning of any person or government unless a document says so. Do NOT predict future events, negotiations, agreements or market reactions, and do not write that something "signals", "indicates", "suggests" or "may lead to" an outcome the documents do not name. A reader should be able to find the supporting sentence for every sentence you write. Fewer, narrower claims are better than broad ones.
 
 Focus rules:
 - The headline, the opening sentence and the closing must all be about document [1].
@@ -1633,13 +1633,13 @@ Structure (use ## for section headings). "Key Facts" and "What to Watch" must ap
 2-3 paragraphs, 3-4 sentences each: what document [1] actually does, and the background needed to read it.
 
 ## [Analysis heading]
-3 paragraphs, 3-4 sentences each: the strategic logic, who gains and who bears the cost, and the dynamics in play.
+3 paragraphs, 3-4 sentences each: how the document's own terms work (who or what it covers, what authority it cites, what it requires or permits) and who gains or bears a cost by those terms. Stay inside what the text states; compare to earlier actions only when a supplied document does.
 
 ## [Implications heading]
 2-3 paragraphs, 3-4 sentences each: what changes in practice. Who is affected (importers, exporters, banks, named industries or countries), what takes effect and when, what it costs or permits, and how it fits wider U.S. policy. State plainly when the record does not say.
 
 ## What to Watch
-3-4 bullet lines, each starting with "- ": a specific decision point, deadline, reaction or signal that would show where this goes next. Only what the record supports; say so if the record sets no date.
+3-4 bullet lines, each starting with "- ": a specific deadline, effective date, required filing, review or reporting step that the documents name. Do not guess at reactions or outcomes; if the record sets no date, say the record sets none.
 
 Style: active voice, analytical, no rhetorical questions, no sensationalism, never glorify violence. 1,300-1,700 words in total. Do not stop early: every section needs its full paragraph count.
 
